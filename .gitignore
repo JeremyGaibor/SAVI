@@ -1,10 +1,25 @@
-# Claves y certificados
+# IDE
+.idea/
+.vscode/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Variables y secretos
+.env
+.env.*
+!.env.example
+
+# AWS y certificados
 *.pem
 *.key
 *.p12
 *.pfx
-
-# Variables sensibles
-.env
-.env.*
-!.env.example

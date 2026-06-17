@@ -1,0 +1,10 @@
+# Claves y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Variables sensibles
+.env
+.env.*
+!.env.example

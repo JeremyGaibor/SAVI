@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Bety_AI.apps.BetyAiConfig',
+
+    'rest_framework',
+    'Bety_AI',
 ]
 
 MIDDLEWARE = [

@@ -1,25 +1,24 @@
-# IDE
-.idea/
-.vscode/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Entornos virtuales
+.venv/
+venv/
+env/
 
 # Django
 db.sqlite3
 media/
 staticfiles/
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-
-# Variables y secretos
+# Variables de entorno
 .env
-.env.*
-!.env.example
 
-# AWS y certificados
-*.pem
-*.key
-*.p12
-*.pfx
+# PyCharm
+.idea/
+
+# Chroma / Docker local
+chroma_data/

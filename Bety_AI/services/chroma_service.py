@@ -1,12 +1,80 @@
 import chromadb
+import os
+import re
+import unicodedata
+from dotenv import load_dotenv
 
 
-CHROMA_HOST = "localhost"
-CHROMA_PORT = 8001
-COLLECTION_NAME = "bety_ai_documentos"
+load_dotenv()
+
+# Estos valores salen de Bety-AI/.env. En desarrollo Chroma corre en Docker
+# y se expone normalmente como localhost:8001.
+CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
+COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "bety_ai_documentos")
+
+STOPWORDS = {
+    "sobre", "para", "como", "cual", "cuales", "donde", "cuando", "quien",
+    "quiero", "ayuda", "ayudame", "hablame", "dime", "del", "los", "las",
+    "una", "uno", "unos", "unas", "con", "por", "que", "este", "esta",
+    "documento", "proceso", "informacion"
+}
+
+SINONIMOS_CONSULTA = {
+    "matriculacion": {"matricula", "matricular", "matriculas"},
+    "matricula": {"matriculacion", "matricular", "matriculas"},
+    "evaluativo": {"evaluacion", "evaluar", "evaluaciones"},
+    "evaluacion": {"evaluativo", "evaluar", "evaluaciones"},
+    "grado": {"graduacion", "titulacion"},
+    "titulacion": {"grado", "graduacion"},
+}
+
+
+def normalizar_texto(valor):
+    texto = unicodedata.normalize("NFKD", str(valor or ""))
+    texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
+    return texto.lower()
+
+
+def extraer_tokens_busqueda(texto):
+    tokens = set(re.findall(r"[a-z0-9]+", normalizar_texto(texto)))
+    tokens = {token for token in tokens if len(token) > 3 and token not in STOPWORDS}
+
+    expandidos = set(tokens)
+    for token in tokens:
+        expandidos.update(SINONIMOS_CONSULTA.get(token, set()))
+
+    return expandidos
+
+
+def puntuar_coincidencia_lexica(pregunta, texto, metadata):
+    tokens = extraer_tokens_busqueda(pregunta)
+
+    if not tokens:
+        return 0
+
+    contenido = normalizar_texto(texto)
+    titulo = normalizar_texto(metadata.get("titulo", ""))
+    tipo_documento = normalizar_texto(metadata.get("tipo_documento", ""))
+
+    coincidencias_contenido = sum(1 for token in tokens if token in contenido)
+    coincidencias_titulo = sum(1 for token in tokens if token in titulo)
+    coincidencias_tipo = sum(1 for token in tokens if token in tipo_documento)
+
+    return (
+        coincidencias_contenido
+        + (coincidencias_titulo * 3)
+        + (coincidencias_tipo * 2)
+    ) / max(len(tokens), 1)
 
 
 def obtener_coleccion():
+    """
+    Crea el cliente HTTP de ChromaDB y devuelve la coleccion documental.
+
+    get_or_create_collection permite que el primer procesamiento cree la
+    coleccion si todavia no existe en el contenedor Docker.
+    """
     client = chromadb.HttpClient(
         host=CHROMA_HOST,
         port=CHROMA_PORT
@@ -38,6 +106,8 @@ def guardar_fragmentos_documento(
     for indice, fragmento in enumerate(fragmentos, start=1):
         id_fragmento = f"doc_{id_documento}_frag_{indice}"
 
+        # Los metadatos permiten filtrar despues por rol, carrera, vigencia,
+        # tipo de documento u otros criterios enviados desde Bety-Documentos.
         metadata = metadata_base.copy()
         metadata["id_documento"] = str(id_documento)
         metadata["titulo"] = titulo
@@ -54,6 +124,75 @@ def guardar_fragmentos_documento(
     )
 
     return len(ids)
+
+
+def listar_fragmentos_chroma():
+    collection = obtener_coleccion()
+    resultados = collection.get(include=["documents", "metadatas"])
+
+    ids = resultados.get("ids", [])
+    documentos = resultados.get("documents", [])
+    metadatas = resultados.get("metadatas", [])
+
+    fragmentos = []
+    for indice, item_id in enumerate(ids):
+        fragmentos.append({
+            "id": item_id,
+            "contenido": documentos[indice] if indice < len(documentos) else "",
+            "metadata": metadatas[indice] if indice < len(metadatas) else {},
+        })
+
+    return fragmentos
+
+
+def obtener_fragmento_chroma(id_fragmento):
+    collection = obtener_coleccion()
+    resultados = collection.get(
+        ids=[id_fragmento],
+        include=["documents", "metadatas"],
+    )
+
+    ids = resultados.get("ids", [])
+    if not ids:
+        return None
+
+    documentos = resultados.get("documents", [])
+    metadatas = resultados.get("metadatas", [])
+
+    return {
+        "id": ids[0],
+        "contenido": documentos[0] if documentos else "",
+        "metadata": metadatas[0] if metadatas else {},
+    }
+
+
+def crear_fragmento_chroma(id_fragmento, contenido, metadata):
+    collection = obtener_coleccion()
+    collection.add(
+        ids=[id_fragmento],
+        documents=[contenido],
+        metadatas=[metadata],
+    )
+
+
+def actualizar_fragmento_chroma(id_fragmento, contenido, metadata):
+    collection = obtener_coleccion()
+    collection.update(
+        ids=[id_fragmento],
+        documents=[contenido],
+        metadatas=[metadata],
+    )
+
+
+def eliminar_fragmento_chroma(id_fragmento):
+    collection = obtener_coleccion()
+    collection.delete(ids=[id_fragmento])
+
+
+def eliminar_documento_chroma(id_documento):
+    collection = obtener_coleccion()
+    collection.delete(where={"id_documento": str(id_documento)})
+
 
 def construir_where_chroma(filtros):
     """
@@ -89,9 +228,13 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
 
     where = construir_where_chroma(filtros)
 
+    # Chroma devuelve documentos, metadatos y distancia de similitud.
+    # Bety-AI usa estos fragmentos como contexto para la respuesta de Qwen.
+    total_candidatos = max(total_resultados, 8)
+
     resultados = collection.query(
         query_texts=[pregunta],
-        n_results=total_resultados,
+        n_results=total_candidatos,
         where=where,
         include=["documents", "metadatas", "distances"]
     )
@@ -106,7 +249,15 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
         fragmentos.append({
             "contenido": texto,
             "metadata": metadata,
-            "distancia": distancia
+            "distancia": distancia,
+            "coincidencia_lexica": puntuar_coincidencia_lexica(pregunta, texto, metadata),
         })
 
-    return fragmentos
+    fragmentos.sort(
+        key=lambda item: (
+            -item["coincidencia_lexica"],
+            item["distancia"] if item["distancia"] is not None else 999999,
+        )
+    )
+
+    return fragmentos[:total_resultados]

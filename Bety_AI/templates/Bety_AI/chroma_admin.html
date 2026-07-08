@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>CRUD ChromaDB - Bety-AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            background: #f4f6f8;
+            color: #1f2933;
+        }
+
+        h1, h2 {
+            margin-bottom: 8px;
+        }
+
+        .panel {
+            background: #fff;
+            border: 1px solid #d8dee6;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input, textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            border: 1px solid #b8c2cc;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 6px;
+            background: #1f8f4d;
+            color: white;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .btn-danger {
+            background: #b83232;
+        }
+
+        .btn-secondary {
+            background: #455a64;
+        }
+
+        .mensaje {
+            border-left: 5px solid #1f8f4d;
+            background: #ecf8f0;
+        }
+
+        .error {
+            border-left: 5px solid #b83232;
+            background: #fff1f1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #d8dee6;
+            padding: 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        th {
+            background: #e8edf3;
+            position: sticky;
+            top: 0;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 520px;
+            margin: 0;
+            font-size: 12px;
+        }
+
+        code {
+            font-size: 12px;
+        }
+
+        .acciones form {
+            display: inline;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>CRUD ChromaDB - Bety-AI</h1>
+
+    {% if mensaje %}
+        <section class="panel mensaje">{{ mensaje }}</section>
+    {% endif %}
+
+    {% if error %}
+        <section class="panel error">{{ error }}</section>
+    {% endif %}
+
+    <section class="panel">
+        <h2>{% if fragmento_edicion %}Editar fragmento{% else %}Crear fragmento manual{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="{% if fragmento_edicion %}actualizar{% else %}crear{% endif %}">
+
+            <div class="grid">
+                <div>
+                    <label>ID fragmento</label>
+                    <input
+                        type="text"
+                        name="id_fragmento"
+                        value="{{ fragmento_edicion.id|default:'' }}"
+                        {% if fragmento_edicion %}readonly{% endif %}
+                        placeholder="Ej: manual_sga_frag_1"
+                        required
+                    >
+                </div>
+                <div>
+                    <label>Metadatos JSON</label>
+                    <textarea name="metadata" required>{% if fragmento_edicion %}{{ fragmento_edicion.metadata_json }}{% else %}{
+  "id_documento": "manual",
+  "titulo": "Fragmento manual",
+  "tipo_documento": "GENERAL",
+  "rol": "GENERAL",
+  "carrera": "GENERAL",
+  "estado_vigencia": "VIGENTE",
+  "numero_fragmento": 1
+}{% endif %}</textarea>
+                </div>
+            </div>
+
+            <label>Contenido</label>
+            <textarea name="contenido" required>{{ fragmento_edicion.contenido|default:'' }}</textarea>
+
+            <button type="submit">{% if fragmento_edicion %}Actualizar fragmento{% else %}Crear fragmento{% endif %}</button>
+            {% if fragmento_edicion %}
+                <a href="{% url 'ver_chroma_dump' %}">Cancelar edición</a>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>Documentos en Chroma</h2>
+        <p>Total: {{ documentos|length }} documentos, {{ fragmentos|length }} fragmentos.</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID documento</th>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Rol</th>
+                    <th>Carrera</th>
+                    <th>Vigencia</th>
+                    <th>Fragmentos</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td><code>{{ documento.id_documento }}</code></td>
+                        <td>{{ documento.titulo }}</td>
+                        <td>{{ documento.tipo_documento }}</td>
+                        <td>{{ documento.rol }}</td>
+                        <td>{{ documento.carrera }}</td>
+                        <td>{{ documento.estado_vigencia }}</td>
+                        <td>{{ documento.fragmentos }}</td>
+                        <td class="acciones">
+                            <form method="post" onsubmit="return confirm('¿Eliminar todos los fragmentos de este documento en Chroma?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="eliminar_documento">
+                                <input type="hidden" name="id_documento" value="{{ documento.id_documento }}">
+                                <button type="submit" class="btn-danger">Eliminar documento</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8">No hay documentos en ChromaDB.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <h2>Fragmentos</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID fragmento</th>
+                    <th>Título</th>
+                    <th>Metadatos</th>
+                    <th>Contenido</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fragmento in fragmentos %}
+                    <tr>
+                        <td><code>{{ fragmento.id }}</code></td>
+                        <td>{{ fragmento.metadata.titulo|default:"-" }}</td>
+                        <td><pre>{{ fragmento.metadata }}</pre></td>
+                        <td><pre>{{ fragmento.contenido|truncatechars:900 }}</pre></td>
+                        <td class="acciones">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="editar">
+                                <input type="hidden" name="id_fragmento" value="{{ fragmento.id }}">
+                                <button type="submit" class="btn-secondary">Editar</button>
+                            </form>
+
+                            <form method="post" onsubmit="return confirm('¿Eliminar este fragmento de Chroma?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="eliminar_fragmento">
+                                <input type="hidden" name="id_fragmento" value="{{ fragmento.id }}">
+                                <button type="submit" class="btn-danger">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No hay fragmentos guardados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

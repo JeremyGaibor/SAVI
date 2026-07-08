@@ -1,0 +1,2235 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Contenido de ChromaDB - Bety-AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            background: #f4f6f8;
+            color: #1f2933;
+        }
+        h1, h2 {
+            margin-bottom: 8px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #d8dee6;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(160px, 1fr));
+            gap: 10px;
+        }
+        .dato {
+            background: #eef2f6;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th, td {
+            border: 1px solid #d8dee6;
+            padding: 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+        th {
+            background: #e8edf3;
+            position: sticky;
+            top: 0;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 520px;
+            margin: 0;
+            font-size: 12px;
+        }
+        code {
+            font-size: 12px;
+        }
+        .error {
+            border-left: 5px solid #b83232;
+        }
+    </style>
+</head>
+<body>
+    <h1>Contenido de ChromaDB - Bety-AI</h1>
+
+    <section class="panel meta">
+        <div class="dato"><strong>Estado</strong><br>OK</div>
+        <div class="dato"><strong>Host</strong><br>localhost:8001</div>
+        <div class="dato"><strong>Colección</strong><br>bety_ai_documentos</div>
+        <div class="dato"><strong>Generado</strong><br>2026-07-07 16:14:32</div>
+        <div class="dato"><strong>Fragmentos</strong><br>36</div>
+        <div class="dato"><strong>Documentos</strong><br>6</div>
+    </section>
+
+    
+
+    <section class="panel">
+        <h2>Resumen por documento</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID documento</th>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Rol</th>
+                    <th>Carrera</th>
+                    <th>Vigencia</th>
+                    <th>Fragmentos</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><code>DOC-001</code></td>
+                <td>Proceso de matrícula de grado 2026</td>
+                <td>MATRICULA</td>
+                <td>ESTUDIANTE</td>
+                <td>SOFTWARE</td>
+                <td>VIGENTE</td>
+                <td>2</td>
+            </tr>
+        
+            <tr>
+                <td><code>1</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td>7</td>
+            </tr>
+        
+            <tr>
+                <td><code>2</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td>5</td>
+            </tr>
+        
+            <tr>
+                <td><code>3</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td>6</td>
+            </tr>
+        
+            <tr>
+                <td><code>4</code></td>
+                <td>MODELO EVALUATIVO DE GRADO Y NIVELACION</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td>3</td>
+            </tr>
+        
+            <tr>
+                <td><code>6</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td>13</td>
+            </tr>
+        
+            </tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <h2>Fragmentos guardados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>ID fragmento</th>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Rol</th>
+                    <th>Carrera</th>
+                    <th>Vigencia</th>
+                    <th>Metadatos</th>
+                    <th>Contenido</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td>1</td>
+                <td><code>doc_DOC-001_frag_1</code></td>
+                <td>Proceso de matrícula de grado 2026</td>
+                <td>MATRICULA</td>
+                <td>ESTUDIANTE</td>
+                <td>SOFTWARE</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;id_documento&quot;: &quot;DOC-001&quot;,
+  &quot;grupo&quot;: &quot;&quot;,
+  &quot;rol&quot;: &quot;ESTUDIANTE&quot;,
+  &quot;titulo&quot;: &quot;Proceso de matrícula de grado 2026&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;tipo_estudio&quot;: &quot;GRADO&quot;,
+  &quot;ambito&quot;: &quot;PUBLICO&quot;,
+  &quot;nombre_archivo&quot;: &quot;pdf_prueba_matricula_bety_ai.pdf&quot;,
+  &quot;carrera&quot;: &quot;SOFTWARE&quot;,
+  &quot;tipo_documento&quot;: &quot;MATRICULA&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;anio_documento&quot;: &quot;2026&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+Proceso de Matricula de Grado 2026 - Documento de
+Prueba
+Uso: archivo PDF de prueba para validar la subida, extraccion de texto y fragmentacion en Bety-AI.
+1. Objetivo del proceso
+Este documento describe de forma ficticia el proceso general de matricula de grado para estudiantes de la
+Universidad. Su objetivo es servir como material de prueba para el asistente virtual, permitiendo verificar
+que el sistema extrae texto seleccionable desde un PDF y lo guarda como fragmentos consultables.
+2. Alcance
+El proceso aplica a estudiantes de grado que cuentan con usuario activo en el SGA, no mantienen
+impedimentos academicos o administrativos y se encuentran dentro del periodo oficial de matricula
+establecido en el calendario academico.
+3. Requisitos previos
+No.
+Requisito
+1
+Tener usuario y contrasena activos en el SGA.
+2
+Verificar que la carrera, nivel y grupo asignado sean correctos.
+3
+No registrar deudas, bloqueos o impedimentos pendientes.
+4
+Revisar la malla curricular y las asignaturas disponibles.
+4. Pasos para realizar la matricula
+1. Ingresar al portal del SGA con el usuario institucional.
+2. Seleccionar el modulo de Matricula o Registro Academico.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>2</td>
+                <td><code>doc_DOC-001_frag_2</code></td>
+                <td>Proceso de matrícula de grado 2026</td>
+                <td>MATRICULA</td>
+                <td>ESTUDIANTE</td>
+                <td>SOFTWARE</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;rol&quot;: &quot;ESTUDIANTE&quot;,
+  &quot;numero_fragmento&quot;: 2,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;anio_documento&quot;: &quot;2026&quot;,
+  &quot;grupo&quot;: &quot;&quot;,
+  &quot;nombre_archivo&quot;: &quot;pdf_prueba_matricula_bety_ai.pdf&quot;,
+  &quot;titulo&quot;: &quot;Proceso de matrícula de grado 2026&quot;,
+  &quot;carrera&quot;: &quot;SOFTWARE&quot;,
+  &quot;ambito&quot;: &quot;PUBLICO&quot;,
+  &quot;tipo_documento&quot;: &quot;MATRICULA&quot;,
+  &quot;tipo_estudio&quot;: &quot;GRADO&quot;,
+  &quot;id_documento&quot;: &quot;DOC-001&quot;
+}</pre></td>
+                <td><pre>3. Revisar las asignaturas habilitadas segun el nivel del estudiante.
+4. Seleccionar las materias disponibles y verificar horarios, cupos y paralelos.
+5. Confirmar la matricula y descargar el comprobante generado por el sistema.
+5. Casos especiales
+Si una asignatura no aparece disponible, el estudiante debe revisar si cumple los prerequisitos, si existe
+cruce de horario o si el cupo del paralelo se encuentra completo. En caso de persistir el inconveniente,
+debe comunicarse con la coordinacion de carrera o secretaria academica.
+Si el estudiante pertenece a otra modalidad, posgrado o nivelacion, debe consultar el documento especifico
+correspondiente. Este documento de prueba esta marcado como proceso de grado.
+6. Vigencia y fuente
+Este documento es ficticio y se utiliza solo para pruebas del sistema Bety-AI. Para tramites reales se deben
+consultar los documentos oficiales vigentes publicados por la Universidad.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>3</td>
+                <td><code>doc_1_frag_1</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 1 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO
+MANUAL DE USUARIO PARA SOLICITUD DE
+JUSTIFICACIÓN DE INASISTENCIAS DE ESTUDIANTES
+EN EL SISTEMA DE GESTIÓN ACADÉMICA
+JUSTIFICACIÓN POR ENFERMEDAD O CALAMIDAD DOMÉSTICA
+REGISTRO DE CONTROL DE CAMBIOS
+Fecha
+Revisión
+Descripción de la modificación respecto a la edición anterior
+2018
+000
+Primera Edición
+Elaborado por:
+Revisado por:
+Aprobado por:
+Ing. Bladimir Cedeño S.,
+Analista de TICS 2
+Ing. Washington Chiriboga
+Casanova, Director Académico
+Ing. Guadalupe Murillo
+Campuzano, Vicerrectora
+Académica UTEQ
+Firma:
+Firma:
+Firma:
+Distribución: Electrónica, papel
+Control de documento:
+Gestión de uso:
+Copia controlada [ X ]
+SGA [   ] Administrativos [    ] Estudiantes [ X ] Docentes [    ]
+Copia No controlada [    ]
+Decanos [   ] Coordinadores de Carrera [   ] General [    ]
+Aviso legal: La información contenida en este documento, será para el uso exclusivo de la Universidad Técnica Estatal</pre></td>
+            </tr>
+        
+            <tr>
+                <td>4</td>
+                <td><code>doc_1_frag_2</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 2
+}</pre></td>
+                <td><pre>de Quevedo, quien será responsable por su custodia y conservación en razón de que contiene información de carácter
+confidencial o privilegiado. Esta información no podrá ser reproducida total o parcialmente, salvo autorización expresa
+de la oficina responsable de la Universidad Técnica Estatal de Quevedo.
+[Página 2]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 2 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+MANUAL DE USUARIO PARA SOLICITUD DE
+JUSTIFICACIÓN DE INASISTENCIAS DE ESTUDIANTES
+EN EL SISTEMA DE GESTIÓN ACADÉMICA
+El presente manual es una guía elaborada con el fin de orientar a los estudiantes de la UTEQ sobre el
+proceso de solicitud de justificación de inasistencias a clases de estudiantes, en el Sistema de Gestión
+Académica (SGA). Los puntos siguientes detallan cada uno de los pasos a desarrollarse para cumplir
+cabalmente con este proceso.
+ÍNDICE DE CONTENIDO
+1.
+Ingresar al módulo “Justificación de Faltas” ......................................................................... 3
+2.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>5</td>
+                <td><code>doc_1_frag_3</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;numero_fragmento&quot;: 3,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;
+}</pre></td>
+                <td><pre>Proceso de registro de solicitud y adjuntar evidencias ....................................................... 3
+3.
+Proceso de registro de materias y días a justificar ............................................................... 4
+4.
+Entrega de documentos físicos en Decanato de Facultad o Dirección UED ................ 6
+5.
+Consulta de estado de la solicitud de justificación de falta ............................................... 7
+[Página 3]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 3 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+1. Ingresar al módulo “Justificación de Faltas”
+Este proceso se encuentra habilitado en el perfil ESTUDIANTES luego de acceder al SGA con su
+usuario y clave, verificando además que se esté trabajando en el periodo académico vigente.
+Para acceder a este proceso debe dar clic sobre el siguiente ícono:
+Importante: La justificación de inasistencias en la UTEQ, se realiza en base a lo establecido en el Art.
+45 del Reglamento de Semestralización y Créditos de la UTEQ que indica: “Los estudiantes podrán</pre></td>
+            </tr>
+        
+            <tr>
+                <td>6</td>
+                <td><code>doc_1_frag_4</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;numero_fragmento&quot;: 4,
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;
+}</pre></td>
+                <td><pre>presentar solicitud de justificación de inasistencia a clases en especie valorada dirigida al
+Decano o equivalente, por motivos de enfermedad o calamidad doméstica, avaladas con un
+certificado otorgado por el Departamento de Bienestar Estudiantil-DBE, máximo 72 horas
+posteriores al evento. El Decano resolverá y notificará a la Secretaría de la unidad académica
+para su registro en el SICAU, máximo en las 24 horas posteriores a la solicitud”.
+2. Proceso de registro de solicitud y adjuntar evidencias
+Una vez dentro del módulo de justificación de faltas, lo primero que se debe realizar es dar clic en el
+botón “Solicitar”, entonces podrá visualizar las opciones que debe ingresar.
+Dar un clic aquí para
+generar la solicitud
+Verificar que se
+trabaje en el periodo
+académico vigente
+[Página 4]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 4 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+Deberá seleccionar un caso justificativo, luego ingresar un breve detalle de la solicitud
+y adjuntar los documentos avalados por la Unidad de Bienestar Estudiantil (UBE),</pre></td>
+            </tr>
+        
+            <tr>
+                <td>7</td>
+                <td><code>doc_1_frag_5</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;numero_fragmento&quot;: 5,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;
+}</pre></td>
+                <td><pre>escaneado y en formato PDF, que evidencien la justificación de la inasistencia.
+Importante: El Reglamento de Semestralización y Créditos de la UTEQ establece que los estudiantes
+tienen un plazo máximo de 72 horas posteriores al evento, para solicitar la justificación por calamidad
+doméstica o enfermedad, avalados por la Unidad de Bienestar Estudiantil (UBE).
+3. Proceso de registro de materias y días a justificar
+En la parte interior de formulario se presentará un recuadro de selección de las materias que requiere
+justificar. Deberá seleccionar de una en una para seguir con el proceso.
+Dar un clic aquí para
+desplegar los casos
+Ingresar un breve
+detalle justificativo
+Adjuntar el archivo justificativo
+escaneado y en PDF
+Dar clic y seleccionar la
+materia
+[Página 5]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 5 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+Luego seleccionará la fecha con el horario que requiere registrar en la solicitud y dará clic en el botón
+“+”.
+Se agregará en la parte inferior como se muestra en la siguiente imagen:</pre></td>
+            </tr>
+        
+            <tr>
+                <td>8</td>
+                <td><code>doc_1_frag_6</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;,
+  &quot;numero_fragmento&quot;: 6,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>Repitiendo el paso anterior y agregando todas las fechas en la materia que seleccionó inicialmente,
+estará registrando la solicitud de justificación. El mismo proceso deberá ejecutar para las otras
+materias.
+Recuerde que debe seleccionar los días a justificar con base en lo autorizado en el documento avalado
+y recibido por la UBE.
+Se presentará una pantalla como la siguiente imagen con varios registros en varias materias.
+Dar clic y seleccionar la fecha
+y horario de la inasistencia
+Luego dar clic en este
+botón para agregar
+Registro generado para
+la justificación de faltas
+[Página 6]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 6 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+Finalmente dará clic en el botón “Guardar” que se encuentra al final del formulario. Si da clic en el botón
+“Cancelar”, se eliminarán todos los registros de materias y horarios.
+4. Entrega de documentos físicos en Decanato de Facultad o Dirección UED
+Luego del registro de la solicitud en el SGA, deberá entregar los documentos físicos originales y</pre></td>
+            </tr>
+        
+            <tr>
+                <td>9</td>
+                <td><code>doc_1_frag_7</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;nombre_archivo&quot;: &quot;documentogeneral_2019112918174.pdf&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;numero_fragmento&quot;: 7,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;id_documento&quot;: &quot;1&quot;
+}</pre></td>
+                <td><pre>avalados por la UBE en el Decanato de la Facultad a la que pertenece. Para estudiantes de la
+modalidad semipresencial será en la Dirección de la Unidad de Estudios a Distancia (UED).
+Deberá revisar el estado de la solicitud en su perfil del SGA para seguimiento.
+Registros en varias
+materias
+Dar clic en este botón
+para enviar la solicitud
+[Página 7]
+MANUAL DE USUARIO
+SOLICITUD DE JUSTIFICACIÓN DE
+INASISTENCIAS DE ESTUDIANTES EN EL
+SGA
+Revisión: 000
+Página: 7 de 7
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+5. Consulta de estado de la solicitud de justificación de falta
+Inicialmente se presentará la solicitud realizada por el estudiante con el “Estado” como SOLICITADO,
+el que cambiará cuando la Coordinación de Carrera lo revise y lo apruebe o rechace según la revisión
+que realice.
+Cuando se aprueba la solicitud, el “Estado” cambia a APROBADO TOTAL, caso contrario será NO
+APROBADO
+Estado inicial como
+“SOLICITADO”
+Estado final como
+“APROBADO TOTAL”</pre></td>
+            </tr>
+        
+            <tr>
+                <td>10</td>
+                <td><code>doc_2_frag_1</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;2&quot;,
+  &quot;anio_documento&quot;: &quot;2018&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE HETERO-EVALUACION DE ESTUDIANTES.pdf&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+MANUAL DE USUARIO
+HETERO-EVALUACIÓN POR PARTE DE
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 1 de 4
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO
+MANUAL DE USUARIO PARA REALIZAR HETERO-
+EVALUACIÓN POR PARTE DE ESTUDIANTES EN EL
+SISTEMA DE GESTIÓN ACADÉMICA
+PROCESO DE EVALUACIÓN DE ESTUDIANTES A SUS PROFESORES
+REGISTRO DE CONTROL DE CAMBIOS
+Fecha
+Revisión
+Descripción de la modificación respecto a la edición anterior
+2018
+000
+Primera Edición
+Elaborado por:
+Revisado por:
+Aprobado por:
+Ing. Bladimir Cedeño S.,
+Analista de TICS 2
+Ing. Washington Chiriboga
+Casanova, Director Académico
+Ing. Guadalupe Murillo
+Campuzano, Vicerrectora
+Académica UTEQ
+Firma:
+Firma:
+Firma:
+Distribución: Electrónica, papel
+Control de documento:
+Gestión de uso:
+Copia controlada [ X ]
+SGA [   ] Administrativos [    ] Estudiantes [ X ] Docentes [   ]
+Copia No controlada [    ]
+Decanos [   ] Coordinadores de Carrera [   ] General [    ]
+Aviso legal: La información contenida en este documento, será para el uso exclusivo de la Universidad Técnica Estatal</pre></td>
+            </tr>
+        
+            <tr>
+                <td>11</td>
+                <td><code>doc_2_frag_2</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;id_documento&quot;: &quot;2&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;anio_documento&quot;: &quot;2018&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE HETERO-EVALUACION DE ESTUDIANTES.pdf&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;numero_fragmento&quot;: 2,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>de Quevedo, quien será responsable por su custodia y conservación en razón de que contiene información de carácter
+confidencial o privilegiado. Esta información no podrá ser reproducida total o parcialmente, salvo autorización expresa
+de la oficina responsable de la Universidad Técnica Estatal de Quevedo.
+[Página 2]
+MANUAL DE USUARIO
+HETERO-EVALUACIÓN POR PARTE DE
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 2 de 4
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+MANUAL DE USUARIO PARA REALIZAR HETERO-
+EVALUACIÓN POR PARTE DE ESTUDIANTES EN EL
+SISTEMA DE GESTIÓN ACADÉMICA
+El presente manual es una guía elaborada con el fin de orientar a los estudiantes de la UTEQ sobre el
+proceso para realizar la HETERO-EVALUACIÓN en el Sistema de Gestión Académica (SGA). Los puntos
+siguientes detallan cada uno de los pasos a desarrollarse para cumplir cabalmente con este proceso.
+ÍNDICE DE CONTENIDO
+1.
+Ingresar al módulo “Evaluación de mis profesores” ................................................. 3
+2.
+Selección de asignatura para evaluar en el SGA. ...................................................... 3
+3.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>12</td>
+                <td><code>doc_2_frag_3</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE HETERO-EVALUACION DE ESTUDIANTES.pdf&quot;,
+  &quot;numero_fragmento&quot;: 3,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;anio_documento&quot;: &quot;2018&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;id_documento&quot;: &quot;2&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;
+}</pre></td>
+                <td><pre>Proceso de evaluación al profesor de la asignatura en el SGA. ................................. 4
+[Página 3]
+MANUAL DE USUARIO
+HETERO-EVALUACIÓN POR PARTE DE
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 3 de 4
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+1. Ingresar al módulo “Evaluación de mis profesores”
+Este módulo se encuentra en el perfil de estudiantes que podrá acceder luego de ingresar al SGA con
+su usuario y clave. Para acceder a este proceso debe dar clic sobre el siguiente ícono:
+Importante: El cumplimiento de este requisito es obligatorio según la Ley Orgánica de Educación
+Superior (LOES)
+2. Selección de asignatura para evaluar en el SGA.
+Una vez dentro del módulo, se presentarán todas las asignaturas que está cursando en el actual
+periodo académico.
+En la parte superior visualizará en el grupo de “Evaluaciones pendientes”, todas las asignaturas que
+no tienes realizada la HETERO-EVALUACIÓN, los que mostrarán el nombre del profesor que imparte
+la materia y que será evaluado por el estudiante dando clic en el botón “Evaluar” ubicado en el final del
+lado derecho.
+Grupo de asignaturas con
+Evaluaciones pendientes
+Botón para iniciar la</pre></td>
+            </tr>
+        
+            <tr>
+                <td>13</td>
+                <td><code>doc_2_frag_4</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE HETERO-EVALUACION DE ESTUDIANTES.pdf&quot;,
+  &quot;anio_documento&quot;: &quot;2018&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;numero_fragmento&quot;: 4,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;2&quot;
+}</pre></td>
+                <td><pre>evaluación al profesor
+[Página 4]
+MANUAL DE USUARIO
+HETERO-EVALUACIÓN POR PARTE DE
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 4 de 4
+2018
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+3. Proceso de evaluación al profesor de la asignatura en el SGA.
+Una vez dado clic en el botón “Evaluar”, se presenta un instrumento con varias preguntas que tienen
+el objetivo de que ingrese su opinión sobre el desempeño de su profesor en la asignatura cursada por
+el estudiante, con el propósito de aportar al proceso de mejora continua de la institución. La información
+que registre es de carácter confidencial y reservada.
+Luego de que complete el registro de todas las preguntas de la evaluación, se presentará en la parte
+final inferior, el botón “Guardar” que permitirá almacenar sus respuestas en la base de datos
+institucional. En caso de dar clic en el botón “Cancela”, saldrá del proceso sin registrar algún cambio.
+Cada vez que usted guarde y finalice el registro de evaluación de cada asignatura, estas se mostrarán
+en la sección de Evaluaciones realizadas”, que le indicará la fecha de realización de la evaluación.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>14</td>
+                <td><code>doc_2_frag_5</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;numero_fragmento&quot;: 5,
+  &quot;id_documento&quot;: &quot;2&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;anio_documento&quot;: &quot;2018&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE HETERO-EVALUACION DE ESTUDIANTES.pdf&quot;
+}</pre></td>
+                <td><pre>Este proceso deberá realizarlo con todas las asignaturas de forma obligatoria, caso contrario se
+bloquearán las funcionalidades de otros módulos en su perfil del SGA y será sancionado por las
+normativas de la Universidad Técnica Estatal de Quevedo.
+Seleccionará la opción que
+usted considere en cada una
+de las preguntas.
+Grupo de asignaturas con
+Evaluaciones completadas</pre></td>
+            </tr>
+        
+            <tr>
+                <td>15</td>
+                <td><code>doc_3_frag_1</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 1 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO
+MANUAL DE USUARIO PARA GESTIÓN DEL AULA
+VIRTUAL POR PARTE DE ESTUDIANTES EN EL
+SISTEMA DE GESTIÓN ACADÉMICA
+REVISIÓN Y CUMPLIMIENTO DE TAREAS
+REGISTRO DE CONTROL DE CAMBIOS
+Fecha
+Revisión
+Descripción de la modificación respecto a la edición anterior
+29/11/2019
+000
+Primera Edición
+Elaborado por:
+Revisado por:
+Aprobado por:
+Ing. Bladimir Cedeño S.,
+Analista de TICS 2
+Lcdo. Harold Escobar Terán,
+Director Académico
+Ing. Guadalupe Murillo
+Campuzano, Vicerrectora
+Académica UTEQ
+Fecha: 26/11/2019
+Firma:
+Fecha: 27/11/2019
+Firma:
+Fecha: 29/11/2019
+Firma:
+Distribución: Electrónica, papel
+Control de documento:
+Gestión de uso:
+Copia controlada [ X ]
+SGA [   ] Administrativos [    ] Estudiantes [ X  ] Docentes [ ]
+Copia No controlada [    ]
+Decanos [   ] Coordinadores de Carrera [   ] General [    ]
+Aviso legal: La información contenida en este documento, será para el uso exclusivo de la Universidad Técnica Estatal</pre></td>
+            </tr>
+        
+            <tr>
+                <td>16</td>
+                <td><code>doc_3_frag_2</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 2,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>de Quevedo, quien será responsable por su custodia y conservación en razón de que contiene información de carácter
+confidencial o privilegiado. Esta información no podrá ser reproducida total o parcialmente, salvo autorización expresa
+de la oficina responsable de la Universidad Técnica Estatal de Quevedo.
+[Página 2]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 2 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+MANUAL DE USUARIO PARA GESTIÓN DEL AULA
+VIRTUAL POR PARTE DE ESTUDIANTES EN EL
+SISTEMA DE GESTIÓN ACADÉMICA
+El presente manual es una guía elaborada con el fin de orientar a los Estudiantes de la UTEQ sobre el
+proceso para gestionar la revisión y cumplimiento de tareas del AULA VIRTUAL en el Sistema de Gestión
+Académica (SGA). Los puntos siguientes detallan cada uno de los pasos a desarrollarse para cumplir
+cabalmente con este proceso.
+ÍNDICE DE CONTENIDO
+1.
+INGRESAR AL MÓDULO “Aula Virtual” .................................................................... 3
+2.
+REVISIÓN Y ENVÍO DE TAREAS .................................................................................... 3</pre></td>
+            </tr>
+        
+            <tr>
+                <td>17</td>
+                <td><code>doc_3_frag_3</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 3,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;
+}</pre></td>
+                <td><pre>2.1. Envío de tareas planificadas en la asignatura. ........................................................ 3
+2.2. Revisión de calificaciones. .................................................................................................. 5
+2.3. Otras opciones dentro de la materia. ........................................................................... 6
+2.4. Opciones adicionales del Aula Virtual. ........................................................................ 7
+[Página 3]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 3 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+1. INGRESAR AL MÓDULO “Aula Virtual”
+Este módulo se encuentra en el perfil del estudiante que podrá acceder luego de ingresar al SGA con
+su usuario y clave. Para acceder a este proceso debe dar clic sobre el siguiente ícono:
+2. REVISIÓN Y ENVÍO DE TAREAS
+Debe seleccionar una de las asignaturas que se presentan en el Aula Virtual, dando clic sobre ella para
+ingresar a la planificación semanal y proceder a revisar las tareas y recursos registrados.
+2.1. Envío de tareas planificadas en la asignatura.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>18</td>
+                <td><code>doc_3_frag_4</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;numero_fragmento&quot;: 4,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>Dentro de la asignatura se puede visualizar toda la planificación semanal desarrollada por el profesor
+en el Sílabo para el vigente periodo académico, la misma que está conformada por recursos y tareas
+que los registra el profesor para que los estudiantes revisen y cumplan con lo detallado en cada una
+de las actividades que permitirán obtener la calificación final de respectivo corte evaluativo.
+[Página 4]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 4 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+Para cumplir con una de las tareas debe dar clic sobre una de ellas y se mostrará el detalle de lo que
+se le solicita
+Al momento de dar clic en agregar actividad, se mostrará una ventana que permitirá ingresar un detalle
+opcional y cargar la tarea según el archivo que sea solicitado por el profesor.
+Recursos cargados por el profesor
+para ayuda del estudiante
+Tareas que deben ser revisadas
+para su cumplimiento
+Detalle de la tarea registrada por el
+profesor
+Clic para agregar la
+actividad en caso de que
+requiera envío de algún
+[Página 5]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR</pre></td>
+            </tr>
+        
+            <tr>
+                <td>19</td>
+                <td><code>doc_3_frag_5</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;numero_fragmento&quot;: 5,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;
+}</pre></td>
+                <td><pre>ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 5 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+A continuación, se presentará una ventana que indicará que la tarea fue cargada y de esta manera
+cumplir con la planificación de evaluación.
+Importante: Deben considerar que, si la tarea requiere envío de archivos, estos deberán cumplirse
+dentro de los tiempos establecidos por los profesores, caso contrario se cerrará la opción de cargar la
+tarea y no podrá ser evaluado, teniendo como consecuencia un bajo rendimiento en las calificaciones.
+2.2. Revisión de calificaciones.
+Dentro de la asignatura cuenta con una opción dentro del menú “CALIFICACIONES” desde donde
+podrá acceder al detalle y puntuación final de las notas registradas por el profesor en cada una de las
+tareas que planifica el profesor.
+Existen tareas que no necesitarán ser respondida con envío de archivos, las misma que el profesor
+crea para únicamente registro de calificaciones, como por ejemplo de evaluaciones escritas.
+Observación opcional que puede
+ingresar
+Cargar el archivo a enviar
+Clic en guardar para
+enviar la tarea
+[Página 6]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR</pre></td>
+            </tr>
+        
+            <tr>
+                <td>20</td>
+                <td><code>doc_3_frag_6</code></td>
+                <td>Reglamento de prueba</td>
+                <td>Instructivo</td>
+                <td>Estudiante</td>
+                <td>-</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;carrera&quot;: &quot;&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;numero_fragmento&quot;: 6,
+  &quot;tipo_documento&quot;: &quot;Instructivo&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;nombre_archivo&quot;: &quot;MANUAL DE GESTION DEL AULA VIRTUAL POR ESTUDIANTES.pdf&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;3&quot;,
+  &quot;titulo&quot;: &quot;Reglamento de prueba&quot;
+}</pre></td>
+                <td><pre>ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 6 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+2.3. Otras opciones dentro de la materia.
+Los estudiantes pueden también acceder a las siguientes ventanas:
+Calendario de actividades donde encontrarán accesos directos a cada una de ellas.
+Además de ver los participantes que forman parte de la clase, un enlace de acompañamiento
+académico y un módulo de comunicaciones que envía el profesor.
+[Página 7]
+MANUAL DE USUARIO
+GESTIÓN DEL AULA VIRTUAL POR
+ESTUDIANTES EN EL SGA
+Revisión: 000
+Página: 7 de 7
+Noviembre 2019
+Universidad Técnica Estatal de Quevedo | Sistema de Gestión Académica
+2.4. Opciones adicionales del Aula Virtual.
+Podrá visualizar el cronograma de horarios de exámenes de todas sus asignaturas
+Acceso a la confirmación de tutorías académicas que se mostrarán cada vez que asista a una tutoría,
+debiendo confirmar su asistencia desde esta opción.
+Un detalle general de las calificaciones registradas en todas las asignaturas de su aula virtual</pre></td>
+            </tr>
+        
+            <tr>
+                <td>21</td>
+                <td><code>doc_4_frag_1</code></td>
+                <td>MODELO EVALUATIVO DE GRADO Y NIVELACION</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;id_documento&quot;: &quot;4&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;nombre_archivo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION.pdf&quot;,
+  &quot;titulo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+Modelo
+Evaluativo
+UTEQ-SECGEN-2019-0248-M
+[Página 2]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE
+2021-2022 PPAMOD
+[Página 3]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE
+2021-2022 PPAMOD
+Se ejecutan con base al modelo
+evaluativo general de la UTEQ,
+aprobado en Resolución QUINTA
+de la Sesión Ordinaria continuada
+del Consejo Universitario de la
+UTEQ, celebrada los días 29 y
+jueves 30 de mayo del 2019 y
+comunicada mediante Memorando
+Nro. UTEQ-SECGEN-2019-0248-M
+Los tres componentes son obligatorios
+GA - TA - EV
+Componentes de la evaluación
+de los aprendizajes (Art.83 RRA)
+[Página 4]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE
+CORTE 1
+CORTE 2
+EX1
+P1
+RE
+REC
+NF
+GA
+TA
+EV
+GA
+TA
+EV
+35%
+35%
+30%
+35%
+35%
+30%
+30%
+30%
+N1: 35%
+N2: 35%
+Las identificaciones de los acrónimos se detallan a continuación:
+
+GA: Gestión en el Aula (con un peso base del 35%)
+
+TA: Trabajo Autónomo (con un peso base del 35%)
+
+EV: Evaluaciones (con un peso base del 30%)
+CATEGORÍAS DE GESTIÓN
+EN EL AULA (GA)
+
+Talleres
+
+Exposiciones
+
+Práctica en clase
+CATEGORÍAS DE TRABAJO
+AUTÓNOMO (TA)
+
+Tareas
+
+Proyectos
+
+Prácticas fuera de clase
+CATEGORÍA DE
+EVALUACIÓN (EV)
+
+Lecciones frecuentes
+</pre></td>
+            </tr>
+        
+            <tr>
+                <td>22</td>
+                <td><code>doc_4_frag_2</code></td>
+                <td>MODELO EVALUATIVO DE GRADO Y NIVELACION</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;numero_fragmento&quot;: 2,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;id_documento&quot;: &quot;4&quot;,
+  &quot;titulo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;nombre_archivo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION.pdf&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;
+}</pre></td>
+                <td><pre>Lección parcial
+Para asignaturas aprobadas en 2da
+matrícula, 3ra matrícula y en
+suspenso, la nota máxima será 7.00
+(UTEQ-SECGEN-2017-0046-M,
+reforma al Art. 33 del Reglamento de
+Semestralización de la UTEQ)
+2021-2022 PPAMOD
+[Página 5]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE
+El SGA presentará cada asignatura con una
+cuadrícula que permitirá revisar el cumplimiento
+de los requisitos necesarios para culminar el
+proceso de enseñanza-aprendizaje entre el
+profesor y el estudiante.
+Si se marca alguno de color rojo, significa que
+no se esta cumpliendo.
+•
+Plan Analítico
+•
+Sílabo
+•
+Componentes en los cortes
+•
+Cierre de cada corte evaluativo
+•
+Avance académico
+•
+Accesos rápidos
+2021-2022 PPAMOD
+[Página 6]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE:
+Verificación del porcentaje evaluativo correcto por categorías en su asignatura
+Para acceder a revisar el porcentaje configurado en una asignatura del aula virtual,
+debe seguir los siguientes pasos:
+1ro. Clic en “Calificaciones”
+2do. Clic en “Libro de Calificación”
+3ro. Verificar porcentajes (%)MODELO EVALUATIVO SG
+Por cada
+componente
+(GA, TA, EV)
+debe mostrarse
+el 100% en la
+suma de todas
+las categorías
+que utilizó para
+las tareas.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>23</td>
+                <td><code>doc_4_frag_3</code></td>
+                <td>MODELO EVALUATIVO DE GRADO Y NIVELACION</td>
+                <td>Reglamento</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;numero_fragmento&quot;: 3,
+  &quot;nombre_archivo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION.pdf&quot;,
+  &quot;anio_documento&quot;: &quot;2019&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_documento&quot;: &quot;Reglamento&quot;,
+  &quot;titulo&quot;: &quot;MODELO EVALUATIVO DE GRADO Y NIVELACION&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;id_documento&quot;: &quot;4&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;
+}</pre></td>
+                <td><pre>Categoría
+Categoría
+Categoría
+[Página 7]
+AULA VIRTUAL
+PLATAFORMA DE ENSEÑANZA-APRENDIZAJE: Ejemplos
+para verificar el porcentaje correcto por categorías MODELO EVALUATIVO SGA-UTEQ
+Ejemplo1: Tareas en una sola categoría en componentes
+GA tiene
+tareas solo en
+categoría
+“Práctica en
+clase”, el total
+es 100%
+TA tiene
+tareas solo en
+categoría
+“Tareas”, el
+total es 100%
+EV tiene
+lecciones solo
+en categoría
+“Lección
+parcial”, el
+total es 100%
+Ejemplo2: Tareas en 2 categorías en componentes GA y TA; 1 en EV
+GA tiene tareas
+en 2 categorías,
+la suma de
+estas debe ser
+100%
+TA tiene tareas
+en 2 categorías,
+la suma de
+estas debe ser
+100%
+EV tiene  tarea
+en 1 categoría,
+la suma de
+estas debe ser
+100%</pre></td>
+            </tr>
+        
+            <tr>
+                <td>24</td>
+                <td><code>doc_6_frag_1</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 1,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;
+}</pre></td>
+                <td><pre>[Página 1]
+Acceso al sistema
+Encuesta Socioeconómica
+Proceso de matrículación
+Tercera matrícula
+Legalización de matrículas con pago
+Pag. 2
+Pag. 5
+Pag. 11
+Pag. 19
+Pag. 22
+https://sga.uteq.edu.ec
+ACCESO AL SGA Y MATRICULACIÓN
+MANUAL DE
+[Página 2]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+2
+Acceder a la página web de la
+UTEQ: www.uteq.edu.ec
+Puedes acceder directamente
+al SGA: sga.uteq.edu.ec
+En el lado superior derecho
+encontrarás el link “SGA”
+que te enlazará al sistema
+informático.
+E
+l proceso de matrícula para pregrado y nivelación, se
+realizará a través del Sistema de Gestión Académica
+(SGA), único medio electrónico para que formes parte de
+la Universidad Técnica Estatal de Quevedo (UTEQ). Sigue los
+siguientes pasos que se describen en este instructivo que son
+esenciales para poder realizar el proceso correctamente.
+SGA Acceso al sistema
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+[Página 3]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+3
+Esta es la pantalla de inicio
+del
+SGA
+donde
+deberás
+ingresar
+el
+usuario
+y
+contraseña asignado a ti.
+Los usuarios del SGA están
+compuestos por la primera
+letra de tu nombre seguido</pre></td>
+            </tr>
+        
+            <tr>
+                <td>25</td>
+                <td><code>doc_6_frag_2</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;numero_fragmento&quot;: 2,
+  &quot;id_documento&quot;: &quot;6&quot;
+}</pre></td>
+                <td><pre>de tu primer apellido y
+también la primera letra de
+tu segundo apellido, como
+se muestra en el siguiente
+ejemplo:
+CONSIDERACIONES IMPORTANTES:
+•
+Las tildes no están consideradas en ningún nombre de usuario
+•
+La ñ se convierte automáticamente en n.
+•
+En caso de haber dos usuarios que coincidan se diferenciarán en números
+incrementales adicionados al nombre de usuario, ejemplo: pperezu1,
+pperezu2, etc.
+Nombre del estudiante:
+PANCRACIO EMERILDO PÉREZ ULLOA
+Usuario será:
+pperezu
+La contraseña estará compuesta por el
+número de cédula del usuario unido con
+un asterisco y el año de nacimiento, por
+ejemplo:
+Contraseña será:
+1805457650*1987
+[Página 4]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+4
+Para ingresar al SGA debes aceptar un conjunto
+de términos y condiciones, mediante las cuales
+te responsabilizas del buen uso que realices
+con el usuario y contraseña asignada.
+Una vez realizado el procedimiento de cambio de contraseña, el sistema
+te pedirá volver a ingresar con la nueva clave
+En el primer ingreso, el sistema solicitará el cambio de
+contraseña por una que solo tú conozcas, esta nueva
+clave debe cumplir con una serie de condiciones que se</pre></td>
+            </tr>
+        
+            <tr>
+                <td>26</td>
+                <td><code>doc_6_frag_3</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;numero_fragmento&quot;: 3,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;
+}</pre></td>
+                <td><pre>irán coloreando a verde cuando se vayan cumpliendo
+Nota:
+Se
+recomienda
+guardar
+en
+un
+lugar seguro la
+nueva clave del
+SGA, la UTEQ no
+se responsabiliza
+por el mal uso
+dado
+a
+este
+servicio.
+[Página 5]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+5
+Nota:
+Se deben llenar los datos que sean editables y contextualizados. Hay datos que
+no son obligatorios, como Libreta Militar y extensión telefónica.
+El primer proceso en el SGA para nuevos usuarios, es llenar la ENCUESTA
+SOCIOECONÓMICA, proceso obligatorio para poder visualizar las demás opciones del
+sistema.
+En la primera sección encontramos los datos personales del estudiante:
+Para modificar sus datos personales, debe dar clic en el botón EDITAR,
+y se desplegará la siguiente pantalla:
+SGA
+Encuesta Socioconómica
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+[Página 6]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+6
+En el segundo apartado se solicita datos de familiares que vivan
+con el estudiante:
+En un tercer apartado se solicitará el ingreso de datos de
+discapacidad, en caso de tenerla:
+Al dar clic en el botón ADICIONAR de desplegará la siguiente ficha:</pre></td>
+            </tr>
+        
+            <tr>
+                <td>27</td>
+                <td><code>doc_6_frag_4</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;numero_fragmento&quot;: 4,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;
+}</pre></td>
+                <td><pre>Esta ficha debe ser ingresada para cada miembro que viva en el hogar de
+la estudiante.
+Al dar clic en botón EDITAR se habilitará
+el ingreso de los datos correspondientes a
+discapacidad:
+[Página 7]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+7
+En el cuarto apartado debemos llenar los datos de lugar de
+nacimiento:
+En un quinto apartado el sistema solicita los datos de
+lugar de residencia:
+Al dar clic en EDITAR se puede verificar la siguiente pantalla:
+Al dar clic en el botón EDITAR se desplegará el siguiente
+formulario:
+[Página 8]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+8
+En los demás apartados se solicita diferentes datos de índole socioeconómica:
+Importante:
+D e b e r á s
+contestar
+con
+responsabilidad
+y
+veracidad
+cada una de las
+preguntas
+que
+aparecerán
+en
+esta
+sección,
+esta información
+será
+verificada
+posteriormente
+por la UTEQ.
+[Página 9]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+9
+En los demás apartados se solicita diferentes datos de índole socioeconómica:
+Importante:
+D e b e r á s
+contestar
+con
+responsabilidad
+y
+veracidad
+cada una de las
+preguntas
+que
+aparecerán
+en
+esta
+sección,
+esta información
+será
+verificada
+posteriormente</pre></td>
+            </tr>
+        
+            <tr>
+                <td>28</td>
+                <td><code>doc_6_frag_5</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 5,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;
+}</pre></td>
+                <td><pre>por la UTEQ.
+[Página 10]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+10
+10
+En los demás apartados se solicita diferentes datos de índole socioeconómica:
+Importante:
+D e b e r á s
+contestar
+con
+responsabilidad
+y
+veracidad
+cada una de las
+preguntas
+que
+aparecerán
+en
+esta
+sección,
+esta información
+será
+verificada
+posteriormente
+por la UTEQ.
+Estás listo para el proceso de matrícula en la UTEQ
+que se te informará en la 2da parte del instructivo.
+Finalmente dar clic
+en
+“Confirmar”
+para que los datos
+se
+registren
+en
+el
+sistema,
+caso
+contrario
+no
+podrás continuar
+al
+proceso
+de
+matrícula
+[Página 11]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+11
+11
+¡IMPORTANTE!
+Si
+se
+presenta
+un
+formulario tipo “Encuesta”
+deberás responderlo para
+continuar en el proceso de
+matriculación.
+SGA
+Proceso de matriculación
+Se presentará un listado de asignaturas habilitadas
+en la carrera que cursas, debiendo dar clic en el botón
+SELECCIONAR.
+Si te matriculas al primer nivel de la carrera es
+recomendable seleccionar todas las asignaturas del 1ER
+NIVEL o si eres de otro nivel, seleccionar las asignaturas
+que deseas tomar en el periodo académico vigente,</pre></td>
+            </tr>
+        
+            <tr>
+                <td>29</td>
+                <td><code>doc_6_frag_6</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 6,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;
+}</pre></td>
+                <td><pre>considerando que escojas el mismo paralelo para evitar
+choques o conflictos de horarios.
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+[Página 12]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+12
+12
+Se presentará información
+sobre la Asignatura que
+seleccionaste con un detalle
+del horario, el inicio y fin
+en el periodo vigente, y la
+disponibilidad
+del
+cupo
+que
+actualmente
+oferta,
+del cual para finalizar su
+selección debes dar clic en
+“Seleccionar”
+Si das clic en REMOVER se elimina la
+asignatura de la matriculación.
+Si das clic en un paralelo diferente al seleccionado inicialmente, se
+pueden presentar notificaciones de conflicto de horario.
+[Página 13]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+13
+13
+Si se presenta esta notificación, es porque superaste las
+45 horas semanales permitidas para el semestre según la
+normativa que regula este proceso académico.
+Confirmación de la matricula
+Luego de seleccionar las asignaturas, el
+estudiante deberá dar clic en el botón
+“MATRICULARSE”.
+Significa que no está disponible el horario y deberás
+comunicarte con el Coordinador de la Carrera o escribir un
+correo electrónico a soportesga@uteq.edu.ec.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>30</td>
+                <td><code>doc_6_frag_7</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;numero_fragmento&quot;: 7,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;
+}</pre></td>
+                <td><pre>Si se te presenta esta pantalla sin información de
+la asignatura
+[Página 14]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+14
+14
+Luego de clic en el botón
+MATRICULARSE,
+se
+presentarán
+estos
+mensajes
+que indicarán:
+1. Que se ha matriculado
+correctamente en la asignatura
+2. Que se ha matriculado
+correctamente, pero mostrando
+valores a pagar de acuerdo
+a los créditos que tiene la
+asignatura, que son generados
+por
+concepto
+de
+segunda
+matrícula o por selección de
+menos del 60% de asignaturas
+en ese nivel o semestre.
+Importante:
+Para evitar la pérdida de gratuidad, es primordial que seleccione todas las asignaturas del nivel o semestre que cursará, o al
+menos el 60% de estas asignaturas. Si tiene materias por segunda ocasión le presentará valores a pagar.
+[Página 15]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+15
+15
+Si se muestra esta notificación en la
+confirmación de matrícula, es debido que
+perderás la gratuidad y se generarán
+valores a pagar en el periodo académico.
+Concluido el proceso
+de
+matriculación,
+revisar
+el
+Aula
+Virtual,
+donde
+se
+presentarán
+todas
+las asignaturas.
+[Página 16]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+16
+16</pre></td>
+            </tr>
+        
+            <tr>
+                <td>31</td>
+                <td><code>doc_6_frag_8</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;numero_fragmento&quot;: 8,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;
+}</pre></td>
+                <td><pre>El siguiente paso es acceder a “Mis
+materias”, pero antes debemos dar
+clic en el periodo vigente y que se
+podrá seleccionar en la parte superior
+derecha de la pantalla.
+Este módulo mostrará las Asignaturas
+que seleccionaste, y dando clic en
+el
+botón
+“Detalle
+Matrícula”
+visualizarás el toda la información
+generada del proceso de tu matrícula.
+Este módulo
+permite visualizar
+el horario semanal
+[Página 17]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+17
+17
+En este módulo, puedes agregar o
+eliminar materias y volver a recalcular
+en caso de tener valores a pagar.
+Te
+presenta
+las
+asignaturas
+del
+proceso de matrícula, pero del lado
+derecho en las Acciones puedes dar
+clic en “Eliminar materia”.
+Además puedes agregar otras que
+desees adicionar, para lo cual te
+presentará un detalle de la asignatura.
+[Página 18]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+18
+18
+Una vez que agregas una Asignatura, esta presentará un detalle y la que deberás “Guardar” o “Cancelar”
+Finalmente puedes acceder al módulo “Mis finanzas” donde se mostrarán los detalles de rubros del alumno y que
+deberán ser depositados en la cuenta bancaria detallado en la página 22 de este instructivo.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>32</td>
+                <td><code>doc_6_frag_9</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 9,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;
+}</pre></td>
+                <td><pre>Vuelve a dar clic en el botón
+[Página 19]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+19
+19
+SGA
+Proceso de Tercera Matrícula
+Para acceder a
+esta
+solicitud
+debes ingresar
+al Módulo de
+“ M a t r í c u l a
+por
+3ra.
+vez”
+el
+que
+te
+mostrará
+una
+ventana
+con un botón
+“Solicitar”
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+El Art. 84 de la Ley Orgánica de Educación Superior (LOES) establece que “... Solamente en  casos
+establecidos excepcionalmente en el estatuto de cada institución, un estudiante podrá matricularse hasta por
+tercera ocasión en una misma materia o en el mismo ciclo, curso o nivel académico.”
+El Art. 118 del Estatuto de la UTEQ, establece que excepcionalmente se podrá conceder tercera matrícula
+en una misma materia y carrera cuando el peticionario cumpla una de las siguientes condiciones:
+a) Cuando al estudiante le falte únicamente una asignatura para terminar su carrera de grado;
+b) Cuando el estudiante se haya encontrado impedido de cumplir sus actividades académicas, únicamente
+a causa de intervención quirúrgica, fractura y traumatismo craneoencefálico, que amerite como mínimo</pre></td>
+            </tr>
+        
+            <tr>
+                <td>33</td>
+                <td><code>doc_6_frag_10</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;numero_fragmento&quot;: 10,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;
+}</pre></td>
+                <td><pre>tres días de ingreso hospitalario y reposo por tres semanas, debidamente comprobada con certificado
+médico del IESS o del Ministerio de Salud Pública; cuando se trate de certificado médico privado debe ser
+validado por el IESS o el Ministerio de Salud Pública;
+c) Cuando la estudiante se haya encontrado impedida de cumplir sus actividades académicas, a causa de
+su estado riesgoso por embarazo debidamente comprobada con certificado médico del IESS, certificado
+médico privado validado por el IESS o del Ministerio de Salud Pública;
+Inicialmente te mostrará la lista de solicitudes
+realizadas, donde podrás hacer seguimiento de su
+aprobación o rechazo.
+[Página 20]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+20
+20
+Una vez que das clic en
+“Solicitar”, te presentará
+unos
+campos
+que
+deberás
+completar
+o b l i g a t o r i a m e n t e ,
+además
+de
+mostrarte
+las
+Asignaturas
+que
+requieren
+autorización
+para tomarlas por tercera
+vez.
+Debes ingresar un breve detalle sobre la solicitud de la matrícula por tercera
+vez, además de un archivo escaneados que no supere los 2MB, el que
+contendrá los justificativos necesarios de acuerdo al literal que seleccionaste,</pre></td>
+            </tr>
+        
+            <tr>
+                <td>34</td>
+                <td><code>doc_6_frag_11</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;numero_fragmento&quot;: 11,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;
+}</pre></td>
+                <td><pre>y estos deben ser legibles y que contengan firmas y sellos que avalen el
+documento, el mismo que será revisada previo al proceso de aprobar o
+rechazar la solicitud.
+[Página 21]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+21
+21
+Importante conocer en caso de aprobación o rechazo:
+1) Cuando aprueban la solicitud, automáticamente estarás inscrito para que procedas a revisar desde el
+módulo “Mis finanzas” descrito en la página 22 de este instructivo, donde se detallarán los valores que
+deberán ser cancelados.
+2) Si tu solicitud es rechazada por no cumplir con los justificativos necesarios, podrás realizar nuevamente
+la solicitud, donde subirás un nuevo archivo que cumpla con todos los parámetros establecidos para
+acceder a la tercera matrícula.
+[Página 22]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+22
+22
+En caso de que tu matrícula presente valores a pagar durante el proceso de matriculación,
+deberá considerar el tiempo establecido para realizar el pago correspondiente y legalizar
+tu estado con la UTEQ.
+SGA Legalización de matrículas con pagos
+Los valores se reflejarán en los
+módulos “Mis finanzas” o
+“Adicionar asignaturas”.</pre></td>
+            </tr>
+        
+            <tr>
+                <td>35</td>
+                <td><code>doc_6_frag_12</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;numero_fragmento&quot;: 12,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;
+}</pre></td>
+                <td><pre>Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+[Página 23]
+sga.uteq.edu.ec  | Manual de Acceso al SGA y Matriculación
+23
+23
+Una vez realizado el depósito o transferencia bancaria, deberá remitir el
+comprobante de pago al correo electrónico tesoreria@uteq.edu.ec,
+adjuntando los siguientes documentos:
+1.
+Comprobante de matrícula generado por el SGA
+2.
+Copia de la cédula de ciudadanía actualizada
+Los valores deberán coincidir con los reportados por el SGA para proceder con
+la legalización de su matrícula en el vigente periodo académico, generándose
+una factura por el pago realizado.
+En caso de inconsistencia, se notificará al correo electrónico remitente.
+CUENTA BANCARIA UTEQ
+En caso de que necesite que los valores generados sean
+reducidos antes de realizar el pago, deberá ingresar
+al módulo “Adicionar asignaturas” donde podrá
+eliminar materias y luego dar clic en el botón
+Lo mismo funciona si desea incrementar los valores,
+para lo cual adicionará otras materias que el sistema le
+permita seleccionar.
+Para evitar perder la gratuidad, deberás seleccionar
+mínimo el 60% de las asignaturas del semestre que
+cursas en el periodo académico.
+Importante:
+BANCO DEL PACÍFICO
+Nombre:</pre></td>
+            </tr>
+        
+            <tr>
+                <td>36</td>
+                <td><code>doc_6_frag_13</code></td>
+                <td>Manual Usuario SGA Estudiante</td>
+                <td>Guía</td>
+                <td>Estudiante</td>
+                <td>Ingeniería en Software</td>
+                <td>VIGENTE</td>
+                <td><pre>{
+  &quot;estado_vigencia&quot;: &quot;VIGENTE&quot;,
+  &quot;tipo_estudio&quot;: &quot;Pregrado&quot;,
+  &quot;carrera&quot;: &quot;Ingeniería en Software&quot;,
+  &quot;anio_documento&quot;: &quot;2022&quot;,
+  &quot;ambito&quot;: &quot;Académico&quot;,
+  &quot;nombre_archivo&quot;: &quot;manual usuario sga estudiante.pdf&quot;,
+  &quot;numero_fragmento&quot;: 13,
+  &quot;id_documento&quot;: &quot;6&quot;,
+  &quot;tipo_documento&quot;: &quot;Guía&quot;,
+  &quot;rol&quot;: &quot;Estudiante&quot;,
+  &quot;grupo&quot;: &quot;Estudiantes&quot;,
+  &quot;titulo&quot;: &quot;Manual Usuario SGA Estudiante&quot;
+}</pre></td>
+                <td><pre>Universidad Técnica
+Estatal de Quevedo
+Tipo de cuenta: Corriente
+Número de cuenta: 8030510
+RUC UTEQ: 1260001380001
+E-mail: tesoreria@uteq.edu.ec
+¿Cómo se legalizarán los pagos por matrícula?
+[Página 24]
+Manual de Acceso al SGA y Matriculación |  sga.uteq.edu.ec
+24
+24
+www.uteq.edu.ec</pre></td>
+            </tr>
+        
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

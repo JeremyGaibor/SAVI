@@ -23,8 +23,19 @@ STOPWORDS = {
 SINONIMOS_CONSULTA = {
     "matriculacion": {"matricula", "matricular", "matriculas"},
     "matricula": {"matriculacion", "matricular", "matriculas"},
-    "evaluativo": {"evaluacion", "evaluar", "evaluaciones"},
-    "evaluacion": {"evaluativo", "evaluar", "evaluaciones"},
+    "evaluativo": {"evaluacion", "evaluar", "evaluaciones", "calificar", "calificacion"},
+    "evaluacion": {"evaluativo", "evaluar", "evaluaciones", "calificar", "calificacion"},
+    "evaluar": {"evaluacion", "evaluaciones", "calificar", "calificacion"},
+    "calificar": {"evaluar", "evaluacion", "evaluaciones", "heteroevaluacion", "hetero"},
+    "calificacion": {"evaluar", "evaluacion", "evaluaciones", "heteroevaluacion", "hetero"},
+    "heteroevaluacion": {"hetero", "evaluacion", "evaluar", "calificar"},
+    "hetero": {"heteroevaluacion", "evaluacion", "evaluar", "calificar"},
+    "profesor": {"profesores", "docente", "docentes", "ingeniero", "ingenieros"},
+    "profesores": {"profesor", "docente", "docentes", "ingeniero", "ingenieros"},
+    "docente": {"docentes", "profesor", "profesores", "ingeniero", "ingenieros"},
+    "docentes": {"docente", "profesor", "profesores", "ingeniero", "ingenieros"},
+    "ingeniero": {"ingenieros", "docente", "docentes", "profesor", "profesores"},
+    "ingenieros": {"ingeniero", "docente", "docentes", "profesor", "profesores"},
     "grado": {"graduacion", "titulacion"},
     "titulacion": {"grado", "graduacion"},
 }
@@ -47,6 +58,21 @@ def extraer_tokens_busqueda(texto):
     return expandidos
 
 
+def construir_consulta_expandida(pregunta):
+    """
+    Agrega sinonimos de dominio a la consulta enviada a ChromaDB.
+
+    Esto ayuda cuando el usuario usa palabras locales o equivalentes
+    que no aparecen igual en el PDF, por ejemplo docente/profesor/ingeniero.
+    """
+    tokens = extraer_tokens_busqueda(pregunta)
+
+    if not tokens:
+        return pregunta
+
+    return f"{pregunta} {' '.join(sorted(tokens))}"
+
+
 def puntuar_coincidencia_lexica(pregunta, texto, metadata):
     tokens = extraer_tokens_busqueda(pregunta)
 
@@ -56,15 +82,21 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
     contenido = normalizar_texto(texto)
     titulo = normalizar_texto(metadata.get("titulo", ""))
     tipo_documento = normalizar_texto(metadata.get("tipo_documento", ""))
+    rol = normalizar_texto(metadata.get("rol", ""))
+    ambito = normalizar_texto(metadata.get("ambito", ""))
 
     coincidencias_contenido = sum(1 for token in tokens if token in contenido)
     coincidencias_titulo = sum(1 for token in tokens if token in titulo)
     coincidencias_tipo = sum(1 for token in tokens if token in tipo_documento)
+    coincidencias_rol = sum(1 for token in tokens if token in rol)
+    coincidencias_ambito = sum(1 for token in tokens if token in ambito)
 
     return (
         coincidencias_contenido
         + (coincidencias_titulo * 3)
         + (coincidencias_tipo * 2)
+        + (coincidencias_rol * 2)
+        + coincidencias_ambito
     ) / max(len(tokens), 1)
 
 
@@ -232,8 +264,10 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
     # Bety-AI usa estos fragmentos como contexto para la respuesta de Qwen.
     total_candidatos = max(total_resultados, 8)
 
+    consulta_expandida = construir_consulta_expandida(pregunta)
+
     resultados = collection.query(
-        query_texts=[pregunta],
+        query_texts=[consulta_expandida],
         n_results=total_candidatos,
         where=where,
         include=["documents", "metadatas", "distances"]

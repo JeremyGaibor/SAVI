@@ -1,0 +1,44 @@
+import requests
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+# OLLAMA_BASE_URL puede apuntar a un Ollama local o a un tunel SSH hacia AWS.
+# En el flujo actual se usa qwen3:8b mediante Ollama.
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+
+
+def consultar_qwen(prompt):
+    """
+    Envia un prompt a Qwen usando Ollama.
+    Se conecta al servicio Ollama instalado en AWS.
+
+    Devuelve solo los campos que Bety-AI necesita para construir respuestas
+    y guardar trazas simples del modelo usado.
+    """
+
+    url = f"{OLLAMA_BASE_URL}/api/generate"
+
+    # stream=False simplifica el consumo desde Django porque Ollama responde
+    # un solo JSON con el texto completo generado por el modelo.
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False
+    }
+
+    response = requests.post(url, json=payload, timeout=120)
+    response.raise_for_status()
+
+    data = response.json()
+
+    return {
+        "respuesta": data.get("response", "").strip(),
+        "modelo": data.get("model"),
+        "done": data.get("done"),
+        "done_reason": data.get("done_reason"),
+        "total_duration": data.get("total_duration"),
+    }

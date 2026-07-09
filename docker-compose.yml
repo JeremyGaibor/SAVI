@@ -1,0 +1,11 @@
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: bety_ai_chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+volumes:
+  chroma_data:

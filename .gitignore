@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Variables de entorno
+.env
+
+# PyCharm
+.idea/
+
+# Chroma / Docker local
+chroma_data/

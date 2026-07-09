@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Bety_AI.apps.BetyAiConfig',
+
+    'rest_framework',
+    'Bety_AI',
 ]
 
 MIDDLEWARE = [
@@ -111,6 +113,8 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 
 # Static files (CSS, JavaScript, Images)

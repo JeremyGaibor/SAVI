@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from .services.ollama_service import consultar_qwen
 from rest_framework import status
 from django.shortcuts import redirect, render
+from django.views.decorators.clickjacking import xframe_options_exempt
 import re
 import json
 import unicodedata
@@ -36,6 +37,11 @@ def parsear_metadata_formulario(valor):
         raise ValueError("Los metadatos deben ser un objeto JSON.")
 
     return metadata
+
+
+@xframe_options_exempt
+def chatbot(request):
+    return render(request, "Bety_AI/chatbot.html")
 
 
 def ver_chroma_dump(request):

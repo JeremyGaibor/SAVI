@@ -1,8 +1,6 @@
 services:
   bety-ai:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: jeremy28g/bety-ai:latest
 
     container_name: bety_ai_app
 
@@ -13,6 +11,9 @@ services:
 
     env_file:
       - .env
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     depends_on:
       - chromadb

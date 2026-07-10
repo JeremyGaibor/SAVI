@@ -139,7 +139,7 @@ def guardar_fragmentos_documento(
         id_fragmento = f"doc_{id_documento}_frag_{indice}"
 
         # Los metadatos permiten filtrar despues por rol, carrera, vigencia,
-        # tipo de documento u otros criterios enviados desde Bety-Documentos.
+        # tipo de documento u otros criterios enviados por el sistema externo.
         metadata = metadata_base.copy()
         metadata["id_documento"] = str(id_documento)
         metadata["titulo"] = titulo

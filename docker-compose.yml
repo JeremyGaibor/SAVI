@@ -1,9 +1,7 @@
 services:
   bety-ai:
     image: jeremy28g/bety-ai:latest
-
     container_name: bety_ai_app
-
     restart: unless-stopped
 
     ports:
@@ -20,13 +18,11 @@ services:
 
   chromadb:
     image: chromadb/chroma:latest
-
     container_name: bety_ai_chroma
-
     restart: unless-stopped
 
-    ports:
-      - "8001:8000"
+    expose:
+      - "8000"
 
     volumes:
       - chroma_data:/chroma/chroma

@@ -1,9 +1,32 @@
 services:
+  bety-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: bety_ai_app
+
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    depends_on:
+      - chromadb
+
   chromadb:
     image: chromadb/chroma:latest
+
     container_name: bety_ai_chroma
+
+    restart: unless-stopped
+
     ports:
       - "8001:8000"
+
     volumes:
       - chroma_data:/chroma/chroma
 

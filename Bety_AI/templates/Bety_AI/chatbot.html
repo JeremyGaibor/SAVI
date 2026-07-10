@@ -246,6 +246,20 @@
             color: #9f2929;
         }
 
+        .bety-message.bot strong {
+            font-weight: 700;
+        }
+
+        .bety-message.bot a {
+            color: #1f8f4d;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .bety-message.bot a:hover {
+            text-decoration: underline;
+        }
+
         /* Fuentes */
         .bety-sources {
             width: fit-content;
@@ -523,6 +537,50 @@
                 );
             }
 
+            function escaparHtml(texto) {
+                return String(texto || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function urlPermitida(url) {
+                return /^https?:\/\//i.test(url);
+            }
+
+            function formatearMarkdownBasico(texto) {
+                let html = escaparHtml(texto);
+
+                html = html.replace(
+                    /\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g,
+                    function (_coincidencia, etiqueta, url) {
+                        if (!urlPermitida(url)) {
+                            return etiqueta;
+                        }
+
+                        return (
+                            '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' +
+                            etiqueta +
+                            '</a>'
+                        );
+                    }
+                );
+
+                html = html.replace(
+                    /\*\*([^*]+)\*\*/g,
+                    '<strong>$1</strong>'
+                );
+
+                html = html.replace(
+                    /\n/g,
+                    '<br>'
+                );
+
+                return html;
+            }
+
             function agregarMensaje(
                 texto,
                 remitente,
@@ -543,7 +601,11 @@
                     );
                 }
 
-                mensaje.textContent = texto;
+                if (remitente === 'bot' && !claseExtra) {
+                    mensaje.innerHTML = formatearMarkdownBasico(texto);
+                } else {
+                    mensaje.textContent = texto;
+                }
 
                 messages.appendChild(mensaje);
                 messages.scrollTop = messages.scrollHeight;

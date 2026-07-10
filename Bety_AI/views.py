@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from .services.ollama_service import consultar_qwen
 from rest_framework import status
@@ -37,6 +37,63 @@ def parsear_metadata_formulario(valor):
         raise ValueError("Los metadatos deben ser un objeto JSON.")
 
     return metadata
+
+
+def obtener_valor_request(request, campo, defecto=""):
+    valor = request.data.get(campo, defecto)
+    if valor is None:
+        return defecto
+    return valor
+
+
+def normalizar_booleano(valor, defecto=False):
+    if valor in [None, ""]:
+        return defecto
+    if isinstance(valor, bool):
+        return valor
+    return str(valor).strip().lower() in {"1", "true", "si", "sí", "yes", "on"}
+
+
+def normalizar_valor_metadata(valor):
+    if isinstance(valor, (dict, list)):
+        return json.dumps(valor, ensure_ascii=False)
+    if valor is None:
+        return ""
+    return str(valor)
+
+
+def construir_metadata_documento(request, archivo):
+    metadata_json = obtener_valor_request(request, "metadata", "")
+    metadata_extra = {}
+
+    if isinstance(metadata_json, dict):
+        metadata_extra = metadata_json
+    elif str(metadata_json).strip():
+        metadata_extra = parsear_metadata_formulario(str(metadata_json))
+
+    nombre_archivo = archivo.name if archivo is not None else obtener_valor_request(request, "nombre_archivo", "")
+
+    metadata_base = {
+        "tipo_documento": obtener_valor_request(request, "tipo_documento", "GENERAL"),
+        "ambito": obtener_valor_request(request, "ambito", "PUBLICO"),
+        "estado_vigencia": obtener_valor_request(request, "estado_vigencia", "VIGENTE"),
+        "anio_documento": str(obtener_valor_request(request, "anio_documento", "")),
+        "rol": obtener_valor_request(request, "rol", ""),
+        "carrera": obtener_valor_request(request, "carrera", ""),
+        "grupo": obtener_valor_request(request, "grupo", ""),
+        "tipo_estudio": obtener_valor_request(request, "tipo_estudio", ""),
+        "nombre_archivo": nombre_archivo,
+        "resumen_documento": obtener_valor_request(request, "resumen_documento", ""),
+        "temas_detectados": normalizar_valor_metadata(obtener_valor_request(request, "temas_detectados", "")),
+        "advertencias": normalizar_valor_metadata(obtener_valor_request(request, "advertencias", "")),
+        "requiere_revision_humana": str(obtener_valor_request(request, "requiere_revision_humana", "")),
+    }
+
+    for clave, valor in metadata_extra.items():
+        if clave not in {"id_documento", "titulo", "numero_fragmento"}:
+            metadata_base[clave] = normalizar_valor_metadata(valor)
+
+    return metadata_base
 
 
 @xframe_options_exempt
@@ -659,36 +716,29 @@ def api_legibilidad(request):
 
 
 @api_view(["POST"])
-@parser_classes([MultiPartParser, FormParser])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def api_procesar_documento(request):
     archivo = request.FILES.get("archivo")
+    texto_extraido = str(obtener_valor_request(request, "texto_extraido", "")).strip()
 
-    if archivo is None:
+    if archivo is None and not texto_extraido:
         return Response(
-            {"error": "Debe enviar un archivo PDF en el campo 'archivo'."},
+            {"error": "Debe enviar un PDF en 'archivo' o texto en 'texto_extraido'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not archivo.name.lower().endswith(".pdf"):
+    if archivo is not None and not archivo.name.lower().endswith(".pdf"):
         return Response(
             {"error": "Solo se permiten archivos PDF."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    id_documento = request.POST.get("id_documento")
-    titulo = request.POST.get("titulo")
-    tipo_documento = request.POST.get("tipo_documento", "GENERAL")
-    ambito = request.POST.get("ambito", "PUBLICO")
-    estado_vigencia = request.POST.get("estado_vigencia", "VIGENTE")
-    anio_documento = request.POST.get("anio_documento", "")
-    rol = request.POST.get("rol", "")
-    carrera = request.POST.get("carrera", "")
-    grupo = request.POST.get("grupo", "")
-    tipo_estudio = request.POST.get("tipo_estudio", "")
-    resumen_documento = request.POST.get("resumen_documento", "")
-    temas_detectados = request.POST.get("temas_detectados", "")
-    advertencias = request.POST.get("advertencias", "")
-    requiere_revision_humana = request.POST.get("requiere_revision_humana", "")
+    id_documento = str(obtener_valor_request(request, "id_documento", "")).strip()
+    titulo = str(obtener_valor_request(request, "titulo", "")).strip()
+    reemplazar_existente = normalizar_booleano(
+        obtener_valor_request(request, "reemplazar_existente", True),
+        defecto=True,
+    )
 
     if not id_documento:
         return Response(
@@ -703,17 +753,27 @@ def api_procesar_documento(request):
         )
 
     try:
-        resultado_texto = extraer_texto_pdf(archivo)
-
-        texto_total = resultado_texto["texto_total"]
-        total_paginas = resultado_texto["total_paginas"]
-        caracteres_extraidos = resultado_texto["caracteres_extraidos"]
-        paginas_con_texto = resultado_texto["paginas_con_texto"]
-        paginas_sin_texto = resultado_texto["paginas_sin_texto"]
-        paginas_con_poco_texto = resultado_texto["paginas_con_poco_texto"]
-        total_imagenes = resultado_texto["total_imagenes"]
-        requiere_revision = resultado_texto["requiere_revision"]
-        analisis_paginas = resultado_texto["analisis_paginas"]
+        if archivo is not None:
+            resultado_texto = extraer_texto_pdf(archivo)
+            texto_total = resultado_texto["texto_total"]
+            total_paginas = resultado_texto["total_paginas"]
+            caracteres_extraidos = resultado_texto["caracteres_extraidos"]
+            paginas_con_texto = resultado_texto["paginas_con_texto"]
+            paginas_sin_texto = resultado_texto["paginas_sin_texto"]
+            paginas_con_poco_texto = resultado_texto["paginas_con_poco_texto"]
+            total_imagenes = resultado_texto["total_imagenes"]
+            requiere_revision = resultado_texto["requiere_revision"]
+            analisis_paginas = resultado_texto["analisis_paginas"]
+        else:
+            texto_total = texto_extraido
+            total_paginas = int(obtener_valor_request(request, "paginas", 0) or 0)
+            caracteres_extraidos = len(texto_total)
+            paginas_con_texto = int(obtener_valor_request(request, "paginas_con_texto", 0) or 0)
+            paginas_sin_texto = int(obtener_valor_request(request, "paginas_sin_texto", 0) or 0)
+            paginas_con_poco_texto = int(obtener_valor_request(request, "paginas_con_poco_texto", 0) or 0)
+            total_imagenes = int(obtener_valor_request(request, "total_imagenes", 0) or 0)
+            requiere_revision = normalizar_booleano(obtener_valor_request(request, "requiere_revision", False))
+            analisis_paginas = []
 
         if caracteres_extraidos < 100:
             return Response(
@@ -732,22 +792,10 @@ def api_procesar_documento(request):
             )
 
         fragmentos = dividir_texto_en_fragmentos(texto_total)
+        metadata_base = construir_metadata_documento(request, archivo)
 
-        metadata_base = {
-            "tipo_documento": tipo_documento,
-            "ambito": ambito,
-            "estado_vigencia": estado_vigencia,
-            "anio_documento": str(anio_documento),
-            "rol": rol,
-            "carrera": carrera,
-            "grupo": grupo,
-            "tipo_estudio": tipo_estudio,
-            "nombre_archivo": archivo.name,
-            "resumen_documento": resumen_documento,
-            "temas_detectados": temas_detectados,
-            "advertencias": advertencias,
-            "requiere_revision_humana": str(requiere_revision_humana),
-        }
+        if reemplazar_existente:
+            eliminar_documento_chroma(id_documento)
 
         total_fragmentos = guardar_fragmentos_documento(
             id_documento=id_documento,
@@ -762,6 +810,7 @@ def api_procesar_documento(request):
                 "titulo": titulo,
                 "estado_procesamiento": "PROCESADO",
                 "requiere_ocr": False,
+                "reemplazo_fragmentos_previos": reemplazar_existente,
                 "paginas": total_paginas,
                 "caracteres_extraidos": caracteres_extraidos,
                 "fragmentos_generados": total_fragmentos,
@@ -1176,8 +1225,6 @@ def api_analizar_documento(request):
 @parser_classes([MultiPartParser, FormParser])
 def api_extraer_texto_documento(request):
     """
-    Endpoint usado por el boton "Analizar documento" en Bety-Documentos.
-
     Recibe un PDF, extrae texto y metricas, consulta Qwen para generar el
     analisis de IA y devuelve todo en un JSON listo para previsualizar.
     """

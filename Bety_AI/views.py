@@ -13,7 +13,7 @@ import unicodedata
 from .services.pdf_service import (
     analizar_legibilidad_pdf,
     extraer_texto_pdf,
-    dividir_texto_en_fragmentos,
+    dividir_documento_en_fragmentos,
 )
 from .services.chroma_service import (
     actualizar_fragmento_chroma,
@@ -756,6 +756,7 @@ def api_procesar_documento(request):
         if archivo is not None:
             resultado_texto = extraer_texto_pdf(archivo)
             texto_total = resultado_texto["texto_total"]
+            paginas_texto = resultado_texto["paginas_texto"]
             total_paginas = resultado_texto["total_paginas"]
             caracteres_extraidos = resultado_texto["caracteres_extraidos"]
             paginas_con_texto = resultado_texto["paginas_con_texto"]
@@ -766,6 +767,7 @@ def api_procesar_documento(request):
             analisis_paginas = resultado_texto["analisis_paginas"]
         else:
             texto_total = texto_extraido
+            paginas_texto = []
             total_paginas = int(obtener_valor_request(request, "paginas", 0) or 0)
             caracteres_extraidos = len(texto_total)
             paginas_con_texto = int(obtener_valor_request(request, "paginas_con_texto", 0) or 0)
@@ -791,7 +793,10 @@ def api_procesar_documento(request):
                 status=status.HTTP_200_OK,
             )
 
-        fragmentos = dividir_texto_en_fragmentos(texto_total)
+        fragmentos, modo_fragmentacion = dividir_documento_en_fragmentos(
+            texto_total,
+            paginas_texto=paginas_texto,
+        )
         metadata_base = construir_metadata_documento(request, archivo)
 
         if reemplazar_existente:
@@ -814,6 +819,7 @@ def api_procesar_documento(request):
                 "paginas": total_paginas,
                 "caracteres_extraidos": caracteres_extraidos,
                 "fragmentos_generados": total_fragmentos,
+                "modo_fragmentacion": modo_fragmentacion,
                 "mensaje": "Documento procesado e indexado correctamente en ChromaDB.",
                 "paginas_con_texto": paginas_con_texto,
                 "paginas_sin_texto": paginas_sin_texto,

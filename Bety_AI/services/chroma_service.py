@@ -137,6 +137,14 @@ def guardar_fragmentos_documento(
 
     for indice, fragmento in enumerate(fragmentos, start=1):
         id_fragmento = f"doc_{id_documento}_frag_{indice}"
+        if isinstance(fragmento, dict):
+            contenido = str(fragmento.get("contenido") or "")
+            pagina_inicio = fragmento.get("pagina_inicio")
+            pagina_fin = fragmento.get("pagina_fin")
+        else:
+            contenido = str(fragmento)
+            pagina_inicio = None
+            pagina_fin = None
 
         # Los metadatos permiten filtrar despues por rol, carrera, vigencia,
         # tipo de documento u otros criterios enviados por el sistema externo.
@@ -144,9 +152,13 @@ def guardar_fragmentos_documento(
         metadata["id_documento"] = str(id_documento)
         metadata["titulo"] = titulo
         metadata["numero_fragmento"] = indice
+        if pagina_inicio is not None:
+            metadata["pagina_inicio"] = int(pagina_inicio)
+        if pagina_fin is not None:
+            metadata["pagina_fin"] = int(pagina_fin)
 
         ids.append(id_fragmento)
-        documents.append(fragmento)
+        documents.append(contenido)
         metadatas.append(metadata)
 
     collection.add(

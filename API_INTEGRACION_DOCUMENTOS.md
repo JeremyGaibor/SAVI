@@ -71,6 +71,13 @@ Campos opcionales:
 - `metadata`: objeto JSON con metadatos adicionales.
 - `reemplazar_existente`: `true` por defecto. Si ya existe ese `id_documento`, borra sus fragmentos previos antes de guardar.
 
+Configuracion de fragmentacion:
+
+- `DOCUMENT_FRAGMENTATION_MODE=pages`: guarda un fragmento por pagina. Es el modo por defecto.
+- `DOCUMENT_FRAGMENTATION_MODE=caracteres1200`: guarda por cantidad de caracteres, como antes, usando fragmentos de hasta 1200 caracteres.
+
+Cuando se usa `pages`, cada fragmento guarda tambien `pagina_inicio` y `pagina_fin` en la metadata de ChromaDB.
+
 Ejemplo usando PDF:
 
 ```bash
@@ -103,5 +110,6 @@ Respuesta principal:
 
 - `estado_procesamiento`: `PROCESADO`, `PENDIENTE_OCR` o `ERROR`.
 - `fragmentos_generados`: cantidad de fragmentos guardados en ChromaDB.
+- `modo_fragmentacion`: `pages` o `characters`, segun la configuracion aplicada.
 - `reemplazo_fragmentos_previos`: indica si se borraron fragmentos anteriores del mismo documento.
 - `requiere_ocr`: `true` cuando no hay texto suficiente para indexar.

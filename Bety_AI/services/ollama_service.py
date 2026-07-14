@@ -9,6 +9,7 @@ load_dotenv()
 # En el flujo actual se usa qwen3:8b mediante Ollama.
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
 
 
 def consultar_qwen(prompt):
@@ -30,7 +31,7 @@ def consultar_qwen(prompt):
         "stream": False
     }
 
-    response = requests.post(url, json=payload, timeout=120)
+    response = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
     response.raise_for_status()
 
     data = response.json()

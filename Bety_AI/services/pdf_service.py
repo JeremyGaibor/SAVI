@@ -1,4 +1,17 @@
 import fitz
+import os
+import re
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+FRAGMENTATION_MODE = os.getenv("DOCUMENT_FRAGMENTATION_MODE", "pages").strip().lower()
+
+try:
+    FRAGMENT_MAX_CHARACTERS = int(os.getenv("DOCUMENT_FRAGMENT_MAX_CHARACTERS", "1200"))
+except (TypeError, ValueError):
+    FRAGMENT_MAX_CHARACTERS = 1200
 
 
 def area_bbox(bbox):
@@ -288,3 +301,89 @@ def dividir_texto_en_fragmentos(texto, max_caracteres=1200):
         fragmentos.append(actual.strip())
 
     return fragmentos
+
+
+def obtener_modo_fragmentacion():
+    if FRAGMENTATION_MODE in {"pages", "paginas", "pagina"}:
+        return "pages", FRAGMENT_MAX_CHARACTERS
+
+    coincidencia_caracteres = re.fullmatch(r"(?:caracteres|characters|chars)(\d+)?", FRAGMENTATION_MODE)
+    if coincidencia_caracteres:
+        max_caracteres = int(coincidencia_caracteres.group(1) or FRAGMENT_MAX_CHARACTERS)
+        return "characters", max_caracteres
+
+    if FRAGMENTATION_MODE in {"characters", "character", "chars", "caracteres", "cantidad"}:
+        return "characters", FRAGMENT_MAX_CHARACTERS
+
+    return "pages", FRAGMENT_MAX_CHARACTERS
+
+
+def extraer_paginas_desde_texto(texto):
+    """
+    Reconstruye paginas cuando el texto viene de la API de analisis.
+    El formato esperado es el que genera extraer_texto_pdf: [Pagina N] + texto.
+    """
+    patron = re.compile(r"\[(?:P[^\s\]]*|Pagina)\s+(\d+)\]\s*", re.IGNORECASE)
+    coincidencias = list(patron.finditer(texto or ""))
+
+    if not coincidencias:
+        return []
+
+    paginas = []
+    for indice, coincidencia in enumerate(coincidencias):
+        inicio = coincidencia.end()
+        fin = coincidencias[indice + 1].start() if indice + 1 < len(coincidencias) else len(texto)
+        contenido = texto[inicio:fin].strip()
+
+        if contenido:
+            paginas.append({
+                "pagina": int(coincidencia.group(1)),
+                "texto": contenido,
+            })
+
+    return paginas
+
+
+def dividir_paginas_en_fragmentos(paginas_texto):
+    fragmentos = []
+
+    for item in paginas_texto:
+        texto = str(item.get("texto") or "").strip()
+        if not texto:
+            continue
+
+        pagina = int(item.get("pagina") or len(fragmentos) + 1)
+        fragmentos.append({
+            "contenido": f"[PÃ¡gina {pagina}]\n{texto}",
+            "pagina_inicio": pagina,
+            "pagina_fin": pagina,
+        })
+
+    return fragmentos
+
+
+def dividir_documento_en_fragmentos(texto, paginas_texto=None):
+    """
+    Divide el documento segun DOCUMENT_FRAGMENTATION_MODE.
+
+    pages: un fragmento por pagina con metadata de pagina.
+    characters: fragmentos por cantidad de caracteres, como el flujo anterior.
+    """
+    modo, max_caracteres = obtener_modo_fragmentacion()
+
+    if modo == "pages":
+        paginas = paginas_texto or extraer_paginas_desde_texto(texto)
+        fragmentos_por_pagina = dividir_paginas_en_fragmentos(paginas)
+
+        if fragmentos_por_pagina:
+            return fragmentos_por_pagina, modo
+
+    fragmentos = [
+        {"contenido": fragmento}
+        for fragmento in dividir_texto_en_fragmentos(
+            texto,
+            max_caracteres=max_caracteres,
+        )
+    ]
+
+    return fragmentos, "characters"

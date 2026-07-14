@@ -10,6 +10,12 @@ services:
     env_file:
       - .env
 
+    environment:
+      DATABASE_PATH: /app/data/db.sqlite3
+
+    volumes:
+      - sqlite_data:/app/data
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -29,3 +35,4 @@ services:
 
 volumes:
   chroma_data:
+  sqlite_data:

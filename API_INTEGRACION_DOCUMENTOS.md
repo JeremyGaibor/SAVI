@@ -50,11 +50,17 @@ Puede recibirse de dos formas:
 Campos requeridos:
 
 - `id_documento`: identificador externo unico del documento.
-- `titulo`: titulo final del documento.
 - `archivo` o `texto_extraido`: contenido que se va a fragmentar e indexar.
 
 Campos opcionales:
 
+- `titulo`: titulo final del documento. Si no se envia, Bety-AI usa `metadata.titulo`, `metadata.nombre_archivo` o `Documento {id_documento}`.
+- `accion_chroma`: usar `reemplazar_version_vigente` cuando el sistema documental envia una version nueva que reemplaza otra vigente.
+- `id_version`
+- `uuid_documento`
+- `uuid_version`
+- `id_version_anterior`
+- `uuid_version_anterior`: UUID de la version que debe eliminarse de Chroma antes de indexar la nueva.
 - `tipo_documento`
 - `ambito`
 - `estado_vigencia`
@@ -69,7 +75,7 @@ Campos opcionales:
 - `requiere_revision_humana`
 - `nombre_archivo`
 - `metadata`: objeto JSON con metadatos adicionales.
-- `reemplazar_existente`: `true` por defecto. Si ya existe ese `id_documento`, borra sus fragmentos previos antes de guardar.
+- `reemplazar_existente`: `true` por defecto. Con `accion_chroma=reemplazar_version_vigente` y `uuid_version_anterior`, borra los fragmentos de esa version anterior. Si no se envia `uuid_version_anterior`, mantiene el comportamiento anterior y borra por `id_documento`.
 
 Configuracion de fragmentacion:
 
@@ -106,10 +112,40 @@ curl -X POST http://127.0.0.1:8000/api/integracion/documentos/guardar-chroma/ \
   }'
 ```
 
+Ejemplo reemplazando la version vigente por UUID:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/integracion/documentos/guardar-chroma/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accion_chroma": "reemplazar_version_vigente",
+    "id_documento": "123",
+    "id_version": "45",
+    "uuid_documento": "uuid-del-documento",
+    "uuid_version": "uuid-version-nueva",
+    "id_version_anterior": "44",
+    "uuid_version_anterior": "uuid-version-anterior",
+    "reemplazar_existente": true,
+    "texto_extraido": "Contenido completo de la nueva version...",
+    "metadata": {
+      "id_documento": "123",
+      "id_version": "45",
+      "numero_version": "3",
+      "uuid_documento": "uuid-del-documento",
+      "uuid_version": "uuid-version-nueva",
+      "id_version_anterior": "44",
+      "numero_version_anterior": "2",
+      "uuid_version_anterior": "uuid-version-anterior"
+    }
+  }'
+```
+
 Respuesta principal:
 
 - `estado_procesamiento`: `PROCESADO`, `PENDIENTE_OCR` o `ERROR`.
 - `fragmentos_generados`: cantidad de fragmentos guardados en ChromaDB.
 - `modo_fragmentacion`: `pages` o `characters`, segun la configuracion aplicada.
 - `reemplazo_fragmentos_previos`: indica si se borraron fragmentos anteriores del mismo documento.
+- `reemplazo_por_uuid_anterior`: `true` cuando la eliminacion se hizo por `uuid_version_anterior`.
+- `uuid_version_anterior_eliminada`: UUID de la version anterior eliminada cuando aplica.
 - `requiere_ocr`: `true` cuando no hay texto suficiente para indexar.

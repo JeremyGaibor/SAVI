@@ -20,6 +20,7 @@ from .services.chroma_service import (
     crear_fragmento_chroma,
     eliminar_documento_chroma,
     eliminar_fragmento_chroma,
+    eliminar_version_chroma,
     guardar_fragmentos_documento,
     listar_fragmentos_chroma,
     obtener_fragmento_chroma,
@@ -74,6 +75,12 @@ def construir_metadata_documento(request, archivo):
     nombre_archivo = archivo.name if archivo is not None else obtener_valor_request(request, "nombre_archivo", "")
 
     metadata_base = {
+        "accion_chroma": obtener_valor_request(request, "accion_chroma", ""),
+        "id_version": str(obtener_valor_request(request, "id_version", "")),
+        "uuid_documento": str(obtener_valor_request(request, "uuid_documento", "")),
+        "uuid_version": str(obtener_valor_request(request, "uuid_version", "")),
+        "id_version_anterior": str(obtener_valor_request(request, "id_version_anterior", "")),
+        "uuid_version_anterior": str(obtener_valor_request(request, "uuid_version_anterior", "")),
         "tipo_documento": obtener_valor_request(request, "tipo_documento", "GENERAL"),
         "ambito": obtener_valor_request(request, "ambito", "PUBLICO"),
         "estado_vigencia": obtener_valor_request(request, "estado_vigencia", "VIGENTE"),
@@ -94,6 +101,15 @@ def construir_metadata_documento(request, archivo):
             metadata_base[clave] = normalizar_valor_metadata(valor)
 
     return metadata_base
+
+
+def obtener_metadata_request(request):
+    metadata = obtener_valor_request(request, "metadata", {})
+    if isinstance(metadata, dict):
+        return metadata
+    if str(metadata).strip():
+        return parsear_metadata_formulario(str(metadata))
+    return {}
 
 
 @xframe_options_exempt
@@ -734,7 +750,24 @@ def api_procesar_documento(request):
         )
 
     id_documento = str(obtener_valor_request(request, "id_documento", "")).strip()
-    titulo = str(obtener_valor_request(request, "titulo", "")).strip()
+    metadata_recibida = obtener_metadata_request(request)
+    titulo = str(
+        obtener_valor_request(
+            request,
+            "titulo",
+            metadata_recibida.get("titulo") or metadata_recibida.get("nombre_archivo") or "",
+        )
+    ).strip()
+    if not titulo:
+        titulo = f"Documento {id_documento}"
+    accion_chroma = str(obtener_valor_request(request, "accion_chroma", "")).strip()
+    uuid_version_anterior = str(
+        obtener_valor_request(
+            request,
+            "uuid_version_anterior",
+            metadata_recibida.get("uuid_version_anterior", ""),
+        )
+    ).strip()
     reemplazar_existente = normalizar_booleano(
         obtener_valor_request(request, "reemplazar_existente", True),
         defecto=True,
@@ -743,12 +776,6 @@ def api_procesar_documento(request):
     if not id_documento:
         return Response(
             {"error": "Debe enviar el campo 'id_documento'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if not titulo:
-        return Response(
-            {"error": "Debe enviar el campo 'titulo'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -799,7 +826,14 @@ def api_procesar_documento(request):
         )
         metadata_base = construir_metadata_documento(request, archivo)
 
-        if reemplazar_existente:
+        reemplazo_por_uuid_anterior = bool(
+            reemplazar_existente
+            and accion_chroma == "reemplazar_version_vigente"
+            and uuid_version_anterior
+        )
+        if reemplazo_por_uuid_anterior:
+            eliminar_version_chroma(uuid_version_anterior)
+        elif reemplazar_existente:
             eliminar_documento_chroma(id_documento)
 
         total_fragmentos = guardar_fragmentos_documento(
@@ -816,6 +850,8 @@ def api_procesar_documento(request):
                 "estado_procesamiento": "PROCESADO",
                 "requiere_ocr": False,
                 "reemplazo_fragmentos_previos": reemplazar_existente,
+                "reemplazo_por_uuid_anterior": reemplazo_por_uuid_anterior,
+                "uuid_version_anterior_eliminada": uuid_version_anterior if reemplazo_por_uuid_anterior else "",
                 "paginas": total_paginas,
                 "caracteres_extraidos": caracteres_extraidos,
                 "fragmentos_generados": total_fragmentos,

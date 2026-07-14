@@ -134,9 +134,15 @@ def guardar_fragmentos_documento(
     ids = []
     documents = []
     metadatas = []
+    uuid_version = str(metadata_base.get("uuid_version") or "").strip()
+    id_version = str(metadata_base.get("id_version") or "").strip()
+    version_fragmento = uuid_version or id_version
 
     for indice, fragmento in enumerate(fragmentos, start=1):
-        id_fragmento = f"doc_{id_documento}_frag_{indice}"
+        if version_fragmento:
+            id_fragmento = f"doc_{id_documento}_ver_{version_fragmento}_frag_{indice}"
+        else:
+            id_fragmento = f"doc_{id_documento}_frag_{indice}"
         if isinstance(fragmento, dict):
             contenido = str(fragmento.get("contenido") or "")
             pagina_inicio = fragmento.get("pagina_inicio")
@@ -236,6 +242,11 @@ def eliminar_fragmento_chroma(id_fragmento):
 def eliminar_documento_chroma(id_documento):
     collection = obtener_coleccion()
     collection.delete(where={"id_documento": str(id_documento)})
+
+
+def eliminar_version_chroma(uuid_version):
+    collection = obtener_coleccion()
+    collection.delete(where={"uuid_version": str(uuid_version)})
 
 
 def construir_where_chroma(filtros):

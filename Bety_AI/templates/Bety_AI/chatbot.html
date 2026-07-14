@@ -492,6 +492,35 @@
                 : '';
 
             let enviando = false;
+            let contextoSga = null;
+            const origenesPermitidosContexto = [
+                'http://127.0.0.1:8002',
+                'http://localhost:8002'
+            ];
+
+            window.addEventListener(
+                'message',
+                function (event) {
+                    if (!origenesPermitidosContexto.includes(event.origin)) {
+                        return;
+                    }
+
+                    if (
+                        !event.data ||
+                        event.data.tipo !== 'BETY_SGA_CONTEXT' ||
+                        !event.data.usuario
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        typeof event.data.usuario === 'object' &&
+                        !Array.isArray(event.data.usuario)
+                    ) {
+                        contextoSga = event.data.usuario;
+                    }
+                }
+            );
 
             function avisarAlCliente(tipo) {
                 if (window.parent === window) {
@@ -748,7 +777,8 @@
                             },
 
                             body: JSON.stringify({
-                                pregunta: pregunta
+                                pregunta: pregunta,
+                                contexto_sga: contextoSga
                             })
                         }
                     );

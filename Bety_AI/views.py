@@ -1693,7 +1693,6 @@ RESPUESTA:
                 "respuesta": respuesta,
                 "modelo": resultado_qwen["modelo"],
                 "fragmentos_usados": len(fragmentos),
-                "filtros_usados": filtros_usados,
                 "mensajes_historial_temporal": len(historial),
             },
             status=status.HTTP_200_OK,

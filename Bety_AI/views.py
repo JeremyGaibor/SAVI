@@ -203,6 +203,112 @@ def construir_contexto_usuario_prompt(perfil):
     return "\n".join(lineas)
 
 
+WEB_PERFIL_SESION_KEY = "bety_ai_perfil_web"
+WEB_PERFIL_PREGUNTA_KEY = "bety_ai_pregunta_pendiente"
+WEB_PERFIL_CAMPO_KEY = "bety_ai_campo_pendiente"
+WEB_PERFIL_CAMPOS_REQUERIDOS = ["rol", "facultad", "carrera"]
+
+
+def pregunta_necesita_perfil_web(pregunta):
+    texto = normalizar_texto(pregunta)
+
+    if es_interaccion_social(pregunta) or es_pregunta_identidad(pregunta):
+        return False
+
+    indicadores_personales = [
+        "me ",
+        "mi ",
+        "mis ",
+        "yo ",
+        "puedo",
+        "debo",
+        "tengo que",
+        "me toca",
+        "segun mi",
+        "para mi",
+        "matricularme",
+        "inscribirme",
+        "materias",
+        "carrera",
+        "nivel",
+        "semestre",
+        "periodo",
+    ]
+
+    return any(indicador in f" {texto} " for indicador in indicadores_personales)
+
+
+def obtener_perfil_web(request):
+    perfil = request.session.get(WEB_PERFIL_SESION_KEY, {})
+    if isinstance(perfil, dict):
+        return perfil
+    return {}
+
+
+def guardar_perfil_web(request, perfil):
+    request.session[WEB_PERFIL_SESION_KEY] = perfil
+    request.session.modified = True
+
+
+def guardar_pendiente_perfil_web(request, pregunta, campo):
+    request.session[WEB_PERFIL_PREGUNTA_KEY] = pregunta
+    request.session[WEB_PERFIL_CAMPO_KEY] = campo
+    request.session.modified = True
+
+
+def limpiar_pendiente_perfil_web(request):
+    request.session.pop(WEB_PERFIL_PREGUNTA_KEY, None)
+    request.session.pop(WEB_PERFIL_CAMPO_KEY, None)
+    request.session.modified = True
+
+
+def obtener_siguiente_campo_perfil_web(perfil):
+    for campo in WEB_PERFIL_CAMPOS_REQUERIDOS:
+        if not perfil.get(campo):
+            return campo
+    return None
+
+
+def pregunta_campo_perfil_web(campo):
+    preguntas = {
+        "rol": "Para orientarte mejor, dime si eres estudiante, docente, aspirante o visitante externo.",
+        "facultad": "¿Sobre qué facultad o área deseas consultar? Si no aplica, responde: general.",
+        "carrera": "¿Sobre qué carrera deseas saber? Si no aplica, responde: general.",
+        "nivel": "¿En qué nivel o semestre estás?",
+        "periodo_academico": "¿Cuál es tu periodo académico?",
+    }
+    return preguntas.get(campo, "Dame ese dato para continuar.")
+
+
+def guardar_respuesta_campo_perfil_web(request, respuesta):
+    campo = request.session.get(WEB_PERFIL_CAMPO_KEY)
+    pregunta_pendiente = request.session.get(WEB_PERFIL_PREGUNTA_KEY)
+
+    if not campo or not pregunta_pendiente:
+        return None
+
+    perfil = obtener_perfil_web(request)
+    perfil[campo] = limpiar_texto_contexto(respuesta, 200)
+    guardar_perfil_web(request, perfil)
+
+    siguiente_campo = obtener_siguiente_campo_perfil_web(perfil)
+    if siguiente_campo:
+        guardar_pendiente_perfil_web(request, pregunta_pendiente, siguiente_campo)
+        return {
+            "completo": False,
+            "pregunta_original": pregunta_pendiente,
+            "respuesta": pregunta_campo_perfil_web(siguiente_campo),
+            "perfil": perfil,
+        }
+
+    limpiar_pendiente_perfil_web(request)
+    return {
+        "completo": True,
+        "pregunta_original": pregunta_pendiente,
+        "perfil": perfil,
+    }
+
+
 @xframe_options_exempt
 def chatbot(request):
     return render(request, "Bety_AI/chatbot.html")
@@ -1020,7 +1126,70 @@ def api_consulta_ia(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    perfil_usuario = obtener_contexto_usuario_sga(request.data)
+    perfil_sga = obtener_contexto_usuario_sga(request.data)
+    perfil_en_recoleccion = None
+    pregunta_original_web = None
+
+    if perfil_sga:
+        perfil_usuario = perfil_sga
+        limpiar_pendiente_perfil_web(request)
+    else:
+        resultado_recoleccion = guardar_respuesta_campo_perfil_web(request, pregunta)
+
+        if resultado_recoleccion and not resultado_recoleccion["completo"]:
+            respuesta = resultado_recoleccion["respuesta"]
+            guardar_interaccion_temporal(
+                request=request,
+                pregunta=pregunta,
+                respuesta=respuesta,
+                tipo_respuesta="SOLICITUD_CONTEXTO_WEB",
+            )
+
+            return Response(
+                {
+                    "ok": True,
+                    "pregunta": pregunta,
+                    "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
+                    "respuesta": respuesta,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        if resultado_recoleccion and resultado_recoleccion["completo"]:
+            perfil_usuario = resultado_recoleccion["perfil"]
+            pregunta_original_web = resultado_recoleccion["pregunta_original"]
+            pregunta = pregunta_original_web
+        else:
+            perfil_usuario = obtener_perfil_web(request)
+            perfil_en_recoleccion = perfil_usuario
+
+    if (
+        not perfil_sga
+        and not pregunta_original_web
+        and pregunta_necesita_perfil_web(pregunta)
+    ):
+        campo_pendiente = obtener_siguiente_campo_perfil_web(perfil_en_recoleccion or {})
+
+        if campo_pendiente:
+            respuesta = pregunta_campo_perfil_web(campo_pendiente)
+            guardar_pendiente_perfil_web(request, pregunta, campo_pendiente)
+            guardar_interaccion_temporal(
+                request=request,
+                pregunta=pregunta,
+                respuesta=respuesta,
+                tipo_respuesta="SOLICITUD_CONTEXTO_WEB",
+            )
+
+            return Response(
+                {
+                    "ok": True,
+                    "pregunta": pregunta,
+                    "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
+                    "respuesta": respuesta,
+                },
+                status=status.HTTP_200_OK,
+            )
+
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
 
     if es_pregunta_identidad(pregunta):

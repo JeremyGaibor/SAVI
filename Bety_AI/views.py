@@ -443,15 +443,15 @@ def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None):
 
     preguntas = {
         "rol": (
-            f"Para orientarte mejor{sufijo_consulta}, dime si eres estudiante, "
-            "docente, aspirante o visitante externo."
+            f"Antes de responderte{sufijo_consulta}, necesito ubicarte un poco: "
+            "¿eres estudiante, docente, aspirante o visitante externo?"
         ),
         "facultad": (
-            f"Ya tengo que eres {perfil.get('rol', 'usuario')}. "
-            "¿Sobre qué facultad o área deseas consultar? Si no aplica, responde: general."
+            f"Perfecto, ya sé que eres {perfil.get('rol', 'usuario')}. "
+            "¿De qué facultad o área quieres que hablemos? Si es algo general, dime general."
         ),
         "carrera": (
-            "¿Sobre qué carrera deseas saber? Si tu consulta es general o no aplica, responde: general."
+            "¿Y sobre qué carrera sería? Si no aplica o quieres una respuesta general, dime general."
         ),
         "nivel": "¿En qué nivel o semestre estás?",
         "periodo_academico": "¿Cuál es tu periodo académico?",
@@ -1096,7 +1096,7 @@ def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):
 
 def relajar_filtros_busqueda(filtros):
     if not filtros:
-        return []
+        return [{}]
 
     filtros_base = dict(filtros)
     variantes = [filtros_base]
@@ -1114,6 +1114,70 @@ def relajar_filtros_busqueda(filtros):
     return variantes
 
 
+def detectar_tema_consulta(pregunta):
+    texto = normalizar_texto(pregunta)
+
+    if any(palabra in texto for palabra in ["matricula", "matriculacion", "matricular"]):
+        if not any(palabra in texto for palabra in ["ayuda", "ayudas", "economica", "economicas", "beca", "becas"]):
+            return "matricula"
+
+    if any(palabra in texto for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"]):
+        return "ayudas_economicas"
+
+    if "aula virtual" in texto or texto.strip() == "aula":
+        return "aula_virtual"
+
+    if any(palabra in texto for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion", "calificaciones"]):
+        return "evaluacion"
+
+    return ""
+
+
+def fragmento_pertenece_tema(fragmento, tema):
+    if not tema:
+        return True
+
+    metadata = fragmento.get("metadata") or {}
+    texto_revision = normalizar_texto(
+        " ".join(
+            [
+                metadata.get("titulo", ""),
+                metadata.get("tipo_documento", ""),
+                metadata.get("resumen_documento", ""),
+                fragmento.get("contenido", "")[:500],
+            ]
+        )
+    )
+
+    if tema == "matricula":
+        if any(palabra in texto_revision for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"]):
+            return False
+        return any(palabra in texto_revision for palabra in ["matricula", "matriculacion", "matricular"])
+
+    if tema == "ayudas_economicas":
+        return any(palabra in texto_revision for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"])
+
+    if tema == "aula_virtual":
+        return "aula virtual" in texto_revision
+
+    if tema == "evaluacion":
+        return any(palabra in texto_revision for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion"])
+
+    return True
+
+
+def filtrar_fragmentos_por_tema(pregunta, fragmentos):
+    tema = detectar_tema_consulta(pregunta)
+    if not tema:
+        return fragmentos
+
+    return [
+        fragmento
+        for fragmento in fragmentos
+        if fragmento_pertenece_tema(fragmento, tema)
+    ]
+
+
 def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
     ultimo_error = None
 
@@ -1127,6 +1191,8 @@ def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
         except Exception as exc:
             ultimo_error = exc
             continue
+
+        fragmentos = filtrar_fragmentos_por_tema(pregunta, fragmentos)
 
         if fragmentos and fragmentos_suficientes_para_responder(fragmentos):
             return fragmentos, filtros_actuales

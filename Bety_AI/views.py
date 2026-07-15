@@ -1033,6 +1033,7 @@ def extraer_filtros_consulta(data):
         "ambito",
         "estado_vigencia",
         "rol",
+        "facultad",
         "carrera",
         "tipo_documento",
         "tipo_estudio",
@@ -1056,6 +1057,87 @@ def extraer_filtros_consulta(data):
         filtros_limpios[clave] = valor
 
     return filtros_limpios
+
+
+def valor_filtro_general(valor):
+    texto = normalizar_texto(valor)
+    return texto in {"", "general", "todos", "todas", "no aplica", "n/a", "ninguna"}
+
+
+def normalizar_valor_filtro_perfil(valor):
+    if valor_filtro_general(valor):
+        return ""
+    return limpiar_texto_contexto(valor, 120).upper()
+
+
+def construir_filtros_desde_perfil(perfil):
+    if not isinstance(perfil, dict):
+        return {}
+
+    filtros = {}
+    for campo in ["rol", "facultad", "carrera"]:
+        valor = normalizar_valor_filtro_perfil(perfil.get(campo))
+        if valor:
+            filtros[campo] = valor
+
+    return filtros
+
+
+def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):
+    filtros = {}
+    if isinstance(filtros_consulta, dict):
+        filtros.update(filtros_consulta)
+
+    for clave, valor in construir_filtros_desde_perfil(perfil).items():
+        filtros.setdefault(clave, valor)
+
+    return filtros
+
+
+def relajar_filtros_busqueda(filtros):
+    if not filtros:
+        return []
+
+    filtros_base = dict(filtros)
+    variantes = [filtros_base]
+
+    for campo in ["facultad", "carrera", "rol"]:
+        if campo in filtros_base:
+            relajado = dict(filtros_base)
+            relajado.pop(campo, None)
+            if relajado and relajado not in variantes:
+                variantes.append(relajado)
+
+    if {} not in variantes:
+        variantes.append({})
+
+    return variantes
+
+
+def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
+    ultimo_error = None
+
+    for filtros_actuales in relajar_filtros_busqueda(filtros):
+        try:
+            fragmentos = buscar_fragmentos(
+                pregunta=pregunta,
+                filtros=filtros_actuales if filtros_actuales else None,
+                total_resultados=total_resultados,
+            )
+        except Exception as exc:
+            ultimo_error = exc
+            continue
+
+        if fragmentos and fragmentos_suficientes_para_responder(fragmentos):
+            return fragmentos, filtros_actuales
+
+        if fragmentos and not filtros_actuales:
+            return fragmentos, filtros_actuales
+
+    if ultimo_error:
+        raise ultimo_error
+
+    return [], {}
 
 
 
@@ -1239,13 +1321,16 @@ def api_buscar_fragmentos(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    filtros = extraer_filtros_consulta(request.data)
+    filtros = combinar_filtros_consulta_y_perfil(
+        extraer_filtros_consulta(request.data),
+        perfil_usuario,
+    )
 
     try:
-        fragmentos = buscar_fragmentos(
+        fragmentos, filtros_usados = buscar_fragmentos_con_fallback(
             pregunta=pregunta,
-            filtros=filtros if filtros else None,
-            total_resultados=3
+            filtros=filtros,
+            total_resultados=3,
         )
     except Exception as exc:
         return Response(
@@ -1608,6 +1693,7 @@ RESPUESTA:
                 "respuesta": respuesta,
                 "modelo": resultado_qwen["modelo"],
                 "fragmentos_usados": len(fragmentos),
+                "filtros_usados": filtros_usados,
                 "mensajes_historial_temporal": len(historial),
             },
             status=status.HTTP_200_OK,

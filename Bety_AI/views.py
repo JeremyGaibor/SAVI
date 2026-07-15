@@ -212,6 +212,52 @@ CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
 CONVERSACION_TTL_SEGUNDOS = 60 * 60 * 6
 
 
+def es_consulta_ambito_bety(pregunta):
+    texto = normalizar_texto(pregunta)
+
+    palabras_ambito = [
+        "sga",
+        "uteq",
+        "matricula",
+        "matriculacion",
+        "aula",
+        "aula virtual",
+        "evaluacion",
+        "evaluaciones",
+        "evaluar",
+        "calificar",
+        "calificacion",
+        "heteroevaluacion",
+        "hetero",
+        "profesor",
+        "profesores",
+        "docente",
+        "docentes",
+        "estudiante",
+        "estudiantes",
+        "aspirante",
+        "admision",
+        "inscripcion",
+        "requisitos",
+        "carnet",
+        "documento",
+        "pdf",
+        "tramite",
+        "tramites",
+        "academico",
+        "academicos",
+        "asignatura",
+        "materia",
+        "materias",
+        "facultad",
+        "carrera",
+        "nivelacion",
+        "grado",
+    ]
+
+    return any(palabra in texto for palabra in palabras_ambito)
+
+
 def pregunta_necesita_perfil_web(pregunta):
     texto = normalizar_texto(pregunta)
 
@@ -251,7 +297,10 @@ def pregunta_necesita_perfil_web(pregunta):
         "periodo",
     ]
 
-    return any(indicador in f" {texto} " for indicador in indicadores_personales)
+    return (
+        es_consulta_ambito_bety(pregunta)
+        or any(indicador in f" {texto} " for indicador in indicadores_personales)
+    )
 
 
 def normalizar_conversation_id(valor):
@@ -323,7 +372,11 @@ def guardar_respuesta_campo_conversacion(conversation_id, respuesta):
         return {
             "completo": False,
             "pregunta_original": pregunta_pendiente,
-            "respuesta": pregunta_campo_perfil_web(siguiente_campo),
+            "respuesta": pregunta_campo_perfil_web(
+                siguiente_campo,
+                pregunta_pendiente,
+                perfil,
+            ),
             "perfil": perfil,
         }
 
@@ -349,7 +402,7 @@ def iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil):
     estado["campo_pendiente"] = campo
     estado["pregunta_original"] = pregunta
     guardar_estado_conversacion(conversation_id, estado)
-    return pregunta_campo_perfil_web(campo)
+    return pregunta_campo_perfil_web(campo, pregunta, estado["perfil_usuario"])
 
 
 def obtener_perfil_web(request):
@@ -383,11 +436,23 @@ def obtener_siguiente_campo_perfil_web(perfil):
     return None
 
 
-def pregunta_campo_perfil_web(campo):
+def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None):
+    perfil = perfil if isinstance(perfil, dict) else {}
+    detalle_consulta = limpiar_texto_contexto(pregunta_original, 120)
+    sufijo_consulta = f" sobre \"{detalle_consulta}\"" if detalle_consulta else ""
+
     preguntas = {
-        "rol": "Para orientarte mejor, dime si eres estudiante, docente, aspirante o visitante externo.",
-        "facultad": "¿Sobre qué facultad o área deseas consultar? Si no aplica, responde: general.",
-        "carrera": "¿Sobre qué carrera deseas saber? Si no aplica, responde: general.",
+        "rol": (
+            f"Para orientarte mejor{sufijo_consulta}, dime si eres estudiante, "
+            "docente, aspirante o visitante externo."
+        ),
+        "facultad": (
+            f"Ya tengo que eres {perfil.get('rol', 'usuario')}. "
+            "¿Sobre qué facultad o área deseas consultar? Si no aplica, responde: general."
+        ),
+        "carrera": (
+            "¿Sobre qué carrera deseas saber? Si tu consulta es general o no aplica, responde: general."
+        ),
         "nivel": "¿En qué nivel o semestre estás?",
         "periodo_academico": "¿Cuál es tu periodo académico?",
     }
@@ -642,37 +707,7 @@ def es_pregunta_fuera_ambito(pregunta):
     """
     texto = normalizar_texto(pregunta)
 
-    palabras_ambito = [
-        "sga",
-        "uteq",
-        "matricula",
-        "matriculacion",
-        "aula virtual",
-        "evaluacion",
-        "evaluar",
-        "calificar",
-        "calificacion",
-        "heteroevaluacion",
-        "hetero",
-        "profesor",
-        "profesores",
-        "docente",
-        "docentes",
-        "ingeniero",
-        "ingenieros",
-        "estudiante",
-        "carnet",
-        "documento",
-        "pdf",
-        "tramite",
-        "academico",
-        "asignatura",
-        "carrera",
-        "nivelacion",
-        "grado",
-    ]
-
-    if any(palabra in texto for palabra in palabras_ambito):
+    if es_consulta_ambito_bety(pregunta):
         return False
 
     patrones_fuera = [

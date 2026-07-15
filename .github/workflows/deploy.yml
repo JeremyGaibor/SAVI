@@ -49,8 +49,7 @@ jobs:
             --password-stdin
 
           docker compose pull
+          docker compose run --rm bety-ai python manage.py migrate
           docker compose up -d --remove-orphans
-          docker compose exec -T bety-ai python manage.py migrate
-          docker compose restart bety-ai
           docker image prune -f
           docker compose ps

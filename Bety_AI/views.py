@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from .services.ollama_service import consultar_qwen
 from rest_framework import status
 from django.core.cache import cache
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
 import re
 import json
@@ -355,7 +355,7 @@ def guardar_respuesta_campo_conversacion(conversation_id, respuesta):
     campo = estado.get("campo_pendiente")
     pregunta_pendiente = estado.get("pregunta_original")
 
-    if not campo or not pregunta_pendiente:
+    if not isinstance(campo, str) or not campo or not pregunta_pendiente:
         return None
 
     perfil = estado.get("perfil_usuario")
@@ -1321,13 +1321,10 @@ def api_buscar_fragmentos(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    filtros = combinar_filtros_consulta_y_perfil(
-        extraer_filtros_consulta(request.data),
-        perfil_usuario,
-    )
+    filtros = extraer_filtros_consulta(request.data)
 
     try:
-        fragmentos, filtros_usados = buscar_fragmentos_con_fallback(
+        fragmentos, _ = buscar_fragmentos_con_fallback(
             pregunta=pregunta,
             filtros=filtros,
             total_resultados=3,
@@ -1362,6 +1359,7 @@ def api_consulta_ia(request):
 
     conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
     perfil_sga = obtener_contexto_usuario_sga(request.data)
+    perfil_usuario = {}
     perfil_en_recoleccion = None
     pregunta_original_web = None
 
@@ -1564,13 +1562,16 @@ def api_consulta_ia(request):
             status=status.HTTP_200_OK,
         )
 
-    filtros = extraer_filtros_consulta(request.data)
+    filtros = combinar_filtros_consulta_y_perfil(
+        extraer_filtros_consulta(request.data),
+        perfil_usuario,
+    )
 
     try:
-        fragmentos = buscar_fragmentos(
+        fragmentos, _ = buscar_fragmentos_con_fallback(
             pregunta=pregunta,
-            filtros=filtros if filtros else None,
-            total_resultados=3
+            filtros=filtros,
+            total_resultados=3,
         )
     except Exception as exc:
         return Response(

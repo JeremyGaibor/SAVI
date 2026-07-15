@@ -176,8 +176,8 @@ def obtener_contexto_usuario_sga(data):
 def construir_contexto_usuario_prompt(perfil):
     if not perfil:
         return (
-            "No hay perfil SGA recibido. Si la pregunta depende del rol, carrera, "
-            "nivel o periodo academico del usuario, pide esos datos antes de personalizar la respuesta."
+            "No hay perfil SGA recibido. Responde de forma general si no hay datos del usuario; "
+            "no pidas varios datos personales en una sola respuesta."
         )
 
     etiquetas = {
@@ -500,7 +500,7 @@ Instrucciones:
 - Responde en espanol claro, breve y natural.
 - No inventes informacion institucional especifica.
 - Si existe perfil del usuario, puedes usar su nombre, rol, carrera, nivel o periodo academico para personalizar la respuesta.
-- Si no existe perfil y necesitas esos datos para responder mejor, pidelos brevemente.
+- Si no existe perfil, no pidas rol, facultad, carrera, nivel o periodo en bloque; responde de forma general o invita a hacer una consulta sobre documentos del SGA UTEQ.
 - No menciones fuentes, IDs ni documentos internos.
 - Si el tipo es IDENTIDAD, explica que ayudas con documentos del SGA UTEQ, matricula, aula virtual, evaluacion y tramites academicos.
 - Si el tipo es SALUDO, saluda de forma amable y orienta al usuario a preguntar por documentos o procesos del SGA UTEQ.
@@ -1417,7 +1417,7 @@ Reglas obligatorias:
 
 Reglas de perfil:
 11. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar rol, carrera, nivel o periodo academico; no lo trates como fuente documental.
-12. Si no hay perfil SGA y la pregunta necesita datos personales para contextualizarse, pide esos datos de forma breve.
+12. No pidas rol, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}

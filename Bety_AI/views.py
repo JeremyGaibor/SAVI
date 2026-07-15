@@ -3,6 +3,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from .services.ollama_service import consultar_qwen
 from rest_framework import status
+from django.core.cache import cache
 from django.shortcuts import redirect, render
 from django.views.decorators.clickjacking import xframe_options_exempt
 import re
@@ -207,6 +208,8 @@ WEB_PERFIL_SESION_KEY = "bety_ai_perfil_web"
 WEB_PERFIL_PREGUNTA_KEY = "bety_ai_pregunta_pendiente"
 WEB_PERFIL_CAMPO_KEY = "bety_ai_campo_pendiente"
 WEB_PERFIL_CAMPOS_REQUERIDOS = ["rol", "facultad", "carrera"]
+CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
+CONVERSACION_TTL_SEGUNDOS = 60 * 60 * 6
 
 
 def pregunta_necesita_perfil_web(pregunta):
@@ -226,9 +229,22 @@ def pregunta_necesita_perfil_web(pregunta):
         "me toca",
         "segun mi",
         "para mi",
+        "sga",
+        "uteq",
+        "matricula",
+        "matriculacion",
         "matricularme",
+        "admision",
         "inscribirme",
+        "inscripcion",
+        "requisitos",
+        "tramite",
+        "tramites",
+        "aula virtual",
+        "evaluacion",
+        "calificacion",
         "materias",
+        "facultad",
         "carrera",
         "nivel",
         "semestre",
@@ -236,6 +252,104 @@ def pregunta_necesita_perfil_web(pregunta):
     ]
 
     return any(indicador in f" {texto} " for indicador in indicadores_personales)
+
+
+def normalizar_conversation_id(valor):
+    texto = limpiar_texto_contexto(valor, 80)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", texto):
+        return ""
+    return texto
+
+
+def crear_estado_conversacion():
+    return {
+        "perfil_usuario": {},
+        "campo_pendiente": None,
+        "pregunta_original": None,
+    }
+
+
+def obtener_estado_conversacion(conversation_id):
+    if not conversation_id:
+        return crear_estado_conversacion()
+
+    estado = cache.get(f"{CONVERSACION_CACHE_PREFIX}{conversation_id}")
+    if isinstance(estado, dict):
+        estado.setdefault("perfil_usuario", {})
+        estado.setdefault("campo_pendiente", None)
+        estado.setdefault("pregunta_original", None)
+        return estado
+
+    return crear_estado_conversacion()
+
+
+def guardar_estado_conversacion(conversation_id, estado):
+    if conversation_id:
+        cache.set(
+            f"{CONVERSACION_CACHE_PREFIX}{conversation_id}",
+            estado,
+            CONVERSACION_TTL_SEGUNDOS,
+        )
+
+
+def guardar_perfil_sga_conversacion(conversation_id, perfil_sga):
+    estado = obtener_estado_conversacion(conversation_id)
+    estado["perfil_usuario"] = perfil_sga
+    estado["campo_pendiente"] = None
+    estado["pregunta_original"] = None
+    guardar_estado_conversacion(conversation_id, estado)
+    return estado
+
+
+def guardar_respuesta_campo_conversacion(conversation_id, respuesta):
+    estado = obtener_estado_conversacion(conversation_id)
+    campo = estado.get("campo_pendiente")
+    pregunta_pendiente = estado.get("pregunta_original")
+
+    if not campo or not pregunta_pendiente:
+        return None
+
+    perfil = estado.get("perfil_usuario")
+    if not isinstance(perfil, dict):
+        perfil = {}
+
+    perfil[campo] = limpiar_texto_contexto(respuesta, 200)
+    estado["perfil_usuario"] = perfil
+
+    siguiente_campo = obtener_siguiente_campo_perfil_web(perfil)
+    if siguiente_campo:
+        estado["campo_pendiente"] = siguiente_campo
+        guardar_estado_conversacion(conversation_id, estado)
+        return {
+            "completo": False,
+            "pregunta_original": pregunta_pendiente,
+            "respuesta": pregunta_campo_perfil_web(siguiente_campo),
+            "perfil": perfil,
+        }
+
+    estado["campo_pendiente"] = None
+    estado["pregunta_original"] = None
+    guardar_estado_conversacion(conversation_id, estado)
+    return {
+        "completo": True,
+        "pregunta_original": pregunta_pendiente,
+        "perfil": perfil,
+    }
+
+
+def iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil):
+    estado = obtener_estado_conversacion(conversation_id)
+    estado["perfil_usuario"] = perfil if isinstance(perfil, dict) else {}
+    campo = obtener_siguiente_campo_perfil_web(estado["perfil_usuario"])
+
+    if not campo:
+        guardar_estado_conversacion(conversation_id, estado)
+        return None
+
+    estado["campo_pendiente"] = campo
+    estado["pregunta_original"] = pregunta
+    guardar_estado_conversacion(conversation_id, estado)
+    return pregunta_campo_perfil_web(campo)
 
 
 def obtener_perfil_web(request):
@@ -1126,15 +1240,17 @@ def api_consulta_ia(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
     perfil_sga = obtener_contexto_usuario_sga(request.data)
     perfil_en_recoleccion = None
     pregunta_original_web = None
 
     if perfil_sga:
+        guardar_perfil_sga_conversacion(conversation_id, perfil_sga)
         perfil_usuario = perfil_sga
         limpiar_pendiente_perfil_web(request)
     else:
-        resultado_recoleccion = guardar_respuesta_campo_perfil_web(request, pregunta)
+        resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
 
         if resultado_recoleccion and not resultado_recoleccion["completo"]:
             respuesta = resultado_recoleccion["respuesta"]
@@ -1149,6 +1265,7 @@ def api_consulta_ia(request):
                 {
                     "ok": True,
                     "pregunta": pregunta,
+                    "conversation_id": conversation_id,
                     "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
                     "respuesta": respuesta,
                 },
@@ -1160,7 +1277,10 @@ def api_consulta_ia(request):
             pregunta_original_web = resultado_recoleccion["pregunta_original"]
             pregunta = pregunta_original_web
         else:
-            perfil_usuario = obtener_perfil_web(request)
+            estado_conversacion = obtener_estado_conversacion(conversation_id)
+            perfil_usuario = estado_conversacion.get("perfil_usuario")
+            if not isinstance(perfil_usuario, dict):
+                perfil_usuario = {}
             perfil_en_recoleccion = perfil_usuario
 
     if (
@@ -1168,11 +1288,13 @@ def api_consulta_ia(request):
         and not pregunta_original_web
         and pregunta_necesita_perfil_web(pregunta)
     ):
-        campo_pendiente = obtener_siguiente_campo_perfil_web(perfil_en_recoleccion or {})
+        respuesta = iniciar_recoleccion_perfil_conversacion(
+            conversation_id,
+            pregunta,
+            perfil_en_recoleccion or {},
+        )
 
-        if campo_pendiente:
-            respuesta = pregunta_campo_perfil_web(campo_pendiente)
-            guardar_pendiente_perfil_web(request, pregunta, campo_pendiente)
+        if respuesta:
             guardar_interaccion_temporal(
                 request=request,
                 pregunta=pregunta,
@@ -1184,6 +1306,7 @@ def api_consulta_ia(request):
                 {
                     "ok": True,
                     "pregunta": pregunta,
+                    "conversation_id": conversation_id,
                     "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
                     "respuesta": respuesta,
                 },

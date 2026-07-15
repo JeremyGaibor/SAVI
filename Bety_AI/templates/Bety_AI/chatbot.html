@@ -493,6 +493,21 @@
 
             let enviando = false;
             let contextoSga = null;
+            let conversationId = localStorage.getItem(
+                'bety_conversation_id'
+            );
+
+            if (!conversationId) {
+                conversationId = window.crypto && window.crypto.randomUUID
+                    ? window.crypto.randomUUID()
+                    : String(Date.now()) + String(Math.random()).slice(2);
+
+                localStorage.setItem(
+                    'bety_conversation_id',
+                    conversationId
+                );
+            }
+
             const origenesPermitidosContexto = [
                 'http://127.0.0.1:8002',
                 'http://localhost:8002'
@@ -778,7 +793,8 @@
 
                             body: JSON.stringify({
                                 pregunta: pregunta,
-                                contexto_sga: contextoSga
+                                contexto_sga: contextoSga,
+                                conversation_id: conversationId
                             })
                         }
                     );

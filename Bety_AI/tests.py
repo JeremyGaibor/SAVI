@@ -4,7 +4,12 @@ from rest_framework.test import APIRequestFactory
 from unittest.mock import patch
 
 from .views import api_procesar_documento
-from .view_logic.busqueda_fragmentos import construir_filtros_desde_perfil
+from .view_logic.busqueda_fragmentos import (
+    construir_filtros_desde_perfil,
+    construir_pregunta_busqueda_con_perfil,
+    extraer_filtros_consulta,
+    relajar_filtros_busqueda,
+)
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.contexto_usuario import (
     construir_contexto_usuario_prompt,
@@ -98,7 +103,33 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertFalse(perfil_estudiante_requiere_tipo(perfil))
         self.assertIn("- Tipo de estudiante: Pregrado", prompt)
-        self.assertEqual(filtros["tipo_estudio"], "PREGRADO")
+        self.assertNotIn("tipo_estudio", filtros)
+        self.assertIn(
+            "pregrado",
+            construir_pregunta_busqueda_con_perfil("como puedo matricularme", perfil),
+        )
+
+    def test_tipo_estudiante_pregrado_no_se_usa_como_filtro_duro(self):
+        filtros = extraer_filtros_consulta({"tipo_estudiante": "Pregrado"})
+
+        self.assertNotIn("tipo_estudio", filtros)
+
+    def test_tipo_estudiante_se_agrega_a_la_busqueda_sin_importar_mayusculas(self):
+        pregunta = construir_pregunta_busqueda_con_perfil(
+            "como puedo matricularme",
+            {"rol": "estudiante", "tipo_estudiante": "PREGRADO"},
+        )
+
+        self.assertIn("pregrado", pregunta.lower())
+        self.assertIn("grado", pregunta.lower())
+
+    def test_fallback_relaja_tipo_estudio_si_no_hay_resultados(self):
+        variantes = relajar_filtros_busqueda({
+            "tipo_estudio": "GRADO",
+            "rol": "ESTUDIANTE",
+        })
+
+        self.assertIn({"rol": "ESTUDIANTE"}, variantes)
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

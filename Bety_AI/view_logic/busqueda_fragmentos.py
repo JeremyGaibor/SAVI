@@ -28,8 +28,6 @@ def extraer_filtros_consulta(data):
         "facultad",
         "carrera",
         "tipo_documento",
-        "tipo_estudio",
-        "tipo_estudiante",
         "id_documento",
         "grupo",
     ]
@@ -43,10 +41,10 @@ def extraer_filtros_consulta(data):
     for clave, valor in filtros.items():
         if valor in [None, ""]:
             continue
+        if clave in {"tipo_estudio", "tipo_estudiante"}:
+            continue
         if clave == "acceso":
             clave = "ambito"
-        if clave == "tipo_estudiante":
-            clave = "tipo_estudio"
         if clave == "ambito" and isinstance(valor, str):
             valor = valor.upper()
         filtros_limpios[clave] = valor
@@ -65,6 +63,17 @@ def normalizar_valor_filtro_perfil(valor):
     return limpiar_texto_contexto(valor, 120).upper()
 
 
+def normalizar_tipo_estudio(valor):
+    texto = normalizar_texto(valor)
+
+    if texto in {"pregrado", "grado"}:
+        return "pregrado grado"
+    if texto in {"posgrado", "postgrado"}:
+        return "posgrado postgrado"
+
+    return limpiar_texto_contexto(valor, 120)
+
+
 def construir_filtros_desde_perfil(perfil):
     if not isinstance(perfil, dict):
         return {}
@@ -75,15 +84,27 @@ def construir_filtros_desde_perfil(perfil):
         if valor:
             filtros[campo] = valor
 
-    tipo_estudiante = normalizar_valor_filtro_perfil(
+    return filtros
+
+
+def construir_pregunta_busqueda_con_perfil(pregunta, perfil):
+    pregunta_busqueda = limpiar_texto_contexto(pregunta, 500)
+    if not isinstance(perfil, dict):
+        return pregunta_busqueda
+
+    tipo_estudiante = normalizar_tipo_estudio(
         perfil.get("tipo_estudiante")
         or perfil.get("tipo_estudio")
         or perfil.get("nivel_formacion")
     )
-    if tipo_estudiante:
-        filtros["tipo_estudio"] = tipo_estudiante
+    if not tipo_estudiante:
+        return pregunta_busqueda
 
-    return filtros
+    texto_pregunta = normalizar_texto(pregunta_busqueda)
+    if any(palabra in texto_pregunta for palabra in normalizar_texto(tipo_estudiante).split()):
+        return pregunta_busqueda
+
+    return f"{pregunta_busqueda} {tipo_estudiante}".strip()
 
 
 def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):
@@ -104,7 +125,7 @@ def relajar_filtros_busqueda(filtros):
     filtros_base = dict(filtros)
     variantes = [filtros_base]
 
-    for campo in ["facultad", "carrera", "rol"]:
+    for campo in ["tipo_estudio", "facultad", "carrera", "rol"]:
         if campo in filtros_base:
             relajado = dict(filtros_base)
             relajado.pop(campo, None)

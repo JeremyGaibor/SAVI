@@ -684,6 +684,77 @@
                 );
             }
 
+            function agregarTokenTexto(tokens, tipo, texto) {
+                const partes = String(texto || '').split(/(\n)/);
+
+                partes.forEach(
+                    function (parte) {
+                        if (!parte) {
+                            return;
+                        }
+
+                        if (parte === '\n') {
+                            tokens.push({
+                                tipo: 'salto'
+                            });
+                            return;
+                        }
+
+                        tokens.push({
+                            tipo: tipo,
+                            texto: parte
+                        });
+                    }
+                );
+            }
+
+            function dividirMarkdownParaEscritura(texto) {
+                const tokens = [];
+                const patronNegrita = /\*\*([^*]+)\*\*/g;
+                let posicion = 0;
+                let coincidencia;
+
+                while ((coincidencia = patronNegrita.exec(texto)) !== null) {
+                    agregarTokenTexto(
+                        tokens,
+                        'texto',
+                        texto.slice(posicion, coincidencia.index)
+                    );
+
+                    agregarTokenTexto(
+                        tokens,
+                        'negrita',
+                        coincidencia[1]
+                    );
+
+                    posicion = coincidencia.index + coincidencia[0].length;
+                }
+
+                agregarTokenTexto(
+                    tokens,
+                    'texto',
+                    texto.slice(posicion)
+                );
+
+                return tokens;
+            }
+
+            async function escribirTextoEnElemento(elemento, texto) {
+                const partes = String(texto || '').match(/\S+\s*/g) || [texto];
+
+                for (const parte of partes) {
+                    elemento.appendChild(
+                        document.createTextNode(parte)
+                    );
+
+                    messages.scrollTop = messages.scrollHeight;
+
+                    await esperar(
+                        parte.length > 12 ? 70 : 45
+                    );
+                }
+            }
+
             async function agregarMensajeEscribiendo(texto) {
                 const contenido = String(texto || '');
 
@@ -711,16 +782,33 @@
                     return mensaje;
                 }
 
-                const partes = contenido.match(/\S+\s*/g) || [contenido];
-                let textoVisible = '';
+                const tokens = dividirMarkdownParaEscritura(contenido);
 
-                for (const parte of partes) {
-                    textoVisible += parte;
-                    mensaje.textContent = textoVisible;
-                    messages.scrollTop = messages.scrollHeight;
+                for (const token of tokens) {
+                    if (token.tipo === 'salto') {
+                        mensaje.appendChild(
+                            document.createElement('br')
+                        );
 
-                    await esperar(
-                        parte.length > 12 ? 70 : 45
+                        messages.scrollTop = messages.scrollHeight;
+                        continue;
+                    }
+
+                    if (token.tipo === 'negrita') {
+                        const negrita = document.createElement('strong');
+                        mensaje.appendChild(negrita);
+
+                        await escribirTextoEnElemento(
+                            negrita,
+                            token.texto
+                        );
+
+                        continue;
+                    }
+
+                    await escribirTextoEnElemento(
+                        mensaje,
+                        token.texto
                     );
                 }
 

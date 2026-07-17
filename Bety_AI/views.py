@@ -50,6 +50,7 @@ from .view_logic.chat_conversacion import (
     iniciar_recoleccion_perfil_conversacion,
     formatear_historial_conversacion,
     agregar_historial_conversacion,
+    obtener_ultima_pregunta_conversacion,
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
@@ -66,6 +67,7 @@ from .view_logic.chat_respuestas_ia import (
 from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
     combinar_filtros_consulta_y_perfil,
+    construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
     fragmentos_suficientes_para_responder,
@@ -658,7 +660,9 @@ def api_consulta_ia(request):
         extraer_filtros_consulta(request.data),
         perfil_usuario,
     )
-    pregunta_busqueda = construir_pregunta_busqueda_con_perfil(pregunta, perfil_usuario)
+    ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
+    pregunta_busqueda = construir_pregunta_busqueda_contextual(pregunta, ultima_pregunta)
+    pregunta_busqueda = construir_pregunta_busqueda_con_perfil(pregunta_busqueda, perfil_usuario)
 
     try:
         fragmentos, _ = buscar_fragmentos_con_fallback(

@@ -240,6 +240,25 @@
             opacity: 0.72;
         }
 
+        .bety-message.typing::after {
+            content: '|';
+            display: inline-block;
+            margin-left: 2px;
+            animation: betyTypingCursor 0.8s infinite;
+        }
+
+        @keyframes betyTypingCursor {
+            0%,
+            45% {
+                opacity: 1;
+            }
+
+            46%,
+            100% {
+                opacity: 0;
+            }
+        }
+
         .bety-message.error {
             border-color: #d85d5d;
             background: #fff1f1;
@@ -657,6 +676,61 @@
                 return mensaje;
             }
 
+            function esperar(ms) {
+                return new Promise(
+                    function (resolve) {
+                        setTimeout(resolve, ms);
+                    }
+                );
+            }
+
+            async function agregarMensajeEscribiendo(texto) {
+                const contenido = String(texto || '');
+
+                const mensaje = document.createElement(
+                    'div'
+                );
+
+                mensaje.classList.add(
+                    'bety-message',
+                    'bot',
+                    'typing'
+                );
+
+                messages.appendChild(mensaje);
+
+                if (
+                    window.matchMedia &&
+                    window.matchMedia(
+                        '(prefers-reduced-motion: reduce)'
+                    ).matches
+                ) {
+                    mensaje.classList.remove('typing');
+                    mensaje.innerHTML = formatearMarkdownBasico(contenido);
+                    messages.scrollTop = messages.scrollHeight;
+                    return mensaje;
+                }
+
+                const partes = contenido.match(/\S+\s*/g) || [contenido];
+                let textoVisible = '';
+
+                for (const parte of partes) {
+                    textoVisible += parte;
+                    mensaje.textContent = textoVisible;
+                    messages.scrollTop = messages.scrollHeight;
+
+                    await esperar(
+                        parte.length > 12 ? 70 : 45
+                    );
+                }
+
+                mensaje.classList.remove('typing');
+                mensaje.innerHTML = formatearMarkdownBasico(contenido);
+                messages.scrollTop = messages.scrollHeight;
+
+                return mensaje;
+            }
+
             function agregarFuentes(fuentes) {
                 if (
                     !Array.isArray(fuentes) ||
@@ -769,12 +843,13 @@
                 input.value = '';
 
                 const mensajesCarga = [
-                    'Analizando tu mensaje...',
-                    'Procesando tu solicitud...',
-                    'Interpretando tu consulta...',
-                    'Preparando una respuesta...',
-                    'Organizando la informacion...',
-                    'Redactando una respuesta...'
+                    'Procesando...',
+                    'En proceso...',
+                    'Trabajando...',
+                    'En curso...',
+                    'Cargando...',
+                    'Un momento...',
+                    'Un instante...'
                 ];
 
                 let indiceCarga = 0;
@@ -860,9 +935,8 @@
                         return;
                     }
 
-                    agregarMensaje(
-                        datos.respuesta,
-                        'bot'
+                    await agregarMensajeEscribiendo(
+                        datos.respuesta
                     );
 
                     agregarFuentes(

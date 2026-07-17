@@ -29,8 +29,45 @@ def normalizar_lista_contexto(valor, limite_items=12):
     return ", ".join(items)
 
 
+def es_rol_estudiante(perfil):
+    if not isinstance(perfil, dict):
+        return False
+
+    return normalizar_texto(perfil.get("rol") or perfil.get("usuario")) == "estudiante"
+
+
+def obtener_tipo_estudiante(contexto):
+    if not isinstance(contexto, dict):
+        return ""
+
+    for campo in [
+        "tipo_estudiante",
+        "tipo_estudio",
+        "nivel_formacion",
+        "nivel_academico",
+        "formacion",
+    ]:
+        valor = limpiar_texto_contexto(contexto.get(campo), 200)
+        if valor:
+            return valor
+
+    return ""
+
+
+def perfil_estudiante_requiere_tipo(perfil):
+    return es_rol_estudiante(perfil) and not obtener_tipo_estudiante(perfil)
+
+
 def obtener_contexto_usuario_sga(data):
-    contexto = data.get("contexto_sga") or data.get("usuario_sga") or data.get("usuario")
+    contexto = data.get("contexto_sga") or data.get("usuario_sga")
+    if contexto is None:
+        usuario = data.get("usuario")
+        if isinstance(usuario, dict):
+            contexto = usuario
+        elif any(campo in data for campo in ["rol", "nombre", "facultad", "carrera"]):
+            contexto = data
+        else:
+            contexto = usuario
 
     if isinstance(contexto, str) and contexto.strip():
         try:
@@ -47,6 +84,7 @@ def obtener_contexto_usuario_sga(data):
         "edad",
         "sexo",
         "facultad",
+        "tipo_estudiante",
         "periodo_academico",
         "carrera",
         "nivel",
@@ -58,6 +96,17 @@ def obtener_contexto_usuario_sga(data):
         valor = limpiar_texto_contexto(contexto.get(campo), 200)
         if valor:
             perfil[campo] = valor
+
+    if not perfil.get("rol") and normalizar_texto(contexto.get("usuario")) in {
+        "estudiante",
+        "docente",
+        "aspirante",
+    }:
+        perfil["rol"] = limpiar_texto_contexto(contexto.get("usuario"), 200)
+
+    tipo_estudiante = obtener_tipo_estudiante(contexto)
+    if tipo_estudiante:
+        perfil["tipo_estudiante"] = tipo_estudiante
 
     materias = normalizar_lista_contexto(contexto.get("materias"))
     if materias:
@@ -83,6 +132,7 @@ def construir_contexto_usuario_prompt(perfil):
         "edad": "Edad",
         "sexo": "Sexo",
         "facultad": "Facultad",
+        "tipo_estudiante": "Tipo de estudiante",
         "periodo_academico": "Periodo academico",
         "carrera": "Carrera",
         "nivel": "Nivel",

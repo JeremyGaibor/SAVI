@@ -777,15 +777,35 @@
                     'Redactando una respuesta...'
                 ];
 
-                const textoCarga = mensajesCarga[
-                    Math.floor(Math.random() * mensajesCarga.length)
-                ];
+                let indiceCarga = 0;
 
                 const mensajeCargando = agregarMensaje(
-                    textoCarga,
+                    mensajesCarga[indiceCarga],
                     'bot',
                     'loading'
                 );
+
+                const intervaloCarga = setInterval(
+                    function () {
+                        indiceCarga = (
+                            indiceCarga + 1
+                        ) % mensajesCarga.length;
+
+                        mensajeCargando.textContent =
+                            mensajesCarga[indiceCarga];
+
+                        messages.scrollTop = messages.scrollHeight;
+                    },
+                    1400
+                );
+
+                function detenerCarga() {
+                    clearInterval(intervaloCarga);
+
+                    if (mensajeCargando.parentNode) {
+                        mensajeCargando.remove();
+                    }
+                }
 
                 cambiarEstado(true);
 
@@ -823,7 +843,7 @@
                         );
                     }
 
-                    mensajeCargando.remove();
+                    detenerCarga();
 
                     if (!respuesta.ok || !datos.ok) {
                         agregarMensaje(
@@ -850,7 +870,7 @@
                     );
 
                 } catch (error) {
-                    mensajeCargando.remove();
+                    detenerCarga();
 
                     agregarMensaje(
                         error.message ||

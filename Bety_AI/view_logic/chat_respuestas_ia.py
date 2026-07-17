@@ -61,31 +61,3 @@ def respuesta_servidor_ia_no_disponible():
         "Verifique que AWS/Qwen u Ollama estén encendidos e intente nuevamente."
     )
 
-
-def fragmentos_suficientes_para_responder(fragmentos):
-    if not fragmentos:
-        return False
-
-    mejor_coincidencia = max(
-        float(fragmento.get("coincidencia_lexica") or 0)
-        for fragmento in fragmentos
-    )
-
-    return mejor_coincidencia > 0
-
-
-def generar_respuesta_respaldo_fragmentos(fragmentos):
-    respuesta = (
-        "No pude consultar el modelo de IA en este momento, "
-        "pero encontre informacion relacionada en los documentos:\n\n"
-    )
-
-    for indice, fragmento in enumerate(fragmentos[:3], start=1):
-        metadata = fragmento.get("metadata", {})
-        contenido = fragmento.get("contenido", "").strip()
-        titulo = metadata.get("titulo", "Documento sin titulo")
-
-        respuesta += f"{indice}. {titulo}\n"
-        respuesta += f"{contenido[:650]}...\n\n"
-
-    return respuesta.strip()

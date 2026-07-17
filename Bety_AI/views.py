@@ -61,12 +61,12 @@ from .view_logic.chat_respuestas_ia import (
     generar_respuesta_controlada,
     respuesta_servidor_ia_no_disponible,
     limpiar_respuesta_ia,
-    fragmentos_suficientes_para_responder,
 )
 from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
     combinar_filtros_consulta_y_perfil,
     buscar_fragmentos_con_fallback,
+    fragmentos_suficientes_para_responder,
 )
 
 

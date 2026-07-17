@@ -1,11 +1,6 @@
 import re
-import unicodedata
 
-
-def normalizar_texto(valor):
-    texto = unicodedata.normalize("NFKD", str(valor or ""))
-    texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
-    return texto.lower().strip()
+from .contexto_usuario import normalizar_texto
 
 
 def es_consulta_ambito_bety(pregunta):
@@ -78,24 +73,6 @@ def es_pregunta_identidad(pregunta):
     ]
 
     return any(re.search(patron, texto) for patron in patrones)
-
-
-def respuesta_identidad_bety():
-    return (
-        "Soy Bety, una asistente virtual para el SGA UTEQ. "
-        "Mi proposito es ayudarte a consultar informacion de los documentos "
-        "institucionales disponibles, como procesos academicos, matriculacion, "
-        "aula virtual, evaluacion, nivelacion y otros tramites cargados en el sistema. "
-        "Si no encuentro respaldo suficiente en los documentos, te lo indicare."
-    )
-
-
-def respuesta_fuera_ambito():
-    return (
-        "¿Y tú para qué deseas saber eso? Eso no lo tengo en mi base de información. "
-        "Yo ando enfocada en ayudarte con documentos del SGA UTEQ, procesos académicos, "
-        "matrícula, aula virtual, evaluación y trámites institucionales."
-    )
 
 
 def es_interaccion_social(pregunta):

@@ -1,7 +1,17 @@
 from ..services.chroma_service import buscar_fragmentos
-from .chat_clasificacion import normalizar_texto
-from .chat_respuestas_ia import fragmentos_suficientes_para_responder
-from .contexto_usuario import limpiar_texto_contexto
+from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
+
+
+def fragmentos_suficientes_para_responder(fragmentos):
+    if not fragmentos:
+        return False
+
+    mejor_coincidencia = max(
+        float(fragmento.get("coincidencia_lexica") or 0)
+        for fragmento in fragmentos
+    )
+
+    return mejor_coincidencia > 0
 
 
 def extraer_filtros_consulta(data):

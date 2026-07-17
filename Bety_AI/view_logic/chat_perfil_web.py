@@ -1,27 +1,8 @@
 from .contexto_usuario import limpiar_texto_contexto
 
-WEB_PERFIL_SESION_KEY = "bety_ai_perfil_web"
 WEB_PERFIL_PREGUNTA_KEY = "bety_ai_pregunta_pendiente"
 WEB_PERFIL_CAMPO_KEY = "bety_ai_campo_pendiente"
 WEB_PERFIL_CAMPOS_REQUERIDOS = ["rol", "facultad", "carrera"]
-
-
-def obtener_perfil_web(request):
-    perfil = request.session.get(WEB_PERFIL_SESION_KEY, {})
-    if isinstance(perfil, dict):
-        return perfil
-    return {}
-
-
-def guardar_perfil_web(request, perfil):
-    request.session[WEB_PERFIL_SESION_KEY] = perfil
-    request.session.modified = True
-
-
-def guardar_pendiente_perfil_web(request, pregunta, campo):
-    request.session[WEB_PERFIL_PREGUNTA_KEY] = pregunta
-    request.session[WEB_PERFIL_CAMPO_KEY] = campo
-    request.session.modified = True
 
 
 def limpiar_pendiente_perfil_web(request):
@@ -58,32 +39,3 @@ def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None):
         "periodo_academico": "¿Cuál es tu periodo académico?",
     }
     return preguntas.get(campo, "Dame ese dato para continuar.")
-
-
-def guardar_respuesta_campo_perfil_web(request, respuesta):
-    campo = request.session.get(WEB_PERFIL_CAMPO_KEY)
-    pregunta_pendiente = request.session.get(WEB_PERFIL_PREGUNTA_KEY)
-
-    if not campo or not pregunta_pendiente:
-        return None
-
-    perfil = obtener_perfil_web(request)
-    perfil[campo] = limpiar_texto_contexto(respuesta, 200)
-    guardar_perfil_web(request, perfil)
-
-    siguiente_campo = obtener_siguiente_campo_perfil_web(perfil)
-    if siguiente_campo:
-        guardar_pendiente_perfil_web(request, pregunta_pendiente, siguiente_campo)
-        return {
-            "completo": False,
-            "pregunta_original": pregunta_pendiente,
-            "respuesta": pregunta_campo_perfil_web(siguiente_campo),
-            "perfil": perfil,
-        }
-
-    limpiar_pendiente_perfil_web(request)
-    return {
-        "completo": True,
-        "pregunta_original": pregunta_pendiente,
-        "perfil": perfil,
-    }

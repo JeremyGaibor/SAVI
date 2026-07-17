@@ -1,5 +1,12 @@
 import json
 import re
+import unicodedata
+
+
+def normalizar_texto(valor):
+    texto = unicodedata.normalize("NFKD", str(valor or ""))
+    texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
+    return texto.lower().strip()
 
 
 def limpiar_texto_contexto(valor, limite=500):

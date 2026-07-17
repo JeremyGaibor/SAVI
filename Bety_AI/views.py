@@ -66,6 +66,7 @@ from .view_logic.chat_respuestas_ia import (
 from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
     combinar_filtros_consulta_y_perfil,
+    construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
     fragmentos_suficientes_para_responder,
 )
@@ -657,10 +658,11 @@ def api_consulta_ia(request):
         extraer_filtros_consulta(request.data),
         perfil_usuario,
     )
+    pregunta_busqueda = construir_pregunta_busqueda_con_perfil(pregunta, perfil_usuario)
 
     try:
         fragmentos, _ = buscar_fragmentos_con_fallback(
-            pregunta=pregunta,
+            pregunta=pregunta_busqueda,
             filtros=filtros,
             total_resultados=3,
         )

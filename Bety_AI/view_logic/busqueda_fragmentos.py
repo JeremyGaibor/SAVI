@@ -92,6 +92,9 @@ def construir_pregunta_busqueda_con_perfil(pregunta, perfil):
     if not isinstance(perfil, dict):
         return pregunta_busqueda
 
+    if not consulta_usa_tipo_estudiante(pregunta_busqueda):
+        return pregunta_busqueda
+
     tipo_estudiante = normalizar_tipo_estudio(
         perfil.get("tipo_estudiante")
         or perfil.get("tipo_estudio")
@@ -105,6 +108,24 @@ def construir_pregunta_busqueda_con_perfil(pregunta, perfil):
         return pregunta_busqueda
 
     return f"{pregunta_busqueda} {tipo_estudiante}".strip()
+
+
+def consulta_usa_tipo_estudiante(pregunta):
+    texto = normalizar_texto(pregunta)
+    tema = detectar_tema_consulta(pregunta)
+
+    if tema == "matricula":
+        return True
+
+    palabras_nivel_estudio = [
+        "admision",
+        "admisiones",
+        "inscripcion",
+        "inscribirme",
+        "requisito",
+        "requisitos",
+    ]
+    return any(palabra in texto for palabra in palabras_nivel_estudio)
 
 
 def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):
@@ -124,13 +145,25 @@ def relajar_filtros_busqueda(filtros):
 
     filtros_base = dict(filtros)
     variantes = [filtros_base]
+    campos_relajables = ["tipo_estudio", "facultad", "carrera", "rol"]
 
-    for campo in ["tipo_estudio", "facultad", "carrera", "rol"]:
+    for campo in campos_relajables:
         if campo in filtros_base:
             relajado = dict(filtros_base)
             relajado.pop(campo, None)
             if relajado and relajado not in variantes:
                 variantes.append(relajado)
+
+    for campos_a_quitar in [
+        ["facultad", "carrera"],
+        ["tipo_estudio", "facultad", "carrera"],
+        ["facultad", "carrera", "rol"],
+    ]:
+        relajado = dict(filtros_base)
+        for campo in campos_a_quitar:
+            relajado.pop(campo, None)
+        if relajado and relajado not in variantes:
+            variantes.append(relajado)
 
     if {} not in variantes:
         variantes.append({})

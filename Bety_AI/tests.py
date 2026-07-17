@@ -123,10 +123,27 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertIn("pregrado", pregunta.lower())
         self.assertIn("grado", pregunta.lower())
 
+    def test_tipo_estudiante_no_se_agrega_a_temas_no_relacionados(self):
+        pregunta = construir_pregunta_busqueda_con_perfil(
+            "como ingreso al aula virtual",
+            {"rol": "estudiante", "tipo_estudiante": "PREGRADO"},
+        )
+
+        self.assertEqual(pregunta, "como ingreso al aula virtual")
+
     def test_fallback_relaja_tipo_estudio_si_no_hay_resultados(self):
         variantes = relajar_filtros_busqueda({
             "tipo_estudio": "GRADO",
             "rol": "ESTUDIANTE",
+        })
+
+        self.assertIn({"rol": "ESTUDIANTE"}, variantes)
+
+    def test_fallback_prueba_rol_sin_facultad_ni_carrera(self):
+        variantes = relajar_filtros_busqueda({
+            "rol": "ESTUDIANTE",
+            "facultad": "FACULTAD DE CIENCIAS INFORMATICAS",
+            "carrera": "INGENIERIA EN SISTEMAS",
         })
 
         self.assertIn({"rol": "ESTUDIANTE"}, variantes)

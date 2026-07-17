@@ -4,6 +4,13 @@ from rest_framework.test import APIRequestFactory
 from unittest.mock import patch
 
 from .views import api_procesar_documento
+from .view_logic.busqueda_fragmentos import construir_filtros_desde_perfil
+from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
+from .view_logic.contexto_usuario import (
+    construir_contexto_usuario_prompt,
+    obtener_contexto_usuario_sga,
+    perfil_estudiante_requiere_tipo,
+)
 from .services.pdf_service import (
     dividir_documento_en_fragmentos,
     dividir_paginas_en_fragmentos,
@@ -48,6 +55,50 @@ class FragmentacionDocumentoTests(SimpleTestCase):
     def test_modo_caracteres_lee_tamano_desde_env(self):
         with patch("Bety_AI.services.pdf_service.FRAGMENTATION_MODE", "caracteres1200"):
             self.assertEqual(obtener_modo_fragmentacion(), ("characters", 1200))
+
+
+class ContextoUsuarioSgaTests(SimpleTestCase):
+    def test_estudiante_sga_sin_tipo_requiere_pregrado_o_posgrado(self):
+        perfil = obtener_contexto_usuario_sga({
+            "usuario": "estudiante",
+            "rol": "estudiante",
+            "nombre": "Maria",
+            "facultad": "Ciencias Informaticas",
+            "carrera": "Ingenieria en Sistemas",
+        })
+
+        self.assertTrue(perfil_estudiante_requiere_tipo(perfil))
+        self.assertEqual(obtener_siguiente_campo_perfil_web(perfil), "tipo_estudiante")
+
+    def test_docente_sga_no_requiere_tipo_estudiante(self):
+        perfil = obtener_contexto_usuario_sga({
+            "usuario": {
+                "rol": "docente",
+                "nombre": "Carlos",
+                "facultad": "Ciencias Informaticas",
+                "materias_que_da": ["Programacion"],
+            }
+        })
+
+        self.assertFalse(perfil_estudiante_requiere_tipo(perfil))
+        self.assertNotEqual(obtener_siguiente_campo_perfil_web(perfil), "tipo_estudiante")
+
+    def test_tipo_estudiante_llega_al_prompt_y_a_filtros(self):
+        perfil = obtener_contexto_usuario_sga({
+            "usuario": {
+                "rol": "estudiante",
+                "tipo_estudio": "Pregrado",
+                "facultad": "Ciencias Informaticas",
+                "carrera": "Ingenieria en Sistemas",
+            }
+        })
+
+        prompt = construir_contexto_usuario_prompt(perfil)
+        filtros = construir_filtros_desde_perfil(perfil)
+
+        self.assertFalse(perfil_estudiante_requiere_tipo(perfil))
+        self.assertIn("- Tipo de estudiante: Pregrado", prompt)
+        self.assertEqual(filtros["tipo_estudio"], "PREGRADO")
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

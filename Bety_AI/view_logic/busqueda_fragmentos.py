@@ -29,6 +29,7 @@ def extraer_filtros_consulta(data):
         "carrera",
         "tipo_documento",
         "tipo_estudio",
+        "tipo_estudiante",
         "id_documento",
         "grupo",
     ]
@@ -44,6 +45,8 @@ def extraer_filtros_consulta(data):
             continue
         if clave == "acceso":
             clave = "ambito"
+        if clave == "tipo_estudiante":
+            clave = "tipo_estudio"
         if clave == "ambito" and isinstance(valor, str):
             valor = valor.upper()
         filtros_limpios[clave] = valor
@@ -71,6 +74,14 @@ def construir_filtros_desde_perfil(perfil):
         valor = normalizar_valor_filtro_perfil(perfil.get(campo))
         if valor:
             filtros[campo] = valor
+
+    tipo_estudiante = normalizar_valor_filtro_perfil(
+        perfil.get("tipo_estudiante")
+        or perfil.get("tipo_estudio")
+        or perfil.get("nivel_formacion")
+    )
+    if tipo_estudiante:
+        filtros["tipo_estudio"] = tipo_estudiante
 
     return filtros
 

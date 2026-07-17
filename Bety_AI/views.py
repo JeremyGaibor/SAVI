@@ -40,6 +40,7 @@ from .view_logic.documentos import (
 from .view_logic.contexto_usuario import (
     obtener_contexto_usuario_sga,
     construir_contexto_usuario_prompt,
+    perfil_estudiante_requiere_tipo,
 )
 from .view_logic.chat_conversacion import (
     normalizar_conversation_id,
@@ -400,14 +401,66 @@ def api_consulta_ia(request):
     perfil_usuario = {}
     perfil_en_recoleccion = None
     pregunta_original_web = None
+    resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
 
     if perfil_sga:
-        guardar_perfil_sga_conversacion(conversation_id, perfil_sga)
-        perfil_usuario = perfil_sga
-        limpiar_pendiente_perfil_web(request)
-    else:
-        resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
+        if resultado_recoleccion and not resultado_recoleccion["completo"]:
+            respuesta = resultado_recoleccion["respuesta"]
+            guardar_interaccion_temporal(
+                request=request,
+                pregunta=pregunta,
+                respuesta=respuesta,
+                tipo_respuesta="SOLICITUD_CONTEXTO_SGA",
+            )
 
+            return Response(
+                {
+                    "ok": True,
+                    "pregunta": pregunta,
+                    "conversation_id": conversation_id,
+                    "tipo_respuesta": "SOLICITUD_CONTEXTO_SGA",
+                    "respuesta": respuesta,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        if resultado_recoleccion and resultado_recoleccion["completo"]:
+            perfil_usuario = {**perfil_sga, **resultado_recoleccion["perfil"]}
+            pregunta_original_web = resultado_recoleccion["pregunta_original"]
+            pregunta = pregunta_original_web
+            guardar_perfil_sga_conversacion(conversation_id, perfil_usuario)
+        else:
+            guardar_perfil_sga_conversacion(conversation_id, perfil_sga)
+            perfil_usuario = perfil_sga
+
+        limpiar_pendiente_perfil_web(request)
+
+        if not pregunta_original_web and perfil_estudiante_requiere_tipo(perfil_usuario):
+            respuesta = iniciar_recoleccion_perfil_conversacion(
+                conversation_id,
+                pregunta,
+                perfil_usuario,
+            )
+
+            if respuesta:
+                guardar_interaccion_temporal(
+                    request=request,
+                    pregunta=pregunta,
+                    respuesta=respuesta,
+                    tipo_respuesta="SOLICITUD_CONTEXTO_SGA",
+                )
+
+                return Response(
+                    {
+                        "ok": True,
+                        "pregunta": pregunta,
+                        "conversation_id": conversation_id,
+                        "tipo_respuesta": "SOLICITUD_CONTEXTO_SGA",
+                        "respuesta": respuesta,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+    else:
         if resultado_recoleccion and not resultado_recoleccion["completo"]:
             respuesta = resultado_recoleccion["respuesta"]
             guardar_interaccion_temporal(

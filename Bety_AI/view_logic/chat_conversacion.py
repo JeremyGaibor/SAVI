@@ -87,6 +87,23 @@ def formatear_historial_conversacion(conversation_id):
     return "\n\n".join(bloques)
 
 
+def obtener_ultima_pregunta_conversacion(conversation_id):
+    if not conversation_id:
+        return ""
+
+    estado = obtener_estado_conversacion(conversation_id)
+    historial_qa = estado.get("historial_qa")
+    if not isinstance(historial_qa, list):
+        return ""
+
+    for item in reversed(historial_qa):
+        pregunta = limpiar_texto_contexto(item.get("pregunta"), 300)
+        if pregunta:
+            return pregunta
+
+    return ""
+
+
 def guardar_perfil_sga_conversacion(conversation_id, perfil_sga):
     estado = obtener_estado_conversacion(conversation_id)
     estado["perfil_usuario"] = perfil_sga

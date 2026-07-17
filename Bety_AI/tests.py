@@ -6,6 +6,7 @@ from unittest.mock import patch
 from .views import api_procesar_documento
 from .view_logic.busqueda_fragmentos import (
     construir_filtros_desde_perfil,
+    construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     extraer_filtros_consulta,
     relajar_filtros_busqueda,
@@ -147,6 +148,22 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         })
 
         self.assertIn({"rol": "ESTUDIANTE"}, variantes)
+
+    def test_seguimiento_usa_tema_anterior_para_busqueda(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "dame el paso a paso",
+            "como puedo matricularme",
+        )
+
+        self.assertEqual(pregunta, "como puedo matricularme dame el paso a paso")
+
+    def test_cambio_de_tema_no_usa_pregunta_anterior(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "como ingreso al aula virtual",
+            "como puedo matricularme",
+        )
+
+        self.assertEqual(pregunta, "como ingreso al aula virtual")
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

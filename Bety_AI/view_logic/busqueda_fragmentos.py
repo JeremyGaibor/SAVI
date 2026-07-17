@@ -1,3 +1,5 @@
+import re
+
 from ..services.chroma_service import buscar_fragmentos
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
@@ -108,6 +110,45 @@ def construir_pregunta_busqueda_con_perfil(pregunta, perfil):
         return pregunta_busqueda
 
     return f"{pregunta_busqueda} {tipo_estudiante}".strip()
+
+
+def es_pregunta_seguimiento(pregunta):
+    texto = normalizar_texto(pregunta)
+    if detectar_tema_consulta(texto):
+        return False
+
+    patrones = [
+        r"\bpaso a paso\b",
+        r"\bdetallamelo\b",
+        r"\bdetalle\b",
+        r"\bexplicame\b",
+        r"\bmas claro\b",
+        r"\bmejor\b",
+        r"\beso\b",
+        r"\beste proceso\b",
+        r"\bese proceso\b",
+        r"\bcomo hago\b",
+        r"\bcomo seria\b",
+        r"\bque sigue\b",
+        r"\by despues\b",
+    ]
+    return any(re.search(patron, texto) for patron in patrones)
+
+
+def construir_pregunta_busqueda_contextual(pregunta, pregunta_anterior=""):
+    pregunta_limpia = limpiar_texto_contexto(pregunta, 500)
+    anterior_limpia = limpiar_texto_contexto(pregunta_anterior, 300)
+
+    if not pregunta_limpia or detectar_tema_consulta(pregunta_limpia):
+        return pregunta_limpia
+
+    if not anterior_limpia or not es_pregunta_seguimiento(pregunta_limpia):
+        return pregunta_limpia
+
+    if not detectar_tema_consulta(anterior_limpia):
+        return pregunta_limpia
+
+    return f"{anterior_limpia} {pregunta_limpia}".strip()
 
 
 def consulta_usa_tipo_estudiante(pregunta):

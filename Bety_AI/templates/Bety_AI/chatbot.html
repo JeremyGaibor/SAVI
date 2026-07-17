@@ -768,8 +768,21 @@
 
                 input.value = '';
 
+                const mensajesCarga = [
+                    'Analizando tu mensaje...',
+                    'Procesando tu solicitud...',
+                    'Interpretando tu consulta...',
+                    'Preparando una respuesta...',
+                    'Organizando la informacion...',
+                    'Redactando una respuesta...'
+                ];
+
+                const textoCarga = mensajesCarga[
+                    Math.floor(Math.random() * mensajesCarga.length)
+                ];
+
                 const mensajeCargando = agregarMensaje(
-                    'Buscando en los documentos...',
+                    textoCarga,
                     'bot',
                     'loading'
                 );

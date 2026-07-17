@@ -25,10 +25,14 @@ def consultar_qwen(prompt):
 
     # stream=False simplifica el consumo desde Django porque Ollama responde
     # un solo JSON con el texto completo generado por el modelo.
+    # think=False es necesario porque qwen3 es un modelo hibrido de razonamiento:
+    # si no se desactiva, Ollama puede devolver el bloque de pensamiento interno
+    # mezclado dentro de "response", lo que se percibe como 2 respuestas seguidas.
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
-        "stream": False
+        "stream": False,
+        "think": False
     }
 
     response = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)

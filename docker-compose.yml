@@ -12,6 +12,7 @@ services:
 
     environment:
       DATABASE_PATH: /app/data/db.sqlite3
+      REDIS_URL: redis://redis:6379/0
 
     volumes:
       - sqlite_data:/app/data
@@ -21,6 +22,7 @@ services:
 
     depends_on:
       - chromadb
+      - redis
 
   chromadb:
     image: chromadb/chroma:latest
@@ -32,6 +34,14 @@ services:
 
     volumes:
       - chroma_data:/chroma/chroma
+
+  redis:
+    image: redis:7-alpine
+    container_name: bety_ai_redis
+    restart: unless-stopped
+
+    expose:
+      - "6379"
 
 volumes:
   chroma_data:

@@ -70,6 +70,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
+    filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
 )
 
@@ -680,6 +681,12 @@ def api_consulta_ia(request):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+    fragmentos = filtrar_fragmentos_por_tipo_estudiante(
+        pregunta_busqueda,
+        perfil_usuario,
+        fragmentos,
+    )
 
     if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
         try:

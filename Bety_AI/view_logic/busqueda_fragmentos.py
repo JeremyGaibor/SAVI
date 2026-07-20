@@ -304,8 +304,8 @@ def detectar_tema_consulta(pregunta):
 
     if any(palabra in texto for palabra in ["matricula", "matriculacion", "matricular"]):
         if not any(palabra in texto for palabra in [
-            "ayuda",
-            "ayudas",
+            "ayuda economica",
+            "ayudas economicas",
             "economica",
             "economicas",
             "beca",
@@ -367,9 +367,30 @@ def fragmento_pertenece_tema(fragmento, tema):
     )
 
     if tema == "matricula":
-        if any(palabra in texto_revision for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"]):
+        if any(palabra in texto_revision for palabra in [
+            "ayuda economica",
+            "ayudas economicas",
+            "beca",
+            "becas",
+            "modelo evaluativo",
+            "evaluacion",
+            "evaluaciones",
+            "calificacion",
+            "calificaciones",
+            "gestion en el aula",
+            "trabajo autonomo",
+            "examen final",
+        ]):
             return False
-        return any(palabra in texto_revision for palabra in ["matricula", "matriculacion", "matricular"])
+        return any(palabra in texto_revision for palabra in [
+            "matriculacion",
+            "matricular",
+            "proceso de matricula",
+            "proceso para la matricula",
+            "matricula en linea",
+            "matricula academica",
+            "periodo de matricula",
+        ])
 
     if tema == "ayudas_economicas":
         return any(palabra in texto_revision for palabra in [

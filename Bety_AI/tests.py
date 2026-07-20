@@ -11,6 +11,7 @@ from .view_logic.busqueda_fragmentos import (
     detectar_tema_consulta,
     extraer_filtros_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
+    fragmento_pertenece_tema,
     relajar_filtros_busqueda,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
@@ -182,6 +183,26 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
             "como justifico mi inasistencia dame un paso a paso mas corto",
         )
         self.assertEqual(detectar_tema_consulta(pregunta), "asistencia")
+
+    def test_resumen_de_matriculacion_mantiene_tema_anterior(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "resumelo",
+            "ayudame con el proceso de matriculacion",
+        )
+
+        self.assertEqual(
+            pregunta,
+            "ayudame con el proceso de matriculacion resumelo",
+        )
+        self.assertEqual(detectar_tema_consulta(pregunta), "matricula")
+
+    def test_filtro_matricula_excluye_modelo_evaluativo(self):
+        fragmento = {
+            "contenido": "El modelo evaluativo tiene GA 35%, TA 35% y EV 30%. En segunda matricula la nota maxima es 7.00.",
+            "metadata": {"titulo": "Modelo evaluativo"},
+        }
+
+        self.assertFalse(fragmento_pertenece_tema(fragmento, "matricula"))
 
     def test_cambio_de_tema_no_usa_pregunta_anterior(self):
         pregunta = construir_pregunta_busqueda_contextual(

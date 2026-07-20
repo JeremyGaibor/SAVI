@@ -140,9 +140,23 @@ def es_pregunta_seguimiento(pregunta):
         r"\bdetallamelo\b",
         r"\bdetalle\b",
         r"\bexplicame\b",
+        r"\bampliame\b",
+        r"\bamplia\b",
+        r"\bprofundiza\b",
+        r"\bmas contexto\b",
+        r"\bmas informacion\b",
+        r"\bmas especifico\b",
+        r"\bmas especifica\b",
+        r"\bmas corto\b",
+        r"\bmas corta\b",
+        r"\bresumelo\b",
+        r"\bresumen\b",
         r"\bmas claro\b",
         r"\bmejor\b",
         r"\beso\b",
+        r"\besto\b",
+        r"\blo anterior\b",
+        r"\bdel tema\b",
         r"\beste proceso\b",
         r"\bese proceso\b",
         r"\bcomo hago\b",
@@ -161,9 +175,6 @@ def construir_pregunta_busqueda_contextual(pregunta, pregunta_anterior=""):
         return pregunta_limpia
 
     if not anterior_limpia or not es_pregunta_seguimiento(pregunta_limpia):
-        return pregunta_limpia
-
-    if not detectar_tema_consulta(anterior_limpia):
         return pregunta_limpia
 
     return f"{anterior_limpia} {pregunta_limpia}".strip()
@@ -292,10 +303,28 @@ def detectar_tema_consulta(pregunta):
     texto = normalizar_texto(pregunta)
 
     if any(palabra in texto for palabra in ["matricula", "matriculacion", "matricular"]):
-        if not any(palabra in texto for palabra in ["ayuda", "ayudas", "economica", "economicas", "beca", "becas"]):
+        if not any(palabra in texto for palabra in [
+            "ayuda",
+            "ayudas",
+            "economica",
+            "economicas",
+            "beca",
+            "becas",
+            "ayudantia",
+            "ayudantias",
+        ]):
             return "matricula"
 
-    if any(palabra in texto for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"]):
+    if any(palabra in texto for palabra in [
+        "ayuda economica",
+        "ayudas economicas",
+        "ayudantia economica",
+        "ayudantias economicas",
+        "ayudantia",
+        "ayudantias",
+        "beca",
+        "becas",
+    ]):
         return "ayudas_economicas"
 
     if "aula virtual" in texto or texto.strip() == "aula":
@@ -303,6 +332,20 @@ def detectar_tema_consulta(pregunta):
 
     if any(palabra in texto for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion", "calificaciones"]):
         return "evaluacion"
+
+    if any(palabra in texto for palabra in [
+        "inasistencia",
+        "inasistencias",
+        "asistencia",
+        "asistencias",
+        "justificar",
+        "justificacion",
+        "atraso",
+        "atrasos",
+        "llegue tarde",
+        "llegar tarde",
+    ]):
+        return "asistencia"
 
     return ""
 
@@ -329,13 +372,36 @@ def fragmento_pertenece_tema(fragmento, tema):
         return any(palabra in texto_revision for palabra in ["matricula", "matriculacion", "matricular"])
 
     if tema == "ayudas_economicas":
-        return any(palabra in texto_revision for palabra in ["ayuda economica", "ayudas economicas", "beca", "becas"])
+        return any(palabra in texto_revision for palabra in [
+            "ayuda economica",
+            "ayudas economicas",
+            "ayudantia economica",
+            "ayudantias economicas",
+            "ayudantia",
+            "ayudantias",
+            "beca",
+            "becas",
+        ])
 
     if tema == "aula_virtual":
         return "aula virtual" in texto_revision
 
     if tema == "evaluacion":
         return any(palabra in texto_revision for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion"])
+
+    if tema == "asistencia":
+        return any(palabra in texto_revision for palabra in [
+            "inasistencia",
+            "inasistencias",
+            "asistencia",
+            "asistencias",
+            "justificar",
+            "justificacion",
+            "atraso",
+            "atrasos",
+            "llegue tarde",
+            "llegar tarde",
+        ])
 
     return True
 

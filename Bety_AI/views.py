@@ -51,6 +51,7 @@ from .view_logic.chat_conversacion import (
     formatear_historial_conversacion,
     agregar_historial_conversacion,
     obtener_ultima_pregunta_conversacion,
+    responder_pregunta_sobre_historial,
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
@@ -410,6 +411,7 @@ def api_consulta_ia(request):
     if perfil_sga:
         if resultado_recoleccion and not resultado_recoleccion["completo"]:
             respuesta = resultado_recoleccion["respuesta"]
+            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
             guardar_interaccion_temporal(
                 request=request,
                 pregunta=pregunta,
@@ -447,6 +449,7 @@ def api_consulta_ia(request):
             )
 
             if respuesta:
+                agregar_historial_conversacion(conversation_id, pregunta, respuesta)
                 guardar_interaccion_temporal(
                     request=request,
                     pregunta=pregunta,
@@ -467,6 +470,7 @@ def api_consulta_ia(request):
     else:
         if resultado_recoleccion and not resultado_recoleccion["completo"]:
             respuesta = resultado_recoleccion["respuesta"]
+            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
             guardar_interaccion_temporal(
                 request=request,
                 pregunta=pregunta,
@@ -508,6 +512,7 @@ def api_consulta_ia(request):
         )
 
         if respuesta:
+            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
             guardar_interaccion_temporal(
                 request=request,
                 pregunta=pregunta,
@@ -527,6 +532,27 @@ def api_consulta_ia(request):
             )
 
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
+
+    respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
+    if respuesta_historial:
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta_historial)
+        guardar_interaccion_temporal(
+            request=request,
+            pregunta=pregunta,
+            respuesta=respuesta_historial,
+            tipo_respuesta="HISTORIAL_CONVERSACION",
+        )
+
+        return Response(
+            {
+                "ok": True,
+                "pregunta": pregunta,
+                "conversation_id": conversation_id,
+                "tipo_respuesta": "HISTORIAL_CONVERSACION",
+                "respuesta": respuesta_historial,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     if es_pregunta_identidad(pregunta):
         try:
@@ -552,6 +578,7 @@ def api_consulta_ia(request):
             )
 
         respuesta = resultado_controlado["respuesta"]
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
         guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -595,6 +622,7 @@ def api_consulta_ia(request):
             )
 
         respuesta = resultado_controlado["respuesta"]
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
         guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -638,6 +666,7 @@ def api_consulta_ia(request):
             )
 
         respuesta = resultado_controlado["respuesta"]
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
         guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -712,6 +741,7 @@ def api_consulta_ia(request):
             )
 
         respuesta = resultado_controlado["respuesta"]
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
         guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,

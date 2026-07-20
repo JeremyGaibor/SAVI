@@ -1,4 +1,4 @@
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
 from unittest.mock import patch
@@ -15,6 +15,11 @@ from .view_logic.busqueda_fragmentos import (
     relajar_filtros_busqueda,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
+from .view_logic.chat_conversacion import (
+    agregar_historial_conversacion,
+    formatear_historial_conversacion,
+    responder_pregunta_sobre_historial,
+)
 from .view_logic.contexto_usuario import (
     construir_contexto_usuario_prompt,
     obtener_contexto_usuario_sga,
@@ -238,6 +243,55 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertEqual(len(filtrados), 1)
         self.assertIn("pregrado", filtrados[0]["contenido"])
+
+
+@override_settings(CACHES={
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-conversacion",
+    }
+})
+class HistorialConversacionTests(SimpleTestCase):
+    def test_responde_primer_mensaje_desde_historial(self):
+        conversation_id = "convtest01"
+        agregar_historial_conversacion(conversation_id, "Hola", "Hola, soy Bety.")
+        agregar_historial_conversacion(
+            conversation_id,
+            "Ayudame con el proceso de matriculacion",
+            "Respuesta de matriculacion",
+        )
+
+        respuesta = responder_pregunta_sobre_historial(
+            conversation_id,
+            "Cual fue el primer mensaje que te envie?",
+        )
+
+        self.assertEqual(
+            respuesta,
+            'Tu primer mensaje en esta conversacion fue: "Hola".',
+        )
+
+    def test_prompt_usa_ultimos_turnos_sin_perder_primer_mensaje(self):
+        conversation_id = "convtest02"
+        for indice in range(1, 7):
+            agregar_historial_conversacion(
+                conversation_id,
+                f"Pregunta {indice}",
+                f"Respuesta {indice}",
+            )
+
+        historial_prompt = formatear_historial_conversacion(conversation_id)
+        respuesta = responder_pregunta_sobre_historial(
+            conversation_id,
+            "cual fue mi primera pregunta?",
+        )
+
+        self.assertNotIn("Pregunta 1\n", historial_prompt)
+        self.assertIn("Pregunta 6", historial_prompt)
+        self.assertEqual(
+            respuesta,
+            'Tu primer mensaje en esta conversacion fue: "Pregunta 1".',
+        )
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

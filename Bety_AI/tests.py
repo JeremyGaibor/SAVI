@@ -8,6 +8,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
+    detectar_tema_consulta,
     extraer_filtros_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
     relajar_filtros_busqueda,
@@ -157,6 +158,30 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         )
 
         self.assertEqual(pregunta, "como puedo matricularme dame el paso a paso")
+
+    def test_seguimiento_mas_contexto_usa_pregunta_anterior(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "dame mas contexto",
+            "cual es el proceso para las ayudantias economicas",
+        )
+
+        self.assertEqual(
+            pregunta,
+            "cual es el proceso para las ayudantias economicas dame mas contexto",
+        )
+        self.assertEqual(detectar_tema_consulta(pregunta), "ayudas_economicas")
+
+    def test_seguimiento_mas_corto_usa_pregunta_anterior_sin_tema_legacy(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "dame un paso a paso mas corto",
+            "como justifico mi inasistencia",
+        )
+
+        self.assertEqual(
+            pregunta,
+            "como justifico mi inasistencia dame un paso a paso mas corto",
+        )
+        self.assertEqual(detectar_tema_consulta(pregunta), "asistencia")
 
     def test_cambio_de_tema_no_usa_pregunta_anterior(self):
         pregunta = construir_pregunta_busqueda_contextual(

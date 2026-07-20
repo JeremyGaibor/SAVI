@@ -76,6 +76,24 @@ def normalizar_tipo_estudio(valor):
     return limpiar_texto_contexto(valor, 120)
 
 
+def tipo_estudiante_perfil(perfil):
+    if not isinstance(perfil, dict):
+        return ""
+
+    texto = normalizar_texto(
+        perfil.get("tipo_estudiante")
+        or perfil.get("tipo_estudio")
+        or perfil.get("nivel_formacion")
+    )
+
+    if texto in {"pregrado", "grado"}:
+        return "pregrado"
+    if texto in {"posgrado", "postgrado"}:
+        return "posgrado"
+
+    return ""
+
+
 def construir_filtros_desde_perfil(perfil):
     if not isinstance(perfil, dict):
         return {}
@@ -161,12 +179,70 @@ def consulta_usa_tipo_estudiante(pregunta):
     palabras_nivel_estudio = [
         "admision",
         "admisiones",
+        "ayudante",
+        "ayudantia",
+        "ayudantias",
+        "catedra",
         "inscripcion",
         "inscribirme",
+        "remuneracion",
+        "estipendio",
         "requisito",
         "requisitos",
     ]
     return any(palabra in texto for palabra in palabras_nivel_estudio)
+
+
+def contiene_palabra(texto, palabra):
+    return re.search(rf"\b{re.escape(palabra)}\b", texto) is not None
+
+
+def menciona_pregrado(texto):
+    return contiene_palabra(texto, "pregrado") or contiene_palabra(texto, "grado")
+
+
+def menciona_posgrado(texto):
+    return contiene_palabra(texto, "posgrado") or contiene_palabra(texto, "postgrado")
+
+
+def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
+    metadata = fragmento.get("metadata") or {}
+    texto = normalizar_texto(
+        " ".join(
+            [
+                metadata.get("titulo", ""),
+                metadata.get("tipo_estudio", ""),
+                metadata.get("resumen_documento", ""),
+                fragmento.get("contenido", "")[:1200],
+            ]
+        )
+    )
+
+    if tipo_estudiante == "pregrado":
+        return menciona_posgrado(texto) and not menciona_pregrado(texto)
+    if tipo_estudiante == "posgrado":
+        return menciona_pregrado(texto) and not menciona_posgrado(texto)
+
+    return False
+
+
+def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
+    if not fragmentos or not consulta_usa_tipo_estudiante(pregunta):
+        return fragmentos
+
+    texto_pregunta = normalizar_texto(pregunta)
+    if menciona_pregrado(texto_pregunta) and menciona_posgrado(texto_pregunta):
+        return fragmentos
+
+    tipo_estudiante = tipo_estudiante_perfil(perfil)
+    if not tipo_estudiante:
+        return fragmentos
+
+    return [
+        fragmento
+        for fragmento in fragmentos
+        if not fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante)
+    ]
 
 
 def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):

@@ -9,6 +9,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     extraer_filtros_consulta,
+    filtrar_fragmentos_por_tipo_estudiante,
     relajar_filtros_busqueda,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
@@ -164,6 +165,33 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         )
 
         self.assertEqual(pregunta, "como ingreso al aula virtual")
+
+    def test_ayudante_de_catedra_respeta_pregrado_del_perfil(self):
+        pregunta = construir_pregunta_busqueda_con_perfil(
+            "cuanto gano como ayudante de catedra",
+            {"rol": "estudiante", "tipo_estudiante": "Pregrado"},
+        )
+        fragmentos = [
+            {
+                "contenido": "El ayudante de catedra de posgrado recibe USD 520.",
+                "metadata": {"titulo": "Ayudantes de posgrado"},
+                "coincidencia_lexica": 1,
+            },
+            {
+                "contenido": "El ayudante de catedra de pregrado recibe el estipendio establecido.",
+                "metadata": {"titulo": "Ayudantes de pregrado"},
+                "coincidencia_lexica": 1,
+            },
+        ]
+
+        filtrados = filtrar_fragmentos_por_tipo_estudiante(
+            pregunta,
+            {"rol": "estudiante", "tipo_estudiante": "Pregrado"},
+            fragmentos,
+        )
+
+        self.assertEqual(len(filtrados), 1)
+        self.assertIn("pregrado", filtrados[0]["contenido"])
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

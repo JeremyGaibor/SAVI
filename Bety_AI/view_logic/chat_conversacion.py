@@ -3,13 +3,14 @@ import re
 from django.core.cache import cache
 
 from .chat_perfil_web import obtener_siguiente_campo_perfil_web, pregunta_campo_perfil_web
-from .contexto_usuario import limpiar_texto_contexto
+from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
 CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
 # TTL de inactividad: cada guardado (guardar_estado_conversacion) reinicia el
 # contador, asi que la sesion expira solo si pasan 30 min sin nuevos turnos.
 CONVERSACION_TTL_SEGUNDOS = 60 * 30
-MAX_HISTORIAL_CONVERSACION = 4
+MAX_HISTORIAL_CONVERSACION = 20
+MAX_HISTORIAL_PROMPT = 4
 
 
 def normalizar_conversation_id(valor):
@@ -82,11 +83,52 @@ def formatear_historial_conversacion(conversation_id):
 
     bloques = [
         f"Usuario: {item.get('pregunta', '')}\nBety: {item.get('respuesta', '')}"
-        for item in historial_qa
+        for item in historial_qa[-MAX_HISTORIAL_PROMPT:]
         if item.get("pregunta") and item.get("respuesta")
     ]
 
     return "\n\n".join(bloques)
+
+
+def es_pregunta_sobre_historial(pregunta):
+    texto = normalizar_texto(limpiar_texto_contexto(pregunta, 300))
+    patrones = [
+        r"\bprimer mensaje\b",
+        r"\bprimera pregunta\b",
+        r"\bque te envie primero\b",
+        r"\bque te pregunte primero\b",
+        r"\bque fue lo primero\b",
+        r"\bultimo mensaje\b",
+        r"\bultima pregunta\b",
+        r"\bque te dije antes\b",
+        r"\bque te pregunte antes\b",
+    ]
+    return any(re.search(patron, texto) for patron in patrones)
+
+
+def responder_pregunta_sobre_historial(conversation_id, pregunta):
+    if not conversation_id or not es_pregunta_sobre_historial(pregunta):
+        return None
+
+    estado = obtener_estado_conversacion(conversation_id)
+    historial_qa = estado.get("historial_qa")
+    if not isinstance(historial_qa, list) or not historial_qa:
+        return "No tengo mensajes anteriores guardados en esta conversacion."
+
+    texto = normalizar_texto(limpiar_texto_contexto(pregunta, 300))
+
+    if any(patron in texto for patron in ["primer mensaje", "primera pregunta", "primero"]):
+        primer_mensaje = limpiar_texto_contexto(historial_qa[0].get("pregunta"), 300)
+        if primer_mensaje:
+            return f"Tu primer mensaje en esta conversacion fue: \"{primer_mensaje}\"."
+
+    if any(patron in texto for patron in ["ultimo mensaje", "ultima pregunta", "antes"]):
+        for item in reversed(historial_qa):
+            mensaje = limpiar_texto_contexto(item.get("pregunta"), 300)
+            if mensaje:
+                return f"Tu mensaje anterior fue: \"{mensaje}\"."
+
+    return "Tengo historial de esta conversacion, pero no pude identificar que mensaje quieres revisar."
 
 
 def obtener_ultima_pregunta_conversacion(conversation_id):

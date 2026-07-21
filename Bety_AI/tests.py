@@ -314,6 +314,8 @@ class HistorialConversacionTests(SimpleTestCase):
     def test_detecta_solicitud_de_reformulacion(self):
         self.assertTrue(es_solicitud_reformulacion("mas resumido"))
         self.assertTrue(es_solicitud_reformulacion("explicalo mejor"))
+        self.assertTrue(es_solicitud_reformulacion("dame una tabla"))
+        self.assertTrue(es_solicitud_reformulacion("muestrame en lista"))
         self.assertFalse(es_solicitud_reformulacion("como justifico mi inasistencia"))
 
     def test_obtiene_ultima_respuesta_de_conversacion(self):
@@ -411,6 +413,21 @@ class HistorialConversacionTests(SimpleTestCase):
 
         self.assertEqual(data["tipo_operacion"], "consulta_documental")
         self.assertEqual(data["formato_respuesta"], "lista")
+
+    def test_normaliza_interpretacion_de_formato_como_reformulacion(self):
+        interpretacion = normalizar_interpretacion(
+            {
+                "tipo_operacion": "reformulacion",
+                "consulta_normalizada": "",
+                "depende_historial": True,
+                "formato_respuesta": "tabla",
+            },
+            "dame una tabla",
+        )
+
+        self.assertEqual(interpretacion["tipo_operacion"], "reformulacion")
+        self.assertTrue(interpretacion["depende_historial"])
+        self.assertEqual(interpretacion["formato_respuesta"], "tabla")
 
     @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")

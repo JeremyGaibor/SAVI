@@ -150,6 +150,19 @@ def es_solicitud_reformulacion(pregunta):
         r"\bmejor explicado\b",
         r"\bmas sencillo\b",
         r"\bmas sencilla\b",
+        r"\bdame una tabla\b",
+        r"\bmuestrame una tabla\b",
+        r"\bmuestrame en tabla\b",
+        r"\ben tabla\b",
+        r"\btabla\b",
+        r"\bdame una lista\b",
+        r"\bmuestrame una lista\b",
+        r"\bmuestrame en lista\b",
+        r"\ben lista\b",
+        r"\blista\b",
+        r"\bdame el paso a paso\b",
+        r"\bhazlo paso a paso\b",
+        r"\bpaso a paso\b",
     ]
     return any(re.search(patron, texto) for patron in patrones)
 

@@ -462,8 +462,6 @@ def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
             ultimo_error = exc
             continue
 
-        fragmentos = filtrar_fragmentos_por_tema(pregunta, fragmentos)
-
         if fragmentos and fragmentos_suficientes_para_responder(fragmentos):
             return fragmentos, filtros_actuales
 

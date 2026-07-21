@@ -14,6 +14,10 @@ from .view_logic.busqueda_fragmentos import (
     fragmento_pertenece_tema,
     relajar_filtros_busqueda,
 )
+from .view_logic.interpretacion_consulta import (
+    extraer_json_interpretacion,
+    normalizar_interpretacion,
+)
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_conversacion import (
     agregar_historial_conversacion,
@@ -330,6 +334,7 @@ class HistorialConversacionTests(SimpleTestCase):
             "Respuesta mas reciente",
         )
 
+    @patch("Bety_AI.views.interpretar_consulta_ia")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
     @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
     @patch("Bety_AI.views.generar_reformulacion_respuesta")
@@ -338,6 +343,7 @@ class HistorialConversacionTests(SimpleTestCase):
         reformular_mock,
         guardar_temporal_mock,
         buscar_mock,
+        interpretar_mock,
     ):
         conversation_id = "convtest04"
         agregar_historial_conversacion(
@@ -347,6 +353,16 @@ class HistorialConversacionTests(SimpleTestCase):
         )
         reformular_mock.return_value = {
             "respuesta": "Ingresa al SGA y registra la solicitud de justificacion.",
+            "modelo": "qwen-test",
+        }
+        interpretar_mock.return_value = {
+            "tipo_operacion": "reformulacion",
+            "consulta_normalizada": "",
+            "consulta_busqueda": "",
+            "depende_historial": True,
+            "formato_respuesta": "resumen",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
             "modelo": "qwen-test",
         }
 
@@ -370,6 +386,87 @@ class HistorialConversacionTests(SimpleTestCase):
         reformular_mock.assert_called_once()
         guardar_temporal_mock.assert_called_once()
         buscar_mock.assert_not_called()
+
+    def test_normaliza_interpretacion_para_busqueda_enriquecida(self):
+        interpretacion = normalizar_interpretacion(
+            {
+                "tipo_operacion": "consulta_documental",
+                "consulta_normalizada": "ayudas economicas becas apoyo financiero",
+                "formato_respuesta": "tabla",
+                "palabras_clave": ["beneficios estudiantiles", "estipendio"],
+            },
+            "beneficios para estudiantes",
+        )
+
+        self.assertEqual(interpretacion["tipo_operacion"], "consulta_documental")
+        self.assertEqual(interpretacion["formato_respuesta"], "tabla")
+        self.assertIn("beneficios para estudiantes", interpretacion["consulta_busqueda"])
+        self.assertIn("ayudas economicas becas apoyo financiero", interpretacion["consulta_busqueda"])
+        self.assertIn("beneficios estudiantiles", interpretacion["consulta_busqueda"])
+
+    def test_extrae_json_interpretacion_desde_markdown(self):
+        data = extraer_json_interpretacion(
+            '```json\n{"tipo_operacion": "consulta_documental", "formato_respuesta": "lista"}\n```'
+        )
+
+        self.assertEqual(data["tipo_operacion"], "consulta_documental")
+        self.assertEqual(data["formato_respuesta"], "lista")
+
+    @patch("Bety_AI.views.consultar_qwen")
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_usa_consulta_interpretada_sin_fuera_ambito_manual(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+        qwen_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "ayudas economicas becas beneficios estudiantiles",
+            "consulta_busqueda": "programa de becas ayudas economicas becas beneficios estudiantiles",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": ["becas", "beneficios estudiantiles"],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        buscar_mock.return_value = (
+            [
+                {
+                    "contenido": "Las ayudas economicas son beneficios para estudiantes.",
+                    "metadata": {
+                        "titulo": "Ayudas economicas",
+                        "id_documento": "1",
+                        "tipo_documento": "AYUDA_ECONOMICA",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+            {},
+        )
+        qwen_mock.return_value = {
+            "respuesta": "Las ayudas economicas son beneficios para estudiantes.",
+            "modelo": "qwen-final",
+        }
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "programa de becas",
+                "conversation_id": "convtest05",
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "RESPUESTA")
+        self.assertIn("ayudas economicas", buscar_mock.call_args.kwargs["pregunta"])
+        guardar_temporal_mock.assert_called_once()
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

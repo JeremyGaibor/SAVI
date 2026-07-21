@@ -20,27 +20,6 @@ STOPWORDS = {
     "documento", "proceso", "informacion"
 }
 
-SINONIMOS_CONSULTA = {
-    "matriculacion": {"matricula", "matricular", "matriculas"},
-    "matricula": {"matriculacion", "matricular", "matriculas"},
-    "evaluativo": {"evaluacion", "evaluar", "evaluaciones", "calificar", "calificacion"},
-    "evaluacion": {"evaluativo", "evaluar", "evaluaciones", "calificar", "calificacion"},
-    "evaluar": {"evaluacion", "evaluaciones", "calificar", "calificacion"},
-    "calificar": {"evaluar", "evaluacion", "evaluaciones", "heteroevaluacion", "hetero"},
-    "calificacion": {"evaluar", "evaluacion", "evaluaciones", "heteroevaluacion", "hetero"},
-    "heteroevaluacion": {"hetero", "evaluacion", "evaluar", "calificar"},
-    "hetero": {"heteroevaluacion", "evaluacion", "evaluar", "calificar"},
-    "profesor": {"profesores", "docente", "docentes", "ingeniero", "ingenieros"},
-    "profesores": {"profesor", "docente", "docentes", "ingeniero", "ingenieros"},
-    "docente": {"docentes", "profesor", "profesores", "ingeniero", "ingenieros"},
-    "docentes": {"docente", "profesor", "profesores", "ingeniero", "ingenieros"},
-    "ingeniero": {"ingenieros", "docente", "docentes", "profesor", "profesores"},
-    "ingenieros": {"ingeniero", "docente", "docentes", "profesor", "profesores"},
-    "grado": {"graduacion", "titulacion"},
-    "titulacion": {"grado", "graduacion"},
-}
-
-
 def normalizar_texto(valor):
     texto = unicodedata.normalize("NFKD", str(valor or ""))
     texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
@@ -49,21 +28,16 @@ def normalizar_texto(valor):
 
 def extraer_tokens_busqueda(texto):
     tokens = set(re.findall(r"[a-z0-9]+", normalizar_texto(texto)))
-    tokens = {token for token in tokens if len(token) > 3 and token not in STOPWORDS}
-
-    expandidos = set(tokens)
-    for token in tokens:
-        expandidos.update(SINONIMOS_CONSULTA.get(token, set()))
-
-    return expandidos
+    return {token for token in tokens if len(token) > 3 and token not in STOPWORDS}
 
 
 def construir_consulta_expandida(pregunta):
     """
-    Agrega sinonimos de dominio a la consulta enviada a ChromaDB.
+    Agrega tokens tecnicos de la consulta enviada a ChromaDB.
 
-    Esto ayuda cuando el usuario usa palabras locales o equivalentes
-    que no aparecen igual en el PDF, por ejemplo docente/profesor/ingeniero.
+    La expansion semantica de sinonimos la hace la interpretacion IA antes de
+    llegar aqui. Esta funcion solo conserva terminos utiles para reforzar la
+    busqueda y puntuar coincidencia lexica.
     """
     tokens = extraer_tokens_busqueda(pregunta)
 

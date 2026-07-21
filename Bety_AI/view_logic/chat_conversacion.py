@@ -131,6 +131,46 @@ def responder_pregunta_sobre_historial(conversation_id, pregunta):
     return "Tengo historial de esta conversacion, pero no pude identificar que mensaje quieres revisar."
 
 
+def es_solicitud_reformulacion(pregunta):
+    texto = normalizar_texto(limpiar_texto_contexto(pregunta, 300))
+    patrones = [
+        r"\bmas resumido\b",
+        r"\bmas resumida\b",
+        r"\bmas breve\b",
+        r"\bmas corto\b",
+        r"\bmas corta\b",
+        r"\bresumelo\b",
+        r"\bresume\b",
+        r"\bresumir\b",
+        r"\ben pocas palabras\b",
+        r"\bmas claro\b",
+        r"\bmas clara\b",
+        r"\bexplicalo mejor\b",
+        r"\bexplicame mejor\b",
+        r"\bmejor explicado\b",
+        r"\bmas sencillo\b",
+        r"\bmas sencilla\b",
+    ]
+    return any(re.search(patron, texto) for patron in patrones)
+
+
+def obtener_ultima_respuesta_conversacion(conversation_id):
+    if not conversation_id:
+        return ""
+
+    estado = obtener_estado_conversacion(conversation_id)
+    historial_qa = estado.get("historial_qa")
+    if not isinstance(historial_qa, list):
+        return ""
+
+    for item in reversed(historial_qa):
+        respuesta = limpiar_texto_contexto(item.get("respuesta"), 3000)
+        if respuesta:
+            return respuesta
+
+    return ""
+
+
 def obtener_ultima_pregunta_conversacion(conversation_id):
     if not conversation_id:
         return ""

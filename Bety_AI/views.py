@@ -51,7 +51,9 @@ from .view_logic.chat_conversacion import (
     formatear_historial_conversacion,
     agregar_historial_conversacion,
     obtener_ultima_pregunta_conversacion,
+    obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
+    es_solicitud_reformulacion,
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
@@ -62,6 +64,7 @@ from .view_logic.chat_clasificacion import (
 )
 from .view_logic.chat_respuestas_ia import (
     generar_respuesta_controlada,
+    generar_reformulacion_respuesta,
     respuesta_servidor_ia_no_disponible,
     limpiar_respuesta_ia,
 )
@@ -550,6 +553,78 @@ def api_consulta_ia(request):
                 "conversation_id": conversation_id,
                 "tipo_respuesta": "HISTORIAL_CONVERSACION",
                 "respuesta": respuesta_historial,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    if es_solicitud_reformulacion(pregunta):
+        respuesta_anterior = obtener_ultima_respuesta_conversacion(conversation_id)
+
+        if respuesta_anterior:
+            try:
+                resultado_reformulacion = generar_reformulacion_respuesta(
+                    respuesta_anterior,
+                    pregunta,
+                )
+            except Exception as exc:
+                respuesta = respuesta_servidor_ia_no_disponible()
+                guardar_interaccion_temporal(
+                    request=request,
+                    pregunta=pregunta,
+                    respuesta=respuesta,
+                    tipo_respuesta="IA_NO_DISPONIBLE",
+                )
+
+                return Response(
+                    {
+                        "ok": False,
+                        "pregunta": pregunta,
+                        "conversation_id": conversation_id,
+                        "tipo_respuesta": "IA_NO_DISPONIBLE",
+                        "respuesta": respuesta,
+                        "detalle": str(exc),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            respuesta = resultado_reformulacion["respuesta"]
+            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+            guardar_interaccion_temporal(
+                request=request,
+                pregunta=pregunta,
+                respuesta=respuesta,
+                tipo_respuesta="REFORMULACION",
+                modelo=resultado_reformulacion["modelo"],
+            )
+
+            return Response(
+                {
+                    "ok": True,
+                    "pregunta": pregunta,
+                    "conversation_id": conversation_id,
+                    "tipo_respuesta": "REFORMULACION",
+                    "respuesta": respuesta,
+                    "modelo": resultado_reformulacion["modelo"],
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        respuesta = "No tengo una respuesta anterior en esta conversacion para reformular."
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+        guardar_interaccion_temporal(
+            request=request,
+            pregunta=pregunta,
+            respuesta=respuesta,
+            tipo_respuesta="REFORMULACION_SIN_HISTORIAL",
+        )
+
+        return Response(
+            {
+                "ok": True,
+                "pregunta": pregunta,
+                "conversation_id": conversation_id,
+                "tipo_respuesta": "REFORMULACION_SIN_HISTORIAL",
+                "respuesta": respuesta,
             },
             status=status.HTTP_200_OK,
         )

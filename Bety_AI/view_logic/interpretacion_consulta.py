@@ -139,6 +139,8 @@ Estructura obligatoria:
 
 Reglas:
 - Si el usuario pide resumir, aclarar, hacer tabla, hacer lista o cambiar formato de una respuesta anterior, usa tipo_operacion reformulacion y depende_historial true.
+- Si la pregunta solo pide formato o estilo, por ejemplo "dame una tabla", "muestrame en lista", "hazlo paso a paso" o "resumelo", siempre usa tipo_operacion reformulacion y depende_historial true.
+- Si la pregunta incluye formato y tambien un tema documental claro, por ejemplo "dame una tabla sobre evaluacion del SGA", usa consulta_documental.
 - Si pregunta por mensajes anteriores de la conversacion, usa tipo_operacion historial.
 - Si consulta documentos, procesos, reglamentos, matricula, evaluacion, aula virtual, asistencia, becas, ayudas economicas, beneficios, tramites o SGA UTEQ, usa consulta_documental.
 - Normaliza sinonimos en consulta_normalizada. Por ejemplo: beneficios estudiantiles, becas, apoyo financiero o estipendio pueden relacionarse con ayudas economicas.

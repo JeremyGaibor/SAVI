@@ -300,6 +300,38 @@
             text-decoration: underline;
         }
 
+        .bety-table-wrap {
+            width: 100%;
+            margin: 4px 0;
+            overflow-x: auto;
+        }
+
+        .bety-table {
+            width: 100%;
+            min-width: 280px;
+            border-collapse: collapse;
+            font-size: 13px;
+            white-space: normal;
+        }
+
+        .bety-table th,
+        .bety-table td {
+            padding: 7px 8px;
+            border: 1px solid #d7d7d7;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .bety-table th {
+            background: #eef7f2;
+            color: #184f31;
+            font-weight: 700;
+        }
+
+        .bety-table tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
         /* Fuentes */
         .bety-sources {
             width: fit-content;
@@ -744,7 +776,40 @@
                 return /^https?:\/\//i.test(url);
             }
 
-            function formatearMarkdownBasico(texto) {
+            function esLineaTablaMarkdown(linea) {
+                const texto = String(linea || '').trim();
+                return texto.startsWith('|') && texto.endsWith('|');
+            }
+
+            function esSeparadorTablaMarkdown(linea) {
+                const celdas = String(linea || '')
+                    .trim()
+                    .split('|')
+                    .slice(1, -1);
+
+                return (
+                    celdas.length > 0 &&
+                    celdas.every(
+                        function (celda) {
+                            return /^:?-{3,}:?$/.test(celda.trim());
+                        }
+                    )
+                );
+            }
+
+            function dividirFilaTablaMarkdown(linea) {
+                return String(linea || '')
+                    .trim()
+                    .split('|')
+                    .slice(1, -1)
+                    .map(
+                        function (celda) {
+                            return celda.trim();
+                        }
+                    );
+            }
+
+            function formatearMarkdownInlineSeguro(texto) {
                 let html = escaparHtml(texto);
 
                 html = html.replace(
@@ -767,12 +832,90 @@
                     '<strong>$1</strong>'
                 );
 
-                html = html.replace(
-                    /\n/g,
-                    '<br>'
+                return html;
+            }
+
+            function convertirTablaMarkdown(lineas) {
+                const encabezados = dividirFilaTablaMarkdown(lineas[0]);
+                const filas = lineas.slice(2).map(dividirFilaTablaMarkdown);
+
+                let html = '<div class="bety-table-wrap"><table class="bety-table"><thead><tr>';
+
+                encabezados.forEach(
+                    function (encabezado) {
+                        html += '<th>' + formatearMarkdownInlineSeguro(encabezado) + '</th>';
+                    }
                 );
 
+                html += '</tr></thead><tbody>';
+
+                filas.forEach(
+                    function (fila) {
+                        html += '<tr>';
+
+                        encabezados.forEach(
+                            function (_encabezado, indice) {
+                                html += '<td>' + formatearMarkdownInlineSeguro(fila[indice] || '') + '</td>';
+                            }
+                        );
+
+                        html += '</tr>';
+                    }
+                );
+
+                html += '</tbody></table></div>';
+
                 return html;
+            }
+
+            function formatearMarkdownBasico(texto) {
+                const lineas = String(texto || '').split('\n');
+                const partes = [];
+                let indice = 0;
+
+                while (indice < lineas.length) {
+                    if (
+                        indice + 1 < lineas.length &&
+                        esLineaTablaMarkdown(lineas[indice]) &&
+                        esSeparadorTablaMarkdown(lineas[indice + 1])
+                    ) {
+                        const tabla = [lineas[indice], lineas[indice + 1]];
+                        indice += 2;
+
+                        while (
+                            indice < lineas.length &&
+                            esLineaTablaMarkdown(lineas[indice])
+                        ) {
+                            tabla.push(lineas[indice]);
+                            indice += 1;
+                        }
+
+                        partes.push(convertirTablaMarkdown(tabla));
+                        continue;
+                    }
+
+                    const bloqueTexto = [];
+
+                    while (
+                        indice < lineas.length &&
+                        !(
+                            indice + 1 < lineas.length &&
+                            esLineaTablaMarkdown(lineas[indice]) &&
+                            esSeparadorTablaMarkdown(lineas[indice + 1])
+                        )
+                    ) {
+                        bloqueTexto.push(lineas[indice]);
+                        indice += 1;
+                    }
+
+                    partes.push(
+                        formatearMarkdownInlineSeguro(
+                            bloqueTexto.join('\n')
+                        ).replace(/\n/g, '<br>')
+                    );
+                }
+
+                return partes.join('<br>');
             }
 
             function agregarMensaje(

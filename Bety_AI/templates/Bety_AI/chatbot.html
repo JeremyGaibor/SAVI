@@ -550,7 +550,7 @@
                 'bety_voice_enabled'
             ) === 'true';
 
-            let conversationId = localStorage.getItem(
+            let conversationId = sessionStorage.getItem(
                 'bety_conversation_id'
             );
 
@@ -559,7 +559,7 @@
                     ? window.crypto.randomUUID()
                     : String(Date.now()) + String(Math.random()).slice(2);
 
-                localStorage.setItem(
+                sessionStorage.setItem(
                     'bety_conversation_id',
                     conversationId
                 );

@@ -55,6 +55,34 @@ Instrucciones:
     }
 
 
+def generar_reformulacion_respuesta(respuesta_anterior, instruccion_usuario):
+    prompt = f"""
+Eres Bety, una asistente virtual institucional del SGA UTEQ.
+
+El usuario pidio esta reformulacion:
+{instruccion_usuario}
+
+RESPUESTA ANTERIOR:
+{respuesta_anterior}
+
+Instrucciones obligatorias:
+- Usa unicamente la RESPUESTA ANTERIOR.
+- No agregues informacion nueva.
+- No inventes pasos, requisitos, fechas, documentos, lugares, porcentajes ni enlaces.
+- Conserva las acciones obligatorias y los datos importantes.
+- Si el usuario pide resumen, reduce la extension sin eliminar pasos esenciales.
+- Si no puedes resumir sin perder informacion esencial, conserva la informacion completa pero mas clara.
+- Responde en espanol claro y directo.
+- No menciones fuentes, IDs ni documentos internos.
+"""
+
+    resultado_qwen = consultar_qwen(prompt)
+    return {
+        "respuesta": limpiar_respuesta_ia(resultado_qwen.get("respuesta", "")),
+        "modelo": resultado_qwen.get("modelo"),
+    }
+
+
 def respuesta_servidor_ia_no_disponible():
     return (
         "El servidor de IA no está disponible en este momento. "

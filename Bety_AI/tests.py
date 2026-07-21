@@ -3,7 +3,7 @@ from rest_framework.test import APIRequestFactory
 
 from unittest.mock import patch
 
-from .views import api_procesar_documento
+from .views import api_consulta_ia, api_procesar_documento
 from .view_logic.busqueda_fragmentos import (
     construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
@@ -17,7 +17,9 @@ from .view_logic.busqueda_fragmentos import (
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_conversacion import (
     agregar_historial_conversacion,
+    es_solicitud_reformulacion,
     formatear_historial_conversacion,
+    obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
 from .view_logic.contexto_usuario import (
@@ -201,6 +203,18 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         )
         self.assertEqual(detectar_tema_consulta(pregunta), "matricula")
 
+    def test_mas_resumido_mantiene_tema_anterior(self):
+        pregunta = construir_pregunta_busqueda_contextual(
+            "mas resumido",
+            "como justifico mi inasistencia",
+        )
+
+        self.assertEqual(
+            pregunta,
+            "como justifico mi inasistencia mas resumido",
+        )
+        self.assertEqual(detectar_tema_consulta(pregunta), "asistencia")
+
     def test_filtro_matricula_excluye_modelo_evaluativo(self):
         fragmento = {
             "contenido": "El modelo evaluativo tiene GA 35%, TA 35% y EV 30%. En segunda matricula la nota maxima es 7.00.",
@@ -292,6 +306,70 @@ class HistorialConversacionTests(SimpleTestCase):
             respuesta,
             'Tu primer mensaje en esta conversacion fue: "Pregunta 1".',
         )
+
+    def test_detecta_solicitud_de_reformulacion(self):
+        self.assertTrue(es_solicitud_reformulacion("mas resumido"))
+        self.assertTrue(es_solicitud_reformulacion("explicalo mejor"))
+        self.assertFalse(es_solicitud_reformulacion("como justifico mi inasistencia"))
+
+    def test_obtiene_ultima_respuesta_de_conversacion(self):
+        conversation_id = "convtest03"
+        agregar_historial_conversacion(
+            conversation_id,
+            "Pregunta inicial",
+            "Respuesta inicial",
+        )
+        agregar_historial_conversacion(
+            conversation_id,
+            "Otra pregunta",
+            "Respuesta mas reciente",
+        )
+
+        self.assertEqual(
+            obtener_ultima_respuesta_conversacion(conversation_id),
+            "Respuesta mas reciente",
+        )
+
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.generar_reformulacion_respuesta")
+    def test_api_reformula_ultima_respuesta_sin_consultar_chroma(
+        self,
+        reformular_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        conversation_id = "convtest04"
+        agregar_historial_conversacion(
+            conversation_id,
+            "como justifico mi inasistencia",
+            "Para justificar tu inasistencia debes ingresar al SGA y registrar la solicitud.",
+        )
+        reformular_mock.return_value = {
+            "respuesta": "Ingresa al SGA y registra la solicitud de justificacion.",
+            "modelo": "qwen-test",
+        }
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "mas resumido",
+                "conversation_id": conversation_id,
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "REFORMULACION")
+        self.assertEqual(
+            response.data["respuesta"],
+            "Ingresa al SGA y registra la solicitud de justificacion.",
+        )
+        reformular_mock.assert_called_once()
+        guardar_temporal_mock.assert_called_once()
+        buscar_mock.assert_not_called()
 
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):

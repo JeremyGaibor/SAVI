@@ -485,7 +485,6 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertIn("ayudas economicas", buscar_mock.call_args.kwargs["pregunta"])
         guardar_temporal_mock.assert_called_once()
 
-
 class ProcesarDocumentoChromaTests(SimpleTestCase):
     def setUp(self):
         self.factory = APIRequestFactory()

@@ -790,11 +790,30 @@ def api_consulta_ia(request):
     )
     ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
     pregunta_interpretada = (
-        interpretacion_consulta.get("consulta_busqueda")
-        or interpretacion_consulta.get("consulta_normalizada")
+        " ".join(
+            parte
+            for parte in [
+                interpretacion_consulta.get("consulta_normalizada"),
+                interpretacion_consulta.get("consulta_busqueda"),
+            ]
+            if parte
+        )
         or pregunta
     )
-    pregunta_busqueda = construir_pregunta_busqueda_contextual(pregunta_interpretada, ultima_pregunta)
+
+    if interpretacion_consulta.get("depende_historial") and ultima_pregunta:
+        pregunta_busqueda = " ".join(
+            parte
+            for parte in [
+                ultima_pregunta,
+                pregunta,
+                pregunta_interpretada,
+            ]
+            if parte
+        )
+    else:
+        pregunta_busqueda = construir_pregunta_busqueda_contextual(pregunta_interpretada, ultima_pregunta)
+
     pregunta_busqueda = construir_pregunta_busqueda_con_perfil(pregunta_busqueda, perfil_usuario)
 
     try:
@@ -809,7 +828,14 @@ def api_consulta_ia(request):
             and (not fragmentos or not fragmentos_suficientes_para_responder(fragmentos))
         ):
             pregunta_original_busqueda = construir_pregunta_busqueda_con_perfil(
-                pregunta,
+                " ".join(
+                    parte
+                    for parte in [
+                        ultima_pregunta if interpretacion_consulta.get("depende_historial") else "",
+                        pregunta,
+                    ]
+                    if parte
+                ),
                 perfil_usuario,
             )
             fragmentos_fallback, _ = buscar_fragmentos_con_fallback(
@@ -904,6 +930,7 @@ Fragmento:
         else ""
     )
     formato_respuesta = interpretacion_consulta.get("formato_respuesta") or "normal"
+    depende_historial = "si" if interpretacion_consulta.get("depende_historial") else "no"
 
     prompt = f"""
 Eres Bety-AI, un asistente virtual institucional.
@@ -921,10 +948,11 @@ Reglas obligatorias:
 10. No mezcles temas de documentos distintos. Si la pregunta es sobre matriculacion, no respondas con finanzas, evaluacion u otros temas salvo que el contexto los conecte directamente con la matriculacion.
 11. Si la PREGUNTA CONTEXTUAL aparece, usala para mantener el hilo de la conversacion. La PREGUNTA ORIGINAL puede ser corta como "resumelo" o "dame mas contexto".
 12. Respeta el FORMATO SOLICITADO cuando sea compatible con el contexto: tabla, lista, pasos, resumen o normal.
+13. Si DEPENDE DEL HISTORIAL es "si", conserva el tema de la conversacion anterior y no cambies a otro subtema solo porque comparta palabras como requisitos, estudiante o proceso.
 
 Reglas de perfil:
-13. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar rol, carrera, nivel o periodo academico; no lo trates como fuente documental.
-14. No pidas rol, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
+14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar rol, carrera, nivel o periodo academico; no lo trates como fuente documental.
+15. No pidas rol, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}
@@ -940,6 +968,9 @@ PREGUNTA CONTEXTUAL:
 
 FORMATO SOLICITADO:
 {formato_respuesta}
+
+DEPENDE DEL HISTORIAL:
+{depende_historial}
 
 RESPUESTA:
 """

@@ -143,6 +143,9 @@ Reglas:
 - Si la pregunta incluye formato y tambien un tema documental claro, por ejemplo "dame una tabla sobre evaluacion del SGA", usa consulta_documental.
 - Si pregunta por mensajes anteriores de la conversacion, usa tipo_operacion historial.
 - Si consulta documentos, procesos, reglamentos, matricula, evaluacion, aula virtual, asistencia, becas, ayudas economicas, beneficios, tramites o SGA UTEQ, usa consulta_documental.
+- Si la pregunta es una consulta documental corta o ambigua y depende del historial, marca depende_historial true.
+- Cuando depende_historial sea true, consulta_normalizada debe reconstruir la consulta completa usando el tema del historial reciente. No devuelvas frases genericas como "requisitos que debo cumplir" o "documentos necesarios" sin el tema anterior.
+- Ejemplo: si el historial trata de ayudas economicas y el usuario dice "dame los requisitos que debo cumplir", consulta_normalizada debe ser similar a "requisitos que debe cumplir un estudiante para acceder a ayudas economicas del SGA UTEQ".
 - Normaliza sinonimos en consulta_normalizada. Por ejemplo: beneficios estudiantiles, becas, apoyo financiero o estipendio pueden relacionarse con ayudas economicas.
 - No inventes filtros. Usa filtros_sugeridos solo si la pregunta o el perfil los indican claramente.
 - No agregues texto fuera del JSON.

@@ -161,6 +161,7 @@
             opacity: 0.88;
         }
 
+        #bety-chat-voice,
         #bety-chat-close {
             margin-left: auto;
 
@@ -185,6 +186,26 @@
             transition: background 0.2s ease;
         }
 
+        #bety-chat-voice {
+            margin-left: 0;
+
+            font-size: 18px;
+        }
+
+        #bety-chat-voice.activo {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        #bety-chat-voice:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        #bety-chat-voice:disabled:hover {
+            background: transparent;
+        }
+
+        #bety-chat-voice:hover,
         #bety-chat-close:hover {
             background: rgba(255, 255, 255, 0.18);
         }
@@ -437,6 +458,15 @@
 
         <button
             type="button"
+            id="bety-chat-voice"
+            aria-label="Activar lectura de respuestas"
+            title="Activar lectura de respuestas"
+        >
+            🔇
+        </button>
+
+        <button
+            type="button"
             id="bety-chat-close"
             aria-label="Cerrar chat"
             title="Cerrar chat"
@@ -490,6 +520,10 @@
                 'bety-chat-close'
             );
 
+            const voiceButton = document.getElementById(
+                'bety-chat-voice'
+            );
+
             const input = document.getElementById(
                 'bety-chat-input'
             );
@@ -512,6 +546,10 @@
 
             let enviando = false;
             let contextoSga = null;
+            let vozActiva = localStorage.getItem(
+                'bety_voice_enabled'
+            ) === 'true';
+
             let conversationId = localStorage.getItem(
                 'bety_conversation_id'
             );
@@ -526,6 +564,11 @@
                     conversationId
                 );
             }
+
+            const lectorVozDisponible = (
+                'speechSynthesis' in window &&
+                'SpeechSynthesisUtterance' in window
+            );
 
             const origenesPermitidosContexto = [
                 'http://127.0.0.1:8002',
@@ -569,6 +612,90 @@
                 );
             }
 
+            function actualizarBotonVoz() {
+                if (!lectorVozDisponible) {
+                    voiceButton.disabled = true;
+                    voiceButton.textContent = '🔇';
+                    voiceButton.title = 'Lectura de voz no disponible';
+                    voiceButton.setAttribute(
+                        'aria-label',
+                        'Lectura de voz no disponible'
+                    );
+                    return;
+                }
+
+                voiceButton.classList.toggle(
+                    'activo',
+                    vozActiva
+                );
+
+                voiceButton.textContent = vozActiva
+                    ? '🔊'
+                    : '🔇';
+
+                voiceButton.title = vozActiva
+                    ? 'Desactivar lectura de respuestas'
+                    : 'Activar lectura de respuestas';
+
+                voiceButton.setAttribute(
+                    'aria-label',
+                    voiceButton.title
+                );
+            }
+
+            function limpiarTextoParaVoz(texto) {
+                return String(texto || '')
+                    .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g, '$1')
+                    .replace(/\*\*([^*]+)\*\*/g, '$1')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            function leerRespuesta(texto) {
+                if (!lectorVozDisponible || !vozActiva) {
+                    return;
+                }
+
+                const textoLimpio = limpiarTextoParaVoz(texto);
+
+                if (!textoLimpio) {
+                    return;
+                }
+
+                window.speechSynthesis.cancel();
+
+                const lectura = new SpeechSynthesisUtterance(
+                    textoLimpio
+                );
+
+                lectura.lang = 'es-ES';
+                lectura.rate = 0.95;
+                lectura.pitch = 1;
+
+                window.speechSynthesis.speak(
+                    lectura
+                );
+            }
+
+            function alternarVoz() {
+                if (!lectorVozDisponible) {
+                    return;
+                }
+
+                vozActiva = !vozActiva;
+
+                localStorage.setItem(
+                    'bety_voice_enabled',
+                    String(vozActiva)
+                );
+
+                if (!vozActiva) {
+                    window.speechSynthesis.cancel();
+                }
+
+                actualizarBotonVoz();
+            }
+
             function abrirChat() {
                 chatWindow.classList.add(
                     'abierto'
@@ -592,6 +719,10 @@
                 chatWindow.classList.remove(
                     'abierto'
                 );
+
+                if (lectorVozDisponible) {
+                    window.speechSynthesis.cancel();
+                }
 
                 chatButton.style.display = 'flex';
 
@@ -1027,6 +1158,10 @@
                         datos.respuesta
                     );
 
+                    leerRespuesta(
+                        datos.respuesta
+                    );
+
                     agregarFuentes(
                         datos.fuentes || []
                     );
@@ -1059,6 +1194,11 @@
                 cerrarChat
             );
 
+            voiceButton.addEventListener(
+                'click',
+                alternarVoz
+            );
+
             sendButton.addEventListener(
                 'click',
                 enviarPregunta
@@ -1080,6 +1220,8 @@
             avisarAlCliente(
                 'BETY_CHAT_CERRADO'
             );
+
+            actualizarBotonVoz();
         }
     );
 </script>

@@ -360,6 +360,45 @@ def api_procesar_documento(request):
         )
 
 
+@api_view(["POST", "DELETE"])
+@parser_classes([FormParser, JSONParser])
+def api_quitar_vigencia_documento(request):
+    uuid_version = str(obtener_valor_request(request, "uuid_version", "")).strip()
+
+    if not uuid_version:
+        metadata_recibida = obtener_metadata_request(request)
+        uuid_version = str(metadata_recibida.get("uuid_version") or "").strip()
+
+    if not uuid_version:
+        return Response(
+            {"error": "Debe enviar el campo 'uuid_version'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        eliminar_version_chroma(uuid_version)
+    except Exception as exc:
+        return Response(
+            {
+                "ok": False,
+                "estado_procesamiento": "ERROR",
+                "uuid_version": uuid_version,
+                "mensaje": f"No se pudo quitar la vigencia en ChromaDB: {exc}",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response(
+        {
+            "ok": True,
+            "estado_procesamiento": "VIGENCIA_QUITADA",
+            "uuid_version": uuid_version,
+            "mensaje": "Version eliminada de ChromaDB correctamente.",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(["POST"])
 def api_buscar_fragmentos(request):
     pregunta = request.data.get("pregunta")

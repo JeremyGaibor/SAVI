@@ -64,12 +64,13 @@ def normalizar_filtros_sugeridos(valor):
     campos_permitidos = [
         "ambito",
         "estado_vigencia",
-        "rol",
+        "perfil",
         "facultad",
         "carrera",
         "tipo_documento",
         "id_documento",
         "grupo",
+        "periodo",
     ]
 
     for campo in campos_permitidos:

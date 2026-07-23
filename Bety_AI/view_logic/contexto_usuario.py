@@ -29,11 +29,11 @@ def normalizar_lista_contexto(valor, limite_items=12):
     return ", ".join(items)
 
 
-def es_rol_estudiante(perfil):
+def es_perfil_estudiante(perfil):
     if not isinstance(perfil, dict):
         return False
 
-    return normalizar_texto(perfil.get("rol") or perfil.get("usuario")) == "estudiante"
+    return normalizar_texto(perfil.get("perfil") or perfil.get("usuario")) == "estudiante"
 
 
 def obtener_tipo_estudiante(contexto):
@@ -55,7 +55,7 @@ def obtener_tipo_estudiante(contexto):
 
 
 def perfil_estudiante_requiere_tipo(perfil):
-    return es_rol_estudiante(perfil) and not obtener_tipo_estudiante(perfil)
+    return es_perfil_estudiante(perfil) and not obtener_tipo_estudiante(perfil)
 
 
 def obtener_contexto_usuario_sga(data):
@@ -64,7 +64,7 @@ def obtener_contexto_usuario_sga(data):
         usuario = data.get("usuario")
         if isinstance(usuario, dict):
             contexto = usuario
-        elif any(campo in data for campo in ["rol", "nombre", "facultad", "carrera"]):
+        elif any(campo in data for campo in ["perfil", "nombre", "facultad", "carrera"]):
             contexto = data
         else:
             contexto = usuario
@@ -79,7 +79,7 @@ def obtener_contexto_usuario_sga(data):
         return {}
 
     campos_texto = [
-        "rol",
+        "perfil",
         "nombre",
         "edad",
         "sexo",
@@ -97,12 +97,12 @@ def obtener_contexto_usuario_sga(data):
         if valor:
             perfil[campo] = valor
 
-    if not perfil.get("rol") and normalizar_texto(contexto.get("usuario")) in {
+    if not perfil.get("perfil") and normalizar_texto(contexto.get("usuario")) in {
         "estudiante",
         "docente",
         "aspirante",
     }:
-        perfil["rol"] = limpiar_texto_contexto(contexto.get("usuario"), 200)
+        perfil["perfil"] = limpiar_texto_contexto(contexto.get("usuario"), 200)
 
     tipo_estudiante = obtener_tipo_estudiante(contexto)
     if tipo_estudiante:
@@ -127,7 +127,7 @@ def construir_contexto_usuario_prompt(perfil):
         )
 
     etiquetas = {
-        "rol": "Rol",
+        "perfil": "Perfil",
         "nombre": "Nombre",
         "edad": "Edad",
         "sexo": "Sexo",

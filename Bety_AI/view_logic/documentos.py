@@ -39,6 +39,20 @@ def normalizar_valor_metadata(valor):
     return str(valor)
 
 
+def obtener_primer_valor_metadata(request, metadata_extra, campos, defecto=""):
+    for campo in campos:
+        valor = obtener_valor_request(request, campo, None)
+        if valor not in [None, ""]:
+            return valor
+
+    for campo in campos:
+        valor = metadata_extra.get(campo)
+        if valor not in [None, ""]:
+            return valor
+
+    return defecto
+
+
 def construir_metadata_documento(request, archivo):
     metadata_json = obtener_valor_request(request, "metadata", "")
     metadata_extra = {}
@@ -49,6 +63,9 @@ def construir_metadata_documento(request, archivo):
         metadata_extra = parsear_metadata_formulario(str(metadata_json))
 
     nombre_archivo = archivo.name if archivo is not None else obtener_valor_request(request, "nombre_archivo", "")
+
+    perfil = obtener_primer_valor_metadata(request, metadata_extra, ["perfil"])
+    periodo = obtener_primer_valor_metadata(request, metadata_extra, ["periodo", "periodo_academico"])
 
     metadata_base = {
         "accion_chroma": obtener_valor_request(request, "accion_chroma", ""),
@@ -61,7 +78,8 @@ def construir_metadata_documento(request, archivo):
         "ambito": obtener_valor_request(request, "ambito", "PUBLICO"),
         "estado_vigencia": obtener_valor_request(request, "estado_vigencia", "VIGENTE"),
         "anio_documento": str(obtener_valor_request(request, "anio_documento", "")),
-        "rol": obtener_valor_request(request, "rol", ""),
+        "periodo": normalizar_valor_metadata(periodo),
+        "perfil": normalizar_valor_metadata(perfil),
         "carrera": obtener_valor_request(request, "carrera", ""),
         "grupo": obtener_valor_request(request, "grupo", ""),
         "tipo_estudio": obtener_valor_request(request, "tipo_estudio", ""),
@@ -73,7 +91,7 @@ def construir_metadata_documento(request, archivo):
     }
 
     for clave, valor in metadata_extra.items():
-        if clave not in {"id_documento", "titulo", "numero_fragmento"}:
+        if clave not in {"id_documento", "titulo", "numero_fragmento", "rol", "periodo_academico"}:
             metadata_base[clave] = normalizar_valor_metadata(valor)
 
     return metadata_base
@@ -240,7 +258,7 @@ def normalizar_interpretacion_documento(data, resultado_texto):
     return {
         "titulo_sugerido": str(data.get("titulo_sugerido") or "Documento sin titulo").strip(),
         "tipo_documento_sugerido": str(data.get("tipo_documento_sugerido") or "GENERAL").strip().upper(),
-        "rol_sugerido": str(data.get("rol_sugerido") or "GENERAL").strip().upper(),
+        "perfil_sugerido": str(data.get("perfil_sugerido") or "GENERAL").strip().upper(),
         "carrera_sugerida": str(data.get("carrera_sugerida") or "GENERAL").strip().upper(),
         "tipo_estudio_sugerido": str(data.get("tipo_estudio_sugerido") or "GENERAL").strip().upper(),
         "ambito_sugerido": str(data.get("ambito_sugerido") or "ACADEMICO").strip().upper(),
@@ -281,7 +299,7 @@ Estructura obligatoria:
 {{
   "titulo_sugerido": "titulo claro y especifico del documento",
   "tipo_documento_sugerido": "MATRICULA, EVALUACION, AULA_VIRTUAL, CARNET, AYUDA_ECONOMICA, REGLAMENTO, MANUAL, PROCEDIMIENTO, GENERAL u otro tipo breve",
-  "rol_sugerido": "ESTUDIANTE, DOCENTE, ADMINISTRATIVO, ASPIRANTE, GENERAL u otro rol breve",
+  "perfil_sugerido": "ESTUDIANTE, DOCENTE, ADMINISTRATIVO, ASPIRANTE, GENERAL u otro perfil breve",
   "carrera_sugerida": "GENERAL o carrera especifica si el documento la menciona claramente",
   "tipo_estudio_sugerido": "GRADO, NIVELACION, POSGRADO, GENERAL u otro tipo breve",
   "ambito_sugerido": "ACADEMICO, ADMINISTRATIVO, FINANCIERO, BIENESTAR, GENERAL u otro ambito breve",
@@ -310,7 +328,7 @@ Reglas:
             data = {
                 "titulo_sugerido": nombre_archivo,
                 "tipo_documento_sugerido": "GENERAL",
-                "rol_sugerido": "GENERAL",
+                "perfil_sugerido": "GENERAL",
                 "carrera_sugerida": "GENERAL",
                 "tipo_estudio_sugerido": "GENERAL",
                 "ambito_sugerido": "GENERAL",

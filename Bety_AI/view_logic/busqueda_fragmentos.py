@@ -26,12 +26,13 @@ def extraer_filtros_consulta(data):
     campos_permitidos = [
         "ambito",
         "estado_vigencia",
-        "rol",
+        "perfil",
         "facultad",
         "carrera",
         "tipo_documento",
         "id_documento",
         "grupo",
+        "periodo",
     ]
 
     for campo in campos_permitidos:
@@ -42,6 +43,8 @@ def extraer_filtros_consulta(data):
     filtros_limpios = {}
     for clave, valor in filtros.items():
         if valor in [None, ""]:
+            continue
+        if clave == "rol":
             continue
         if clave in {"tipo_estudio", "tipo_estudiante"}:
             continue
@@ -99,7 +102,11 @@ def construir_filtros_desde_perfil(perfil):
         return {}
 
     filtros = {}
-    for campo in ["rol", "facultad", "carrera"]:
+    perfil_documental = normalizar_valor_filtro_perfil(perfil.get("perfil"))
+    if perfil_documental:
+        filtros["perfil"] = perfil_documental
+
+    for campo in ["facultad", "carrera"]:
         valor = normalizar_valor_filtro_perfil(perfil.get(campo))
         if valor:
             filtros[campo] = valor
@@ -282,7 +289,7 @@ def relajar_filtros_busqueda(filtros):
 
     filtros_base = dict(filtros)
     variantes = [filtros_base]
-    campos_relajables = ["tipo_estudio", "facultad", "carrera", "rol"]
+    campos_relajables = ["tipo_estudio", "facultad", "carrera", "perfil"]
 
     for campo in campos_relajables:
         if campo in filtros_base:
@@ -294,7 +301,7 @@ def relajar_filtros_busqueda(filtros):
     for campos_a_quitar in [
         ["facultad", "carrera"],
         ["tipo_estudio", "facultad", "carrera"],
-        ["facultad", "carrera", "rol"],
+        ["facultad", "carrera", "perfil"],
     ]:
         relajado = dict(filtros_base)
         for campo in campos_a_quitar:

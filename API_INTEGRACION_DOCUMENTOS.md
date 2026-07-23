@@ -30,7 +30,7 @@ Respuesta principal:
 
 - `estado_extraccion`: `EXTRAIDO` o `ERROR`.
 - `texto_extraido`: texto completo extraido del PDF.
-- `titulo_sugerido`, `tipo_documento_sugerido`, `rol_sugerido`, `carrera_sugerida`.
+- `titulo_sugerido`, `tipo_documento_sugerido`, `perfil_sugerido`, `carrera_sugerida`.
 - `resumen`, `temas_detectados`, `advertencias`.
 - `paginas`, `caracteres_extraidos`, `requiere_revision`, `analisis_paginas`.
 
@@ -65,7 +65,8 @@ Campos opcionales:
 - `ambito`
 - `estado_vigencia`
 - `anio_documento`
-- `rol`
+- `periodo`
+- `perfil`
 - `carrera`
 - `grupo`
 - `tipo_estudio`
@@ -91,7 +92,8 @@ curl -X POST http://127.0.0.1:8000/api/integracion/documentos/guardar-chroma/ \
   -F "id_documento=DOC-123" \
   -F "titulo=Manual de matricula" \
   -F "tipo_documento=MANUAL" \
-  -F "rol=ESTUDIANTE" \
+  -F "perfil=ESTUDIANTE" \
+  -F "periodo=2026-S1" \
   -F "archivo=@documento.pdf"
 ```
 
@@ -104,7 +106,8 @@ curl -X POST http://127.0.0.1:8000/api/integracion/documentos/guardar-chroma/ \
     "id_documento": "DOC-123",
     "titulo": "Manual de matricula",
     "tipo_documento": "MANUAL",
-    "rol": "ESTUDIANTE",
+    "perfil": "ESTUDIANTE",
+    "periodo": "2026-S1",
     "texto_extraido": "Contenido completo del documento...",
     "metadata": {
       "sistema_origen": "grupo_documentos"
@@ -131,6 +134,8 @@ curl -X POST http://127.0.0.1:8000/api/integracion/documentos/guardar-chroma/ \
       "id_documento": "123",
       "id_version": "45",
       "numero_version": "3",
+      "perfil": "ESTUDIANTE",
+      "periodo": "2026-S1",
       "uuid_documento": "uuid-del-documento",
       "uuid_version": "uuid-version-nueva",
       "id_version_anterior": "44",

@@ -4,13 +4,13 @@ from Bety_AI.services.ollama_service import consultar_qwen
 
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
-_OPCIONES_ROL = ["estudiante", "docente", "aspirante", "visitante_externo", "invalido"]
+_OPCIONES_PERFIL = ["estudiante", "docente", "aspirante", "visitante_externo", "invalido"]
 _OPCIONES_TIPO_ESTUDIANTE = ["pregrado", "posgrado", "invalido"]
 _OPCIONES_CAMPO_ABIERTO = ["valido", "invalido"]
 
 _RESPUESTAS_GENERICAS_VALIDAS = {"general", "no aplica", "cualquiera", "ninguna", "n/a", "no se"}
 
-_PROMPT_ROL = """Un chatbot universitario pregunto: "¿eres estudiante, docente, aspirante o visitante externo?"
+_PROMPT_PERFIL = """Un chatbot universitario pregunto: "¿eres estudiante, docente, aspirante o visitante externo?"
 El usuario respondio: "{respuesta}"
 
 Clasifica esa respuesta en una sola palabra, EXACTAMENTE una de estas opciones, sin explicaciones ni puntuacion:
@@ -62,7 +62,7 @@ def _clasificar_con_llm(prompt, opciones_validas):
 def validar_respuesta_campo(campo, respuesta, pregunta_campo=""):
     """
     Valida con el LLM si la respuesta del usuario tiene sentido para el campo
-    de perfil pendiente (rol/tipo_estudiante/facultad/carrera).
+    de perfil pendiente (perfil/tipo_estudiante/facultad/carrera).
 
     Ante fallas de conexion con el LLM o respuestas que no se pueden
     clasificar, no se bloquea el flujo (fail-open): solo se rechaza cuando
@@ -72,8 +72,8 @@ def validar_respuesta_campo(campo, respuesta, pregunta_campo=""):
     if not respuesta:
         return False
 
-    if campo == "rol":
-        clasificacion = _clasificar_con_llm(_PROMPT_ROL.format(respuesta=respuesta), _OPCIONES_ROL)
+    if campo == "perfil":
+        clasificacion = _clasificar_con_llm(_PROMPT_PERFIL.format(respuesta=respuesta), _OPCIONES_PERFIL)
         return clasificacion != "invalido"
 
     if campo == "tipo_estudiante":

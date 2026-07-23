@@ -149,3 +149,31 @@ Respuesta principal:
 - `reemplazo_por_uuid_anterior`: `true` cuando la eliminacion se hizo por `uuid_version_anterior`.
 - `uuid_version_anterior_eliminada`: UUID de la version anterior eliminada cuando aplica.
 - `requiere_ocr`: `true` cuando no hay texto suficiente para indexar.
+
+## 3. Quitar vigencia en ChromaDB
+
+Elimina de la base vectorial los fragmentos de una version que ya no esta vigente. No analiza PDF, no extrae texto y no registra una version nueva.
+
+```http
+POST /api/integracion/documentos/quitar-vigencia/
+Content-Type: application/json
+```
+
+Campo requerido:
+
+- `uuid_version`: UUID de la version que debe dejar de estar disponible para busqueda.
+
+Ejemplo:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/integracion/documentos/quitar-vigencia/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uuid_version": "uuid-version-que-ya-no-esta-vigente"
+  }'
+```
+
+Respuesta principal:
+
+- `estado_procesamiento`: `VIGENCIA_QUITADA` o `ERROR`.
+- `uuid_version`: UUID eliminado de ChromaDB.

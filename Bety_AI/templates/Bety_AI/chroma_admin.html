@@ -155,7 +155,8 @@
   "id_documento": "manual",
   "titulo": "Fragmento manual",
   "tipo_documento": "GENERAL",
-  "rol": "GENERAL",
+  "perfil": "GENERAL",
+  "periodo": "2026",
   "carrera": "GENERAL",
   "estado_vigencia": "VIGENTE",
   "numero_fragmento": 1
@@ -183,7 +184,8 @@
                     <th>ID documento</th>
                     <th>Título</th>
                     <th>Tipo</th>
-                    <th>Rol</th>
+                    <th>Perfil</th>
+                    <th>Periodo</th>
                     <th>Carrera</th>
                     <th>Vigencia</th>
                     <th>Fragmentos</th>
@@ -196,7 +198,8 @@
                         <td><code>{{ documento.id_documento }}</code></td>
                         <td>{{ documento.titulo }}</td>
                         <td>{{ documento.tipo_documento }}</td>
-                        <td>{{ documento.rol }}</td>
+                        <td>{{ documento.perfil }}</td>
+                        <td>{{ documento.periodo }}</td>
                         <td>{{ documento.carrera }}</td>
                         <td>{{ documento.estado_vigencia }}</td>
                         <td>{{ documento.fragmentos }}</td>
@@ -211,7 +214,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="8">No hay documentos en ChromaDB.</td>
+                        <td colspan="9">No hay documentos en ChromaDB.</td>
                     </tr>
                 {% endfor %}
             </tbody>

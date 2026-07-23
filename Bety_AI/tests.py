@@ -81,7 +81,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_estudiante_sga_sin_tipo_requiere_pregrado_o_posgrado(self):
         perfil = obtener_contexto_usuario_sga({
             "usuario": "estudiante",
-            "rol": "estudiante",
+            "perfil": "estudiante",
             "nombre": "Maria",
             "facultad": "Ciencias Informaticas",
             "carrera": "Ingenieria en Sistemas",
@@ -93,7 +93,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_docente_sga_no_requiere_tipo_estudiante(self):
         perfil = obtener_contexto_usuario_sga({
             "usuario": {
-                "rol": "docente",
+                "perfil": "docente",
                 "nombre": "Carlos",
                 "facultad": "Ciencias Informaticas",
                 "materias_que_da": ["Programacion"],
@@ -106,7 +106,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_tipo_estudiante_llega_al_prompt_y_a_filtros(self):
         perfil = obtener_contexto_usuario_sga({
             "usuario": {
-                "rol": "estudiante",
+                "perfil": "estudiante",
                 "tipo_estudio": "Pregrado",
                 "facultad": "Ciencias Informaticas",
                 "carrera": "Ingenieria en Sistemas",
@@ -129,10 +129,18 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertNotIn("tipo_estudio", filtros)
 
+    def test_rol_no_se_usa_como_filtro_documental(self):
+        filtros = extraer_filtros_consulta({
+            "rol": "ESTUDIANTE",
+            "filtros": {"rol": "DOCENTE"},
+        })
+
+        self.assertEqual(filtros, {})
+
     def test_tipo_estudiante_se_agrega_a_la_busqueda_sin_importar_mayusculas(self):
         pregunta = construir_pregunta_busqueda_con_perfil(
             "como puedo matricularme",
-            {"rol": "estudiante", "tipo_estudiante": "PREGRADO"},
+            {"perfil": "estudiante", "tipo_estudiante": "PREGRADO"},
         )
 
         self.assertIn("pregrado", pregunta.lower())
@@ -141,7 +149,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_tipo_estudiante_no_se_agrega_a_temas_no_relacionados(self):
         pregunta = construir_pregunta_busqueda_con_perfil(
             "como ingreso al aula virtual",
-            {"rol": "estudiante", "tipo_estudiante": "PREGRADO"},
+            {"perfil": "estudiante", "tipo_estudiante": "PREGRADO"},
         )
 
         self.assertEqual(pregunta, "como ingreso al aula virtual")
@@ -149,19 +157,19 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_fallback_relaja_tipo_estudio_si_no_hay_resultados(self):
         variantes = relajar_filtros_busqueda({
             "tipo_estudio": "GRADO",
-            "rol": "ESTUDIANTE",
+            "perfil": "ESTUDIANTE",
         })
 
-        self.assertIn({"rol": "ESTUDIANTE"}, variantes)
+        self.assertIn({"perfil": "ESTUDIANTE"}, variantes)
 
-    def test_fallback_prueba_rol_sin_facultad_ni_carrera(self):
+    def test_fallback_prueba_perfil_sin_facultad_ni_carrera(self):
         variantes = relajar_filtros_busqueda({
-            "rol": "ESTUDIANTE",
+            "perfil": "ESTUDIANTE",
             "facultad": "FACULTAD DE CIENCIAS INFORMATICAS",
             "carrera": "INGENIERIA EN SISTEMAS",
         })
 
-        self.assertIn({"rol": "ESTUDIANTE"}, variantes)
+        self.assertIn({"perfil": "ESTUDIANTE"}, variantes)
 
     def test_seguimiento_usa_tema_anterior_para_busqueda(self):
         pregunta = construir_pregunta_busqueda_contextual(
@@ -238,7 +246,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_ayudante_de_catedra_respeta_pregrado_del_perfil(self):
         pregunta = construir_pregunta_busqueda_con_perfil(
             "cuanto gano como ayudante de catedra",
-            {"rol": "estudiante", "tipo_estudiante": "Pregrado"},
+            {"perfil": "estudiante", "tipo_estudiante": "Pregrado"},
         )
         fragmentos = [
             {
@@ -255,7 +263,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         filtrados = filtrar_fragmentos_por_tipo_estudiante(
             pregunta,
-            {"rol": "estudiante", "tipo_estudiante": "Pregrado"},
+            {"perfil": "estudiante", "tipo_estudiante": "Pregrado"},
             fragmentos,
         )
 
@@ -514,6 +522,9 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
                 "id_version_anterior": "44",
                 "uuid_version_anterior": "uuid-version-anterior",
                 "reemplazar_existente": True,
+                "perfil": "ESTUDIANTE",
+                "periodo": "2026-S1",
+                "grupo": "POSGRADO",
                 "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
                 "metadata": {
                     "numero_version": "3",
@@ -533,7 +544,45 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertEqual(metadata_base["uuid_version"], "uuid-version-nueva")
         self.assertEqual(metadata_base["uuid_version_anterior"], "uuid-version-anterior")
         self.assertEqual(metadata_base["numero_version"], "3")
+        self.assertEqual(metadata_base["perfil"], "ESTUDIANTE")
+        self.assertEqual(metadata_base["periodo"], "2026-S1")
+        self.assertEqual(metadata_base["grupo"], "POSGRADO")
+        self.assertNotIn("rol", metadata_base)
         self.assertTrue(response.data["reemplazo_por_uuid_anterior"])
+
+    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
+    @patch("Bety_AI.views.eliminar_documento_chroma")
+    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch(
+        "Bety_AI.views.dividir_documento_en_fragmentos",
+        return_value=([{"contenido": "fragmento nuevo"}], "characters"),
+    )
+    def test_ignora_rol_en_metadata_documental(
+        self,
+        dividir_mock,
+        eliminar_version_mock,
+        eliminar_documento_mock,
+        guardar_mock,
+    ):
+        request = self.factory.post(
+            "/api/integracion/documentos/guardar-chroma/",
+            {
+                "id_documento": "DOC-ROL",
+                "rol": "ESTUDIANTE",
+                "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
+                "metadata": {
+                    "rol": "DOCENTE",
+                },
+            },
+            format="json",
+        )
+
+        response = api_procesar_documento(request)
+
+        self.assertEqual(response.status_code, 200)
+        metadata_base = guardar_mock.call_args.kwargs["metadata_base"]
+        self.assertEqual(metadata_base["perfil"], "")
+        self.assertNotIn("rol", metadata_base)
 
     @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
     @patch("Bety_AI.views.eliminar_documento_chroma")

@@ -1,12 +1,12 @@
 from .contexto_usuario import (
-    es_rol_estudiante,
+    es_perfil_estudiante,
     limpiar_texto_contexto,
     obtener_tipo_estudiante,
 )
 
 WEB_PERFIL_PREGUNTA_KEY = "bety_ai_pregunta_pendiente"
 WEB_PERFIL_CAMPO_KEY = "bety_ai_campo_pendiente"
-WEB_PERFIL_CAMPOS_REQUERIDOS = ["rol", "facultad", "carrera"]
+WEB_PERFIL_CAMPOS_REQUERIDOS = ["perfil", "facultad", "carrera"]
 
 
 def limpiar_pendiente_perfil_web(request):
@@ -19,10 +19,10 @@ def obtener_siguiente_campo_perfil_web(perfil):
     if not isinstance(perfil, dict):
         perfil = {}
 
-    if not perfil.get("rol"):
-        return "rol"
+    if not perfil.get("perfil"):
+        return "perfil"
 
-    if es_rol_estudiante(perfil) and not obtener_tipo_estudiante(perfil):
+    if es_perfil_estudiante(perfil) and not obtener_tipo_estudiante(perfil):
         return "tipo_estudiante"
 
     for campo in WEB_PERFIL_CAMPOS_REQUERIDOS:
@@ -37,12 +37,12 @@ def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None, reintent
     sufijo_consulta = f" sobre \"{detalle_consulta}\"" if detalle_consulta else ""
 
     preguntas = {
-        "rol": (
+        "perfil": (
             f"Antes de responderte{sufijo_consulta}, necesito ubicarte un poco: "
             "¿eres estudiante, docente, aspirante o visitante externo?"
         ),
         "facultad": (
-            f"Perfecto, ya sé que eres {perfil.get('rol', 'usuario')}. "
+            f"Perfecto, ya sé que eres {perfil.get('perfil', 'usuario')}. "
             "¿De qué facultad o área quieres que hablemos? Si es algo general, dime general."
         ),
         "tipo_estudiante": (

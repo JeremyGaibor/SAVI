@@ -43,7 +43,8 @@ def construir_reporte(ids, documentos, metadatas, error=None):
             "titulo": titulo,
             "fragmentos": 0,
             "tipo_documento": valor_metadata(metadata, "tipo_documento"),
-            "rol": valor_metadata(metadata, "rol"),
+            "perfil": valor_metadata(metadata, "perfil"),
+            "periodo": valor_metadata(metadata, "periodo"),
             "carrera": valor_metadata(metadata, "carrera"),
             "estado_vigencia": valor_metadata(metadata, "estado_vigencia"),
         })
@@ -57,7 +58,8 @@ def construir_reporte(ids, documentos, metadatas, error=None):
                 <td><code>{html.escape(str(item_id))}</code></td>
                 <td>{html.escape(titulo)}</td>
                 <td>{html.escape(valor_metadata(metadata, "tipo_documento"))}</td>
-                <td>{html.escape(valor_metadata(metadata, "rol"))}</td>
+                <td>{html.escape(valor_metadata(metadata, "perfil"))}</td>
+                <td>{html.escape(valor_metadata(metadata, "periodo"))}</td>
                 <td>{html.escape(valor_metadata(metadata, "carrera"))}</td>
                 <td>{html.escape(valor_metadata(metadata, "estado_vigencia"))}</td>
                 <td><pre>{html.escape(metadata_json)}</pre></td>
@@ -72,7 +74,8 @@ def construir_reporte(ids, documentos, metadatas, error=None):
                 <td><code>{html.escape(id_documento)}</code></td>
                 <td>{html.escape(datos["titulo"])}</td>
                 <td>{html.escape(datos["tipo_documento"])}</td>
-                <td>{html.escape(datos["rol"])}</td>
+                <td>{html.escape(datos["perfil"])}</td>
+                <td>{html.escape(datos["periodo"])}</td>
                 <td>{html.escape(datos["carrera"])}</td>
                 <td>{html.escape(datos["estado_vigencia"])}</td>
                 <td>{datos["fragmentos"]}</td>
@@ -174,7 +177,8 @@ def construir_reporte(ids, documentos, metadatas, error=None):
                     <th>ID documento</th>
                     <th>Título</th>
                     <th>Tipo</th>
-                    <th>Rol</th>
+                    <th>Perfil</th>
+                    <th>Periodo</th>
                     <th>Carrera</th>
                     <th>Vigencia</th>
                     <th>Fragmentos</th>
@@ -195,7 +199,8 @@ def construir_reporte(ids, documentos, metadatas, error=None):
                     <th>ID fragmento</th>
                     <th>Título</th>
                     <th>Tipo</th>
-                    <th>Rol</th>
+                    <th>Perfil</th>
+                    <th>Periodo</th>
                     <th>Carrera</th>
                     <th>Vigencia</th>
                     <th>Metadatos</th>

@@ -56,20 +56,20 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
     contenido = normalizar_texto(texto)
     titulo = normalizar_texto(metadata.get("titulo", ""))
     tipo_documento = normalizar_texto(metadata.get("tipo_documento", ""))
-    rol = normalizar_texto(metadata.get("rol", ""))
+    perfil = normalizar_texto(metadata.get("perfil", ""))
     ambito = normalizar_texto(metadata.get("ambito", ""))
 
     coincidencias_contenido = sum(1 for token in tokens if token in contenido)
     coincidencias_titulo = sum(1 for token in tokens if token in titulo)
     coincidencias_tipo = sum(1 for token in tokens if token in tipo_documento)
-    coincidencias_rol = sum(1 for token in tokens if token in rol)
+    coincidencias_perfil = sum(1 for token in tokens if token in perfil)
     coincidencias_ambito = sum(1 for token in tokens if token in ambito)
 
     return (
         coincidencias_contenido
         + (coincidencias_titulo * 3)
         + (coincidencias_tipo * 2)
-        + (coincidencias_rol * 2)
+        + (coincidencias_perfil * 2)
         + coincidencias_ambito
     ) / max(len(tokens), 1)
 
@@ -126,7 +126,7 @@ def guardar_fragmentos_documento(
             pagina_inicio = None
             pagina_fin = None
 
-        # Los metadatos permiten filtrar despues por rol, carrera, vigencia,
+        # Los metadatos permiten filtrar despues por perfil, carrera, vigencia,
         # tipo de documento u otros criterios enviados por el sistema externo.
         metadata = metadata_base.copy()
         metadata["id_documento"] = str(id_documento)
@@ -229,7 +229,7 @@ def construir_where_chroma(filtros):
     Si hay un filtro:
         {"ambito": "PUBLICO"}
     Si hay varios:
-        {"$and": [{"ambito": "PUBLICO"}, {"rol": "ESTUDIANTE"}]}
+        {"$and": [{"ambito": "PUBLICO"}, {"perfil": "ESTUDIANTE"}]}
     """
     if not filtros:
         return None

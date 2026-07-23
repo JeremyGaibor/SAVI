@@ -186,7 +186,8 @@ def _agrupar_fragmentos_por_documento(fragmentos):
             "id_documento": id_documento,
             "titulo": metadata.get("titulo", "Documento sin titulo"),
             "tipo_documento": metadata.get("tipo_documento", ""),
-            "rol": metadata.get("rol", ""),
+            "perfil": metadata.get("perfil", ""),
+            "periodo": metadata.get("periodo", ""),
             "carrera": metadata.get("carrera", ""),
             "estado_vigencia": metadata.get("estado_vigencia", ""),
             "fragmentos": 0,
@@ -789,6 +790,8 @@ ID documento: {metadata.get("id_documento", "")}
 Tipo: {metadata.get("tipo_documento", "")}
 Vigencia: {metadata.get("estado_vigencia", "")}
 Año: {metadata.get("anio_documento", "")}
+Periodo: {metadata.get("periodo", "")}
+Perfil: {metadata.get("perfil", "")}
 Fragmento:
 {contenido}
 """
@@ -832,10 +835,10 @@ Reglas obligatorias:
 13. Si DEPENDE DEL HISTORIAL es "si", conserva el tema de la conversacion anterior y no cambies a otro subtema solo porque comparta palabras como requisitos, estudiante o proceso.
 
 Reglas de perfil:
-14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar rol, carrera, nivel o periodo academico; no lo trates como fuente documental.
-15. No pidas rol, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
+14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar perfil, carrera, nivel o periodo academico; no lo trates como fuente documental.
+15. No pidas perfil, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
 16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con la facultad/carrera del usuario porque existe mas de un documento similar para distintas facultades o carreras. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a su facultad/carrera y que puede pedir la version de otra si la necesita.
-17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el rol, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
+17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el perfil, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}

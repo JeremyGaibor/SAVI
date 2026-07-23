@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.views.decorators.http import require_GET
 
 from .services.ollama_service import consultar_qwen
 from .services.pdf_service import (
@@ -82,77 +83,100 @@ from .view_logic.interpretacion_consulta import (
     interpretacion_fallback,
 )
 
+ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
+ERROR_SOLO_PDF = "Solo se permiten archivos PDF."
 
+
+@require_GET
 @xframe_options_exempt
 def chatbot(request):
     return render(request, "Bety_AI/chatbot.html")
 
 
-def ver_chroma_dump(request):
-    mensaje = None
-    error = None
-    fragmento_edicion = None
+def _crear_fragmento_admin(request):
+    id_fragmento = request.POST.get("id_fragmento", "").strip()
+    contenido = request.POST.get("contenido", "").strip()
+    metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
 
-    if request.method == "POST":
-        accion = request.POST.get("accion", "")
+    if not id_fragmento or not contenido:
+        raise ValueError("Debe ingresar ID y contenido para crear un fragmento.")
 
-        try:
-            if accion == "crear":
-                id_fragmento = request.POST.get("id_fragmento", "").strip()
-                contenido = request.POST.get("contenido", "").strip()
-                metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
+    crear_fragmento_chroma(id_fragmento, contenido, metadata)
+    return f"Fragmento creado: {id_fragmento}", None
 
-                if not id_fragmento or not contenido:
-                    raise ValueError("Debe ingresar ID y contenido para crear un fragmento.")
 
-                crear_fragmento_chroma(id_fragmento, contenido, metadata)
-                mensaje = f"Fragmento creado: {id_fragmento}"
+def _actualizar_fragmento_admin(request):
+    id_fragmento = request.POST.get("id_fragmento", "").strip()
+    contenido = request.POST.get("contenido", "").strip()
+    metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
 
-            elif accion == "actualizar":
-                id_fragmento = request.POST.get("id_fragmento", "").strip()
-                contenido = request.POST.get("contenido", "").strip()
-                metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
+    if not id_fragmento or not contenido:
+        raise ValueError("Debe ingresar ID y contenido para actualizar un fragmento.")
 
-                if not id_fragmento or not contenido:
-                    raise ValueError("Debe ingresar ID y contenido para actualizar un fragmento.")
+    actualizar_fragmento_chroma(id_fragmento, contenido, metadata)
+    return f"Fragmento actualizado: {id_fragmento}", None
 
-                actualizar_fragmento_chroma(id_fragmento, contenido, metadata)
-                mensaje = f"Fragmento actualizado: {id_fragmento}"
 
-            elif accion == "eliminar_fragmento":
-                id_fragmento = request.POST.get("id_fragmento", "").strip()
+def _eliminar_fragmento_admin(request):
+    id_fragmento = request.POST.get("id_fragmento", "").strip()
 
-                if not id_fragmento:
-                    raise ValueError("Debe indicar el ID del fragmento.")
+    if not id_fragmento:
+        raise ValueError("Debe indicar el ID del fragmento.")
 
-                eliminar_fragmento_chroma(id_fragmento)
-                mensaje = f"Fragmento eliminado: {id_fragmento}"
+    eliminar_fragmento_chroma(id_fragmento)
+    return f"Fragmento eliminado: {id_fragmento}", None
 
-            elif accion == "eliminar_documento":
-                id_documento = request.POST.get("id_documento", "").strip()
 
-                if not id_documento:
-                    raise ValueError("Debe indicar el ID del documento.")
+def _eliminar_documento_admin(request):
+    id_documento = request.POST.get("id_documento", "").strip()
 
-                eliminar_documento_chroma(id_documento)
-                mensaje = f"Documento eliminado de Chroma: {id_documento}"
+    if not id_documento:
+        raise ValueError("Debe indicar el ID del documento.")
 
-            elif accion == "editar":
-                id_fragmento = request.POST.get("id_fragmento", "").strip()
-                fragmento_edicion = obtener_fragmento_chroma(id_fragmento)
+    eliminar_documento_chroma(id_documento)
+    return f"Documento eliminado de Chroma: {id_documento}", None
 
-                if fragmento_edicion is None:
-                    raise ValueError("No se encontro el fragmento solicitado.")
 
-        except Exception as exc:
-            error = str(exc)
+def _editar_fragmento_admin(request):
+    id_fragmento = request.POST.get("id_fragmento", "").strip()
+    fragmento_edicion = obtener_fragmento_chroma(id_fragmento)
+
+    if fragmento_edicion is None:
+        raise ValueError("No se encontro el fragmento solicitado.")
+
+    return None, fragmento_edicion
+
+
+_ACCIONES_CHROMA_DUMP = {
+    "crear": _crear_fragmento_admin,
+    "actualizar": _actualizar_fragmento_admin,
+    "eliminar_fragmento": _eliminar_fragmento_admin,
+    "eliminar_documento": _eliminar_documento_admin,
+    "editar": _editar_fragmento_admin,
+}
+
+
+def _procesar_accion_chroma_dump(request):
+    manejador = _ACCIONES_CHROMA_DUMP.get(request.POST.get("accion", ""))
+
+    if manejador is None:
+        return None, None, None
 
     try:
-        fragmentos = listar_fragmentos_chroma()
+        mensaje, fragmento_edicion = manejador(request)
+        return mensaje, None, fragmento_edicion
     except Exception as exc:
-        fragmentos = []
-        error = error or f"No se pudo leer ChromaDB: {exc}"
+        return None, str(exc), None
 
+
+def _listar_fragmentos_admin(error_previo):
+    try:
+        return listar_fragmentos_chroma(), error_previo
+    except Exception as exc:
+        return [], error_previo or f"No se pudo leer ChromaDB: {exc}"
+
+
+def _agrupar_fragmentos_por_documento(fragmentos):
     documentos = {}
     for fragmento in fragmentos:
         metadata = fragmento.get("metadata") or {}
@@ -168,6 +192,20 @@ def ver_chroma_dump(request):
             "fragmentos": 0,
         })
         documentos[id_documento]["fragmentos"] += 1
+
+    return documentos
+
+
+def ver_chroma_dump(request):
+    mensaje = None
+    error = None
+    fragmento_edicion = None
+
+    if request.method == "POST":
+        mensaje, error, fragmento_edicion = _procesar_accion_chroma_dump(request)
+
+    fragmentos, error = _listar_fragmentos_admin(error)
+    documentos = _agrupar_fragmentos_por_documento(fragmentos)
 
     if fragmento_edicion:
         fragmento_edicion["metadata_json"] = json.dumps(
@@ -196,13 +234,13 @@ def api_legibilidad(request):
 
     if archivo is None:
         return Response(
-            {"error": "Debe enviar un archivo PDF en el campo 'archivo'."},
+            {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not archivo.name.lower().endswith(".pdf"):
         return Response(
-            {"error": "Solo se permiten archivos PDF."},
+            {"error": ERROR_SOLO_PDF},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -211,35 +249,57 @@ def api_legibilidad(request):
     return Response(resultado, status=status.HTTP_200_OK)
 
 
-@api_view(["POST"])
-@parser_classes([MultiPartParser, FormParser, JSONParser])
-def api_procesar_documento(request):
-    archivo = request.FILES.get("archivo")
-    texto_extraido = str(obtener_valor_request(request, "texto_extraido", "")).strip()
+def _leer_datos_documento_request(request, archivo, texto_extraido):
+    if archivo is not None:
+        resultado_texto = extraer_texto_pdf(archivo)
+        return {
+            "texto_total": resultado_texto["texto_total"],
+            "paginas_texto": resultado_texto["paginas_texto"],
+            "total_paginas": resultado_texto["total_paginas"],
+            "caracteres_extraidos": resultado_texto["caracteres_extraidos"],
+            "paginas_con_texto": resultado_texto["paginas_con_texto"],
+            "paginas_sin_texto": resultado_texto["paginas_sin_texto"],
+            "paginas_con_poco_texto": resultado_texto["paginas_con_poco_texto"],
+            "total_imagenes": resultado_texto["total_imagenes"],
+            "requiere_revision": resultado_texto["requiere_revision"],
+            "analisis_paginas": resultado_texto["analisis_paginas"],
+        }
 
+    texto_total = texto_extraido
+    return {
+        "texto_total": texto_total,
+        "paginas_texto": [],
+        "total_paginas": int(obtener_valor_request(request, "paginas", 0) or 0),
+        "caracteres_extraidos": len(texto_total),
+        "paginas_con_texto": int(obtener_valor_request(request, "paginas_con_texto", 0) or 0),
+        "paginas_sin_texto": int(obtener_valor_request(request, "paginas_sin_texto", 0) or 0),
+        "paginas_con_poco_texto": int(obtener_valor_request(request, "paginas_con_poco_texto", 0) or 0),
+        "total_imagenes": int(obtener_valor_request(request, "total_imagenes", 0) or 0),
+        "requiere_revision": normalizar_booleano(obtener_valor_request(request, "requiere_revision", False)),
+        "analisis_paginas": [],
+    }
+
+
+def _validar_solicitud_procesar_documento(archivo, texto_extraido, id_documento):
     if archivo is None and not texto_extraido:
-        return Response(
-            {"error": "Debe enviar un PDF en 'archivo' o texto en 'texto_extraido'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return {"error": "Debe enviar un PDF en 'archivo' o texto en 'texto_extraido'."}
 
     if archivo is not None and not archivo.name.lower().endswith(".pdf"):
-        return Response(
-            {"error": "Solo se permiten archivos PDF."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return {"error": ERROR_SOLO_PDF}
 
-    id_documento = str(obtener_valor_request(request, "id_documento", "")).strip()
-    metadata_recibida = obtener_metadata_request(request)
-    titulo = str(
-        obtener_valor_request(
-            request,
-            "titulo",
-            metadata_recibida.get("titulo") or metadata_recibida.get("nombre_archivo") or "",
-        )
-    ).strip()
-    if not titulo:
-        titulo = f"Documento {id_documento}"
+    if not id_documento:
+        return {"error": "Debe enviar el campo 'id_documento'."}
+
+    return None
+
+
+def _guardar_documento_en_chroma(request, archivo, id_documento, titulo, datos_documento, metadata_recibida):
+    fragmentos, modo_fragmentacion = dividir_documento_en_fragmentos(
+        datos_documento["texto_total"],
+        paginas_texto=datos_documento["paginas_texto"],
+    )
+    metadata_base = construir_metadata_documento(request, archivo)
+
     accion_chroma = str(obtener_valor_request(request, "accion_chroma", "")).strip()
     uuid_version_anterior = str(
         obtener_valor_request(
@@ -253,74 +313,79 @@ def api_procesar_documento(request):
         defecto=True,
     )
 
-    if not id_documento:
-        return Response(
-            {"error": "Debe enviar el campo 'id_documento'."},
-            status=status.HTTP_400_BAD_REQUEST,
+    reemplazo_por_uuid_anterior = bool(
+        reemplazar_existente
+        and accion_chroma == "reemplazar_version_vigente"
+        and uuid_version_anterior
+    )
+    if reemplazo_por_uuid_anterior:
+        eliminar_version_chroma(uuid_version_anterior)
+    elif reemplazar_existente:
+        eliminar_documento_chroma(id_documento)
+
+    total_fragmentos = guardar_fragmentos_documento(
+        id_documento=id_documento,
+        titulo=titulo,
+        fragmentos=fragmentos,
+        metadata_base=metadata_base,
+    )
+
+    return {
+        "reemplazo_fragmentos_previos": reemplazar_existente,
+        "reemplazo_por_uuid_anterior": reemplazo_por_uuid_anterior,
+        "uuid_version_anterior_eliminada": uuid_version_anterior if reemplazo_por_uuid_anterior else "",
+        "fragmentos_generados": total_fragmentos,
+        "modo_fragmentacion": modo_fragmentacion,
+    }
+
+
+def _obtener_titulo_documento_request(request, id_documento, metadata_recibida):
+    titulo = str(
+        obtener_valor_request(
+            request,
+            "titulo",
+            metadata_recibida.get("titulo") or metadata_recibida.get("nombre_archivo") or "",
         )
+    ).strip()
+
+    return titulo or f"Documento {id_documento}"
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+def api_procesar_documento(request):
+    archivo = request.FILES.get("archivo")
+    texto_extraido = str(obtener_valor_request(request, "texto_extraido", "")).strip()
+    id_documento = str(obtener_valor_request(request, "id_documento", "")).strip()
+
+    error_validacion = _validar_solicitud_procesar_documento(archivo, texto_extraido, id_documento)
+    if error_validacion:
+        return Response(error_validacion, status=status.HTTP_400_BAD_REQUEST)
+
+    metadata_recibida = obtener_metadata_request(request)
+    titulo = _obtener_titulo_documento_request(request, id_documento, metadata_recibida)
 
     try:
-        if archivo is not None:
-            resultado_texto = extraer_texto_pdf(archivo)
-            texto_total = resultado_texto["texto_total"]
-            paginas_texto = resultado_texto["paginas_texto"]
-            total_paginas = resultado_texto["total_paginas"]
-            caracteres_extraidos = resultado_texto["caracteres_extraidos"]
-            paginas_con_texto = resultado_texto["paginas_con_texto"]
-            paginas_sin_texto = resultado_texto["paginas_sin_texto"]
-            paginas_con_poco_texto = resultado_texto["paginas_con_poco_texto"]
-            total_imagenes = resultado_texto["total_imagenes"]
-            requiere_revision = resultado_texto["requiere_revision"]
-            analisis_paginas = resultado_texto["analisis_paginas"]
-        else:
-            texto_total = texto_extraido
-            paginas_texto = []
-            total_paginas = int(obtener_valor_request(request, "paginas", 0) or 0)
-            caracteres_extraidos = len(texto_total)
-            paginas_con_texto = int(obtener_valor_request(request, "paginas_con_texto", 0) or 0)
-            paginas_sin_texto = int(obtener_valor_request(request, "paginas_sin_texto", 0) or 0)
-            paginas_con_poco_texto = int(obtener_valor_request(request, "paginas_con_poco_texto", 0) or 0)
-            total_imagenes = int(obtener_valor_request(request, "total_imagenes", 0) or 0)
-            requiere_revision = normalizar_booleano(obtener_valor_request(request, "requiere_revision", False))
-            analisis_paginas = []
+        datos_documento = _leer_datos_documento_request(request, archivo, texto_extraido)
 
-        if caracteres_extraidos < 100:
+        if datos_documento["caracteres_extraidos"] < 100:
             return Response(
                 {
                     "id_documento": id_documento,
                     "titulo": titulo,
                     "estado_procesamiento": "PENDIENTE_OCR",
                     "requiere_ocr": True,
-                    "paginas": total_paginas,
-                    "total_imagenes": total_imagenes,
-                    "caracteres_extraidos": caracteres_extraidos,
+                    "paginas": datos_documento["total_paginas"],
+                    "total_imagenes": datos_documento["total_imagenes"],
+                    "caracteres_extraidos": datos_documento["caracteres_extraidos"],
                     "fragmentos_generados": 0,
                     "mensaje": "El documento tiene poco o ningún texto seleccionable. Requiere OCR.",
                 },
                 status=status.HTTP_200_OK,
             )
 
-        fragmentos, modo_fragmentacion = dividir_documento_en_fragmentos(
-            texto_total,
-            paginas_texto=paginas_texto,
-        )
-        metadata_base = construir_metadata_documento(request, archivo)
-
-        reemplazo_por_uuid_anterior = bool(
-            reemplazar_existente
-            and accion_chroma == "reemplazar_version_vigente"
-            and uuid_version_anterior
-        )
-        if reemplazo_por_uuid_anterior:
-            eliminar_version_chroma(uuid_version_anterior)
-        elif reemplazar_existente:
-            eliminar_documento_chroma(id_documento)
-
-        total_fragmentos = guardar_fragmentos_documento(
-            id_documento=id_documento,
-            titulo=titulo,
-            fragmentos=fragmentos,
-            metadata_base=metadata_base,
+        resultado_chroma = _guardar_documento_en_chroma(
+            request, archivo, id_documento, titulo, datos_documento, metadata_recibida
         )
 
         return Response(
@@ -329,20 +394,16 @@ def api_procesar_documento(request):
                 "titulo": titulo,
                 "estado_procesamiento": "PROCESADO",
                 "requiere_ocr": False,
-                "reemplazo_fragmentos_previos": reemplazar_existente,
-                "reemplazo_por_uuid_anterior": reemplazo_por_uuid_anterior,
-                "uuid_version_anterior_eliminada": uuid_version_anterior if reemplazo_por_uuid_anterior else "",
-                "paginas": total_paginas,
-                "caracteres_extraidos": caracteres_extraidos,
-                "fragmentos_generados": total_fragmentos,
-                "modo_fragmentacion": modo_fragmentacion,
+                "paginas": datos_documento["total_paginas"],
+                "caracteres_extraidos": datos_documento["caracteres_extraidos"],
                 "mensaje": "Documento procesado e indexado correctamente en ChromaDB.",
-                "paginas_con_texto": paginas_con_texto,
-                "paginas_sin_texto": paginas_sin_texto,
-                "paginas_con_poco_texto": paginas_con_poco_texto,
-                "total_imagenes": total_imagenes,
-                "requiere_revision": requiere_revision,
-                "analisis_paginas": analisis_paginas,
+                "paginas_con_texto": datos_documento["paginas_con_texto"],
+                "paginas_sin_texto": datos_documento["paginas_sin_texto"],
+                "paginas_con_poco_texto": datos_documento["paginas_con_poco_texto"],
+                "total_imagenes": datos_documento["total_imagenes"],
+                "requiere_revision": datos_documento["requiere_revision"],
+                "analisis_paginas": datos_documento["analisis_paginas"],
+                **resultado_chroma,
             },
             status=status.HTTP_200_OK,
         )
@@ -437,397 +498,202 @@ def api_buscar_fragmentos(request):
     )
 
 
-@api_view(["POST"])
-def api_consulta_ia(request):
-    pregunta = request.data.get("pregunta")
+def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta):
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    guardar_interaccion_temporal(
+        request=request,
+        pregunta=pregunta,
+        respuesta=respuesta,
+        tipo_respuesta=tipo_respuesta,
+    )
+    return Response(
+        {
+            "ok": True,
+            "pregunta": pregunta,
+            "conversation_id": conversation_id,
+            "tipo_respuesta": tipo_respuesta,
+            "respuesta": respuesta,
+        },
+        status=status.HTTP_200_OK,
+    )
 
-    if not pregunta:
-        return Response(
-            {"error": "Debe enviar el campo 'pregunta'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
 
-    conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
-    perfil_sga = obtener_contexto_usuario_sga(request.data)
-    perfil_usuario = {}
-    perfil_en_recoleccion = None
-    pregunta_original_web = None
-    resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
+def _responder_ia_no_disponible(request, pregunta, exc, conversation_id=None):
+    respuesta = respuesta_servidor_ia_no_disponible()
+    guardar_interaccion_temporal(
+        request=request,
+        pregunta=pregunta,
+        respuesta=respuesta,
+        tipo_respuesta="IA_NO_DISPONIBLE",
+    )
+    cuerpo = {
+        "ok": False,
+        "pregunta": pregunta,
+        "tipo_respuesta": "IA_NO_DISPONIBLE",
+        "respuesta": respuesta,
+        "detalle": str(exc),
+    }
+    if conversation_id is not None:
+        cuerpo["conversation_id"] = conversation_id
 
-    if perfil_sga:
-        if resultado_recoleccion and not resultado_recoleccion["completo"]:
-            respuesta = resultado_recoleccion["respuesta"]
-            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="SOLICITUD_CONTEXTO_SGA",
-            )
+    return Response(cuerpo, status=status.HTTP_200_OK)
 
-            return Response(
-                {
-                    "ok": True,
-                    "pregunta": pregunta,
-                    "conversation_id": conversation_id,
-                    "tipo_respuesta": "SOLICITUD_CONTEXTO_SGA",
-                    "respuesta": respuesta,
-                },
-                status=status.HTTP_200_OK,
-            )
 
-        if resultado_recoleccion and resultado_recoleccion["completo"]:
-            perfil_usuario = {**perfil_sga, **resultado_recoleccion["perfil"]}
-            pregunta_original_web = resultado_recoleccion["pregunta_original"]
-            pregunta = pregunta_original_web
-            guardar_perfil_sga_conversacion(conversation_id, perfil_usuario)
-        else:
-            guardar_perfil_sga_conversacion(conversation_id, perfil_sga)
-            perfil_usuario = perfil_sga
-
-        limpiar_pendiente_perfil_web(request)
-
-        if not pregunta_original_web and perfil_estudiante_requiere_tipo(perfil_usuario):
-            respuesta = iniciar_recoleccion_perfil_conversacion(
-                conversation_id,
-                pregunta,
-                perfil_usuario,
-            )
-
-            if respuesta:
-                agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-                guardar_interaccion_temporal(
-                    request=request,
-                    pregunta=pregunta,
-                    respuesta=respuesta,
-                    tipo_respuesta="SOLICITUD_CONTEXTO_SGA",
-                )
-
-                return Response(
-                    {
-                        "ok": True,
-                        "pregunta": pregunta,
-                        "conversation_id": conversation_id,
-                        "tipo_respuesta": "SOLICITUD_CONTEXTO_SGA",
-                        "respuesta": respuesta,
-                    },
-                    status=status.HTTP_200_OK,
-                )
-    else:
-        if resultado_recoleccion and not resultado_recoleccion["completo"]:
-            respuesta = resultado_recoleccion["respuesta"]
-            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="SOLICITUD_CONTEXTO_WEB",
-            )
-
-            return Response(
-                {
-                    "ok": True,
-                    "pregunta": pregunta,
-                    "conversation_id": conversation_id,
-                    "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
-                    "respuesta": respuesta,
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        if resultado_recoleccion and resultado_recoleccion["completo"]:
-            perfil_usuario = resultado_recoleccion["perfil"]
-            pregunta_original_web = resultado_recoleccion["pregunta_original"]
-            pregunta = pregunta_original_web
-        else:
-            estado_conversacion = obtener_estado_conversacion(conversation_id)
-            perfil_usuario = estado_conversacion.get("perfil_usuario")
-            if not isinstance(perfil_usuario, dict):
-                perfil_usuario = {}
-            perfil_en_recoleccion = perfil_usuario
-
-    if (
-        not perfil_sga
-        and not pregunta_original_web
-        and pregunta_necesita_perfil_web(pregunta)
-    ):
-        respuesta = iniciar_recoleccion_perfil_conversacion(
-            conversation_id,
-            pregunta,
-            perfil_en_recoleccion or {},
-        )
-
-        if respuesta:
-            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="SOLICITUD_CONTEXTO_WEB",
-            )
-
-            return Response(
-                {
-                    "ok": True,
-                    "pregunta": pregunta,
-                    "conversation_id": conversation_id,
-                    "tipo_respuesta": "SOLICITUD_CONTEXTO_WEB",
-                    "respuesta": respuesta,
-                },
-                status=status.HTTP_200_OK,
-            )
-
-    contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
-    historial_conversacion = formatear_historial_conversacion(conversation_id)
-
+def _responder_con_ia_controlada(request, conversation_id, pregunta, tipo_respuesta, contexto_usuario):
     try:
-        interpretacion_consulta = interpretar_consulta_ia(
-            pregunta,
-            historial_conversacion,
-            contexto_usuario,
+        resultado_controlado = generar_respuesta_controlada(pregunta, tipo_respuesta, contexto_usuario)
+    except Exception as exc:
+        return _responder_ia_no_disponible(request, pregunta, exc)
+
+    respuesta = resultado_controlado["respuesta"]
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    guardar_interaccion_temporal(
+        request=request,
+        pregunta=pregunta,
+        respuesta=respuesta,
+        tipo_respuesta=tipo_respuesta,
+        modelo=resultado_controlado["modelo"],
+    )
+
+    return Response(
+        {
+            "ok": True,
+            "pregunta": pregunta,
+            "tipo_respuesta": tipo_respuesta,
+            "respuesta": respuesta,
+            "modelo": resultado_controlado["modelo"],
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def _resolver_perfil_sga(request, conversation_id, pregunta, perfil_sga, resultado_recoleccion):
+    if resultado_recoleccion and not resultado_recoleccion["completo"]:
+        return _responder_directo(
+            request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_SGA", resultado_recoleccion["respuesta"]
         )
+
+    if resultado_recoleccion and resultado_recoleccion["completo"]:
+        perfil_usuario = {**perfil_sga, **resultado_recoleccion["perfil"]}
+        pregunta_original_web = resultado_recoleccion["pregunta_original"]
+        pregunta = pregunta_original_web
+        guardar_perfil_sga_conversacion(conversation_id, perfil_usuario)
+    else:
+        pregunta_original_web = None
+        guardar_perfil_sga_conversacion(conversation_id, perfil_sga)
+        perfil_usuario = perfil_sga
+
+    limpiar_pendiente_perfil_web(request)
+
+    if pregunta_original_web or not perfil_estudiante_requiere_tipo(perfil_usuario):
+        return perfil_usuario, pregunta, pregunta_original_web, None
+
+    respuesta = iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil_usuario)
+    if not respuesta:
+        return perfil_usuario, pregunta, pregunta_original_web, None
+
+    return _responder_directo(request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_SGA", respuesta)
+
+
+def _resolver_perfil_web(request, conversation_id, pregunta, resultado_recoleccion):
+    if resultado_recoleccion and not resultado_recoleccion["completo"]:
+        return _responder_directo(
+            request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_WEB", resultado_recoleccion["respuesta"]
+        )
+
+    if resultado_recoleccion and resultado_recoleccion["completo"]:
+        perfil_usuario = resultado_recoleccion["perfil"]
+        pregunta_original_web = resultado_recoleccion["pregunta_original"]
+        pregunta = pregunta_original_web
+        return perfil_usuario, pregunta, pregunta_original_web, None
+
+    estado_conversacion = obtener_estado_conversacion(conversation_id)
+    perfil_usuario = estado_conversacion.get("perfil_usuario")
+    if not isinstance(perfil_usuario, dict):
+        perfil_usuario = {}
+
+    return perfil_usuario, pregunta, None, perfil_usuario
+
+
+def _resolver_perfil_o_respuesta_pendiente(request, conversation_id, pregunta, perfil_sga, resultado_recoleccion):
+    if perfil_sga:
+        return _resolver_perfil_sga(request, conversation_id, pregunta, perfil_sga, resultado_recoleccion)
+    return _resolver_perfil_web(request, conversation_id, pregunta, resultado_recoleccion)
+
+
+def _iniciar_perfil_web_si_hace_falta(
+    request, conversation_id, pregunta, perfil_sga, pregunta_original_web, perfil_en_recoleccion
+):
+    if perfil_sga or pregunta_original_web or not pregunta_necesita_perfil_web(pregunta):
+        return None
+
+    respuesta = iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil_en_recoleccion or {})
+    if not respuesta:
+        return None
+
+    return _responder_directo(request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_WEB", respuesta)
+
+
+def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario):
+    try:
+        return interpretar_consulta_ia(pregunta, historial_conversacion, contexto_usuario)
     except Exception:
-        interpretacion_consulta = interpretacion_fallback(pregunta)
+        return interpretacion_fallback(pregunta)
 
-    respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
-    if respuesta_historial:
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta_historial)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta_historial,
-            tipo_respuesta="HISTORIAL_CONVERSACION",
-        )
 
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "conversation_id": conversation_id,
-                "tipo_respuesta": "HISTORIAL_CONVERSACION",
-                "respuesta": respuesta_historial,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    if (
+def _debe_reformular(pregunta, interpretacion_consulta):
+    return (
         interpretacion_consulta.get("tipo_operacion") == "reformulacion"
         or es_solicitud_reformulacion(pregunta)
-    ):
-        respuesta_anterior = obtener_ultima_respuesta_conversacion(conversation_id)
-
-        if respuesta_anterior:
-            try:
-                resultado_reformulacion = generar_reformulacion_respuesta(
-                    respuesta_anterior,
-                    pregunta,
-                )
-            except Exception as exc:
-                respuesta = respuesta_servidor_ia_no_disponible()
-                guardar_interaccion_temporal(
-                    request=request,
-                    pregunta=pregunta,
-                    respuesta=respuesta,
-                    tipo_respuesta="IA_NO_DISPONIBLE",
-                )
-
-                return Response(
-                    {
-                        "ok": False,
-                        "pregunta": pregunta,
-                        "conversation_id": conversation_id,
-                        "tipo_respuesta": "IA_NO_DISPONIBLE",
-                        "respuesta": respuesta,
-                        "detalle": str(exc),
-                    },
-                    status=status.HTTP_200_OK,
-                )
-
-            respuesta = resultado_reformulacion["respuesta"]
-            agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="REFORMULACION",
-                modelo=resultado_reformulacion["modelo"],
-            )
-
-            return Response(
-                {
-                    "ok": True,
-                    "pregunta": pregunta,
-                    "conversation_id": conversation_id,
-                    "tipo_respuesta": "REFORMULACION",
-                    "respuesta": respuesta,
-                    "modelo": resultado_reformulacion["modelo"],
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        respuesta = "No tengo una respuesta anterior en esta conversacion para reformular."
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="REFORMULACION_SIN_HISTORIAL",
-        )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "conversation_id": conversation_id,
-                "tipo_respuesta": "REFORMULACION_SIN_HISTORIAL",
-                "respuesta": respuesta,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    if es_pregunta_identidad(pregunta):
-        try:
-            resultado_controlado = generar_respuesta_controlada(pregunta, "IDENTIDAD", contexto_usuario)
-        except Exception as exc:
-            respuesta = respuesta_servidor_ia_no_disponible()
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="IA_NO_DISPONIBLE",
-            )
-
-            return Response(
-                {
-                    "ok": False,
-                    "pregunta": pregunta,
-                    "tipo_respuesta": "IA_NO_DISPONIBLE",
-                    "respuesta": respuesta,
-                    "detalle": str(exc),
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        respuesta = resultado_controlado["respuesta"]
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="IDENTIDAD",
-            modelo=resultado_controlado["modelo"],
-        )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "tipo_respuesta": "IDENTIDAD",
-                "respuesta": respuesta,
-                "modelo": resultado_controlado["modelo"],
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    if es_interaccion_social(pregunta):
-        try:
-            resultado_controlado = generar_respuesta_controlada(pregunta, "SALUDO", contexto_usuario)
-        except Exception as exc:
-            respuesta = respuesta_servidor_ia_no_disponible()
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="IA_NO_DISPONIBLE",
-            )
-
-            return Response(
-                {
-                    "ok": False,
-                    "pregunta": pregunta,
-                    "tipo_respuesta": "IA_NO_DISPONIBLE",
-                    "respuesta": respuesta,
-                    "detalle": str(exc),
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        respuesta = resultado_controlado["respuesta"]
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="SALUDO",
-            modelo=resultado_controlado["modelo"],
-        )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "tipo_respuesta": "SALUDO",
-                "respuesta": respuesta,
-                "modelo": resultado_controlado["modelo"],
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    if (
-        interpretacion_consulta.get("tipo_operacion") == "fuera_ambito"
-        or (
-            es_pregunta_fuera_ambito(pregunta)
-            and interpretacion_consulta.get("tipo_operacion") != "consulta_documental"
-        )
-    ):
-        try:
-            resultado_controlado = generar_respuesta_controlada(pregunta, "FUERA_AMBITO", contexto_usuario)
-        except Exception as exc:
-            respuesta = respuesta_servidor_ia_no_disponible()
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="IA_NO_DISPONIBLE",
-            )
-
-            return Response(
-                {
-                    "ok": False,
-                    "pregunta": pregunta,
-                    "tipo_respuesta": "IA_NO_DISPONIBLE",
-                    "respuesta": respuesta,
-                    "detalle": str(exc),
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        respuesta = resultado_controlado["respuesta"]
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="FUERA_AMBITO",
-            modelo=resultado_controlado["modelo"],
-        )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "tipo_respuesta": "FUERA_AMBITO",
-                "respuesta": respuesta,
-                "modelo": resultado_controlado["modelo"],
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    filtros = combinar_filtros_consulta_y_perfil(
-        extraer_filtros_consulta(request.data),
-        perfil_usuario,
     )
-    ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
+
+
+def _responder_reformulacion(request, conversation_id, pregunta):
+    respuesta_anterior = obtener_ultima_respuesta_conversacion(conversation_id)
+
+    if not respuesta_anterior:
+        respuesta = "No tengo una respuesta anterior en esta conversacion para reformular."
+        return _responder_directo(request, conversation_id, pregunta, "REFORMULACION_SIN_HISTORIAL", respuesta)
+
+    try:
+        resultado_reformulacion = generar_reformulacion_respuesta(respuesta_anterior, pregunta)
+    except Exception as exc:
+        return _responder_ia_no_disponible(request, pregunta, exc, conversation_id=conversation_id)
+
+    respuesta = resultado_reformulacion["respuesta"]
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    guardar_interaccion_temporal(
+        request=request,
+        pregunta=pregunta,
+        respuesta=respuesta,
+        tipo_respuesta="REFORMULACION",
+        modelo=resultado_reformulacion["modelo"],
+    )
+
+    return Response(
+        {
+            "ok": True,
+            "pregunta": pregunta,
+            "conversation_id": conversation_id,
+            "tipo_respuesta": "REFORMULACION",
+            "respuesta": respuesta,
+            "modelo": resultado_reformulacion["modelo"],
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def _es_fuera_de_ambito(pregunta, interpretacion_consulta):
+    if interpretacion_consulta.get("tipo_operacion") == "fuera_ambito":
+        return True
+
+    return (
+        es_pregunta_fuera_ambito(pregunta)
+        and interpretacion_consulta.get("tipo_operacion") != "consulta_documental"
+    )
+
+
+def _construir_pregunta_busqueda(pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario):
     pregunta_interpretada = (
         " ".join(
             parte
@@ -843,20 +709,20 @@ def api_consulta_ia(request):
     if interpretacion_consulta.get("depende_historial") and ultima_pregunta:
         pregunta_busqueda = " ".join(
             parte
-            for parte in [
-                ultima_pregunta,
-                pregunta,
-                pregunta_interpretada,
-            ]
+            for parte in [ultima_pregunta, pregunta, pregunta_interpretada]
             if parte
         )
     else:
         pregunta_busqueda = construir_pregunta_busqueda_contextual(pregunta_interpretada, ultima_pregunta)
 
-    pregunta_busqueda = construir_pregunta_busqueda_con_perfil(pregunta_busqueda, perfil_usuario)
+    return construir_pregunta_busqueda_con_perfil(pregunta_busqueda, perfil_usuario)
 
+
+def _buscar_fragmentos_para_pregunta(
+    pregunta, pregunta_busqueda, perfil_usuario, filtros, interpretacion_consulta, ultima_pregunta
+):
     try:
-        fragmentos, _ = buscar_fragmentos_con_fallback(
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
             pregunta=pregunta_busqueda,
             filtros=filtros,
             total_resultados=3,
@@ -877,7 +743,7 @@ def api_consulta_ia(request):
                 ),
                 perfil_usuario,
             )
-            fragmentos_fallback, _ = buscar_fragmentos_con_fallback(
+            fragmentos_fallback, filtros_aplicados_fallback = buscar_fragmentos_con_fallback(
                 pregunta=pregunta_original_busqueda,
                 filtros=filtros,
                 total_resultados=3,
@@ -885,6 +751,9 @@ def api_consulta_ia(request):
 
             if fragmentos_fallback:
                 fragmentos = fragmentos_fallback
+                filtros_aplicados = filtros_aplicados_fallback
+
+        return fragmentos, filtros_aplicados
     except Exception as exc:
         return Response(
             {
@@ -896,56 +765,17 @@ def api_consulta_ia(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    fragmentos = filtrar_fragmentos_por_tipo_estudiante(
-        pregunta_busqueda,
-        perfil_usuario,
-        fragmentos,
-    )
 
-    if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
-        try:
-            resultado_controlado = generar_respuesta_controlada(pregunta, "FUERA_AMBITO", contexto_usuario)
-        except Exception as exc:
-            respuesta = respuesta_servidor_ia_no_disponible()
-            guardar_interaccion_temporal(
-                request=request,
-                pregunta=pregunta,
-                respuesta=respuesta,
-                tipo_respuesta="IA_NO_DISPONIBLE",
-            )
+def _perfil_desambiguo_documento(filtros_aplicados):
+    # Si la busqueda solo tuvo exito manteniendo el filtro de facultad/carrera
+    # del perfil (es decir, no hizo falta relajarlo), es señal de que existian
+    # documentos similares para otras facultades/carreras y el perfil fue lo
+    # que permitio elegir el correcto. Ese caso es el unico donde vale la
+    # pena que la respuesta mencione el perfil del usuario.
+    return bool(filtros_aplicados.get("facultad") or filtros_aplicados.get("carrera"))
 
-            return Response(
-                {
-                    "ok": False,
-                    "pregunta": pregunta,
-                    "tipo_respuesta": "IA_NO_DISPONIBLE",
-                    "respuesta": respuesta,
-                    "detalle": str(exc),
-                },
-                status=status.HTTP_200_OK,
-            )
 
-        respuesta = resultado_controlado["respuesta"]
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="FUERA_AMBITO",
-            modelo=resultado_controlado["modelo"],
-        )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "tipo_respuesta": "FUERA_AMBITO",
-                "respuesta": respuesta,
-                "modelo": resultado_controlado["modelo"],
-            },
-            status=status.HTTP_200_OK,
-        )
-
+def _construir_contexto_documental(fragmentos):
     contexto = ""
 
     for indice, fragmento in enumerate(fragmentos, start=1):
@@ -963,6 +793,18 @@ Fragmento:
 {contenido}
 """
 
+    return contexto
+
+
+def _construir_prompt_documental(
+    pregunta,
+    pregunta_busqueda,
+    contexto_usuario,
+    historial_conversacion,
+    contexto,
+    interpretacion_consulta,
+    perfil_desambiguo_documento,
+):
     bloque_historial = (
         f"\nHISTORIAL RECIENTE DE ESTA MISMA CONVERSACION:\n{historial_conversacion}\n"
         if historial_conversacion
@@ -971,7 +813,7 @@ Fragmento:
     formato_respuesta = interpretacion_consulta.get("formato_respuesta") or "normal"
     depende_historial = "si" if interpretacion_consulta.get("depende_historial") else "no"
 
-    prompt = f"""
+    return f"""
 Eres Bety-AI, un asistente virtual institucional.
 
 Reglas obligatorias:
@@ -992,12 +834,17 @@ Reglas obligatorias:
 Reglas de perfil:
 14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar rol, carrera, nivel o periodo academico; no lo trates como fuente documental.
 15. No pidas rol, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
+16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con la facultad/carrera del usuario porque existe mas de un documento similar para distintas facultades o carreras. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a su facultad/carrera y que puede pedir la version de otra si la necesita.
+17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el rol, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}
 {bloque_historial}
 CONTEXTO DOCUMENTAL:
 {contexto}
+
+SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO:
+{"si" if perfil_desambiguo_documento else "no"}
 
 PREGUNTA ORIGINAL DEL USUARIO:
 {pregunta}
@@ -1014,6 +861,8 @@ DEPENDE DEL HISTORIAL:
 RESPUESTA:
 """
 
+
+def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos):
     try:
         resultado_qwen = consultar_qwen(prompt)
         respuesta = limpiar_respuesta_ia(resultado_qwen["respuesta"])
@@ -1025,39 +874,103 @@ RESPUESTA:
             tipo_respuesta="RESPUESTA",
             modelo=resultado_qwen["modelo"],
         )
-
-        return Response(
-            {
-                "ok": True,
-                "pregunta": pregunta,
-                "tipo_respuesta": "RESPUESTA",
-                "respuesta": respuesta,
-                "modelo": resultado_qwen["modelo"],
-                "fragmentos_usados": len(fragmentos),
-                "mensajes_historial_temporal": len(historial),
-            },
-            status=status.HTTP_200_OK,
-        )
-
     except Exception as exc:
-        respuesta = respuesta_servidor_ia_no_disponible()
-        guardar_interaccion_temporal(
-            request=request,
-            pregunta=pregunta,
-            respuesta=respuesta,
-            tipo_respuesta="IA_NO_DISPONIBLE",
+        return _responder_ia_no_disponible(request, pregunta, exc)
+
+    return Response(
+        {
+            "ok": True,
+            "pregunta": pregunta,
+            "tipo_respuesta": "RESPUESTA",
+            "respuesta": respuesta,
+            "modelo": resultado_qwen["modelo"],
+            "fragmentos_usados": len(fragmentos),
+            "mensajes_historial_temporal": len(historial),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+def api_consulta_ia(request):
+    pregunta = request.data.get("pregunta")
+
+    if not pregunta:
+        return Response(
+            {"error": "Debe enviar el campo 'pregunta'."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-        return Response(
-            {
-                "ok": False,
-                "pregunta": pregunta,
-                "tipo_respuesta": "IA_NO_DISPONIBLE",
-                "respuesta": respuesta,
-                "detalle": str(exc),
-            },
-            status=status.HTTP_200_OK,
-        )
+    conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
+    perfil_sga = obtener_contexto_usuario_sga(request.data)
+    resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
+
+    resultado_perfil = _resolver_perfil_o_respuesta_pendiente(
+        request, conversation_id, pregunta, perfil_sga, resultado_recoleccion
+    )
+    if isinstance(resultado_perfil, Response):
+        return resultado_perfil
+    perfil_usuario, pregunta, pregunta_original_web, perfil_en_recoleccion = resultado_perfil
+
+    respuesta_pendiente = _iniciar_perfil_web_si_hace_falta(
+        request, conversation_id, pregunta, perfil_sga, pregunta_original_web, perfil_en_recoleccion
+    )
+    if respuesta_pendiente:
+        return respuesta_pendiente
+
+    contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
+    historial_conversacion = formatear_historial_conversacion(conversation_id)
+    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
+
+    respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
+    if respuesta_historial:
+        return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
+
+    if _debe_reformular(pregunta, interpretacion_consulta):
+        return _responder_reformulacion(request, conversation_id, pregunta)
+
+    if es_pregunta_identidad(pregunta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "IDENTIDAD", contexto_usuario)
+
+    if es_interaccion_social(pregunta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "SALUDO", contexto_usuario)
+
+    if _es_fuera_de_ambito(pregunta, interpretacion_consulta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
+
+    filtros = combinar_filtros_consulta_y_perfil(
+        extraer_filtros_consulta(request.data),
+        perfil_usuario,
+    )
+    ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
+    pregunta_busqueda = _construir_pregunta_busqueda(
+        pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario
+    )
+
+    resultado_busqueda = _buscar_fragmentos_para_pregunta(
+        pregunta, pregunta_busqueda, perfil_usuario, filtros, interpretacion_consulta, ultima_pregunta
+    )
+    if isinstance(resultado_busqueda, Response):
+        return resultado_busqueda
+    fragmentos, filtros_aplicados = resultado_busqueda
+
+    fragmentos = filtrar_fragmentos_por_tipo_estudiante(pregunta_busqueda, perfil_usuario, fragmentos)
+
+    if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
+
+    contexto = _construir_contexto_documental(fragmentos)
+    prompt = _construir_prompt_documental(
+        pregunta,
+        pregunta_busqueda,
+        contexto_usuario,
+        historial_conversacion,
+        contexto,
+        interpretacion_consulta,
+        _perfil_desambiguo_documento(filtros_aplicados),
+    )
+
+    return _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos)
 
 
 @api_view(["POST"])
@@ -1070,13 +983,13 @@ def api_analizar_documento(request):
 
     if archivo is None:
         return Response(
-            {"error": "Debe enviar un archivo PDF en el campo 'archivo'."},
+            {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not archivo.name.lower().endswith(".pdf"):
         return Response(
-            {"error": "Solo se permiten archivos PDF."},
+            {"error": ERROR_SOLO_PDF},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -1134,13 +1047,13 @@ def api_extraer_texto_documento(request):
 
     if archivo is None:
         return Response(
-            {"error": "Debe enviar un archivo PDF en el campo 'archivo'."},
+            {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not archivo.name.lower().endswith(".pdf"):
         return Response(
-            {"error": "Solo se permiten archivos PDF."},
+            {"error": ERROR_SOLO_PDF},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

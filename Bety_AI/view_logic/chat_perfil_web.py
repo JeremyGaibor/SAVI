@@ -31,7 +31,7 @@ def obtener_siguiente_campo_perfil_web(perfil):
     return None
 
 
-def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None):
+def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None, reintento=False):
     perfil = perfil if isinstance(perfil, dict) else {}
     detalle_consulta = limpiar_texto_contexto(pregunta_original, 120)
     sufijo_consulta = f" sobre \"{detalle_consulta}\"" if detalle_consulta else ""
@@ -54,4 +54,7 @@ def pregunta_campo_perfil_web(campo, pregunta_original="", perfil=None):
         "nivel": "¿En qué nivel o semestre estás?",
         "periodo_academico": "¿Cuál es tu periodo académico?",
     }
-    return preguntas.get(campo, "Dame ese dato para continuar.")
+    pregunta = preguntas.get(campo, "Dame ese dato para continuar.")
+    if reintento:
+        return f"No logré identificar esa respuesta. {pregunta}"
+    return pregunta

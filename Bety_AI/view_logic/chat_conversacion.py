@@ -3,6 +3,7 @@ import re
 from django.core.cache import cache
 
 from .chat_perfil_web import obtener_siguiente_campo_perfil_web, pregunta_campo_perfil_web
+from .chat_validacion_perfil import validar_respuesta_campo
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
 CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
@@ -11,6 +12,10 @@ CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
 CONVERSACION_TTL_SEGUNDOS = 60 * 30
 MAX_HISTORIAL_CONVERSACION = 20
 MAX_HISTORIAL_PROMPT = 4
+# Si el usuario falla la validacion del mismo campo mas de esta cantidad de
+# veces, se acepta la respuesta tal cual para no dejar la conversacion
+# trabada (por ejemplo, si el LLM de validacion esta caido).
+MAX_REINTENTOS_CAMPO_PERFIL = 2
 
 
 def normalizar_conversation_id(valor):
@@ -26,6 +31,7 @@ def crear_estado_conversacion():
         "campo_pendiente": None,
         "pregunta_original": None,
         "historial_qa": [],
+        "intentos_fallidos_campo": 0,
     }
 
 
@@ -39,6 +45,7 @@ def obtener_estado_conversacion(conversation_id):
         estado.setdefault("campo_pendiente", None)
         estado.setdefault("pregunta_original", None)
         estado.setdefault("historial_qa", [])
+        estado.setdefault("intentos_fallidos_campo", 0)
         return estado
 
     return crear_estado_conversacion()
@@ -222,7 +229,25 @@ def guardar_respuesta_campo_conversacion(conversation_id, respuesta):
     if not isinstance(perfil, dict):
         perfil = {}
 
-    perfil[campo] = limpiar_texto_contexto(respuesta, 200)
+    respuesta_limpia = limpiar_texto_contexto(respuesta, 200)
+    intentos_fallidos = estado.get("intentos_fallidos_campo", 0)
+    pregunta_campo_texto = pregunta_campo_perfil_web(campo, pregunta_pendiente, perfil)
+
+    if (
+        not validar_respuesta_campo(campo, respuesta_limpia, pregunta_campo_texto)
+        and intentos_fallidos < MAX_REINTENTOS_CAMPO_PERFIL
+    ):
+        estado["intentos_fallidos_campo"] = intentos_fallidos + 1
+        guardar_estado_conversacion(conversation_id, estado)
+        return {
+            "completo": False,
+            "pregunta_original": pregunta_pendiente,
+            "respuesta": pregunta_campo_perfil_web(campo, pregunta_pendiente, perfil, reintento=True),
+            "perfil": perfil,
+        }
+
+    estado["intentos_fallidos_campo"] = 0
+    perfil[campo] = respuesta_limpia
     estado["perfil_usuario"] = perfil
 
     siguiente_campo = obtener_siguiente_campo_perfil_web(perfil)

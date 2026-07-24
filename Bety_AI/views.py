@@ -84,6 +84,10 @@ from .view_logic.interpretacion_consulta import (
 
 ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
 ERROR_SOLO_PDF = "Solo se permiten archivos PDF."
+ACCIONES_GUARDAR_FRAGMENTO_ADMIN = {
+    "crear": (crear_fragmento_chroma, "crear", "creado"),
+    "actualizar": (actualizar_fragmento_chroma, "actualizar", "actualizado"),
+}
 
 
 @require_GET
@@ -92,28 +96,26 @@ def chatbot(request):
     return render(request, "Bety_AI/chatbot.html")
 
 
-def _crear_fragmento_admin(request):
+def _guardar_fragmento_admin(request, accion):
     id_fragmento = request.POST.get("id_fragmento", "").strip()
     contenido = request.POST.get("contenido", "").strip()
     metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
 
-    if not id_fragmento or not contenido:
-        raise ValueError("Debe ingresar ID y contenido para crear un fragmento.")
+    operacion, verbo_error, participio = ACCIONES_GUARDAR_FRAGMENTO_ADMIN[accion]
 
-    crear_fragmento_chroma(id_fragmento, contenido, metadata)
-    return f"Fragmento creado: {id_fragmento}", None
+    if not id_fragmento or not contenido:
+        raise ValueError(f"Debe ingresar ID y contenido para {verbo_error} un fragmento.")
+
+    operacion(id_fragmento, contenido, metadata)
+    return f"Fragmento {participio}: {id_fragmento}", None
+
+
+def _crear_fragmento_admin(request):
+    return _guardar_fragmento_admin(request, "crear")
 
 
 def _actualizar_fragmento_admin(request):
-    id_fragmento = request.POST.get("id_fragmento", "").strip()
-    contenido = request.POST.get("contenido", "").strip()
-    metadata = parsear_metadata_formulario(request.POST.get("metadata", "{}"))
-
-    if not id_fragmento or not contenido:
-        raise ValueError("Debe ingresar ID y contenido para actualizar un fragmento.")
-
-    actualizar_fragmento_chroma(id_fragmento, contenido, metadata)
-    return f"Fragmento actualizado: {id_fragmento}", None
+    return _guardar_fragmento_admin(request, "actualizar")
 
 
 def _eliminar_fragmento_admin(request):
@@ -227,22 +229,69 @@ def ver_chroma_dump(request):
     )
 
 
-@api_view(["POST"])
-@parser_classes([MultiPartParser, FormParser])
-def api_legibilidad(request):
+def _obtener_archivo_pdf_o_respuesta_error(request):
     archivo = request.FILES.get("archivo")
 
     if archivo is None:
-        return Response(
+        return None, Response(
             {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not archivo.name.lower().endswith(".pdf"):
-        return Response(
+        return None, Response(
             {"error": ERROR_SOLO_PDF},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    return archivo, None
+
+
+def _construir_payload_extraccion_pdf(archivo, resultado_texto, extras=None, mensaje=""):
+    payload = {
+        "nombre_archivo": archivo.name,
+        "estado_extraccion": "EXTRAIDO",
+        "paginas": resultado_texto["total_paginas"],
+        "paginas_con_texto": resultado_texto["paginas_con_texto"],
+        "paginas_sin_texto": resultado_texto["paginas_sin_texto"],
+        "paginas_con_poco_texto": resultado_texto["paginas_con_poco_texto"],
+        "paginas_con_imagenes": resultado_texto["paginas_con_imagenes"],
+        "porcentaje_paginas_con_texto": resultado_texto["porcentaje_paginas_con_texto"],
+        "porcentaje_paginas_sin_texto": resultado_texto["porcentaje_paginas_sin_texto"],
+        "porcentaje_paginas_con_imagenes": resultado_texto["porcentaje_paginas_con_imagenes"],
+        "porcentaje_texto": resultado_texto["porcentaje_texto"],
+        "porcentaje_imagenes": resultado_texto["porcentaje_imagenes"],
+        "total_imagenes": resultado_texto["total_imagenes"],
+        "requiere_revision": resultado_texto["requiere_revision"],
+        "caracteres_extraidos": resultado_texto["caracteres_extraidos"],
+        "analisis_paginas": resultado_texto["analisis_paginas"],
+        "texto_extraido": resultado_texto["texto_total"],
+    }
+    if extras:
+        payload.update(extras)
+    if mensaje:
+        payload["mensaje"] = mensaje
+    return payload
+
+
+def _respuesta_error_extraccion_pdf(archivo, mensaje):
+    return Response(
+        {
+            "nombre_archivo": archivo.name,
+            "estado_extraccion": "ERROR",
+            "texto_extraido": "",
+            "mensaje": mensaje,
+        },
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def api_legibilidad(request):
+    archivo, respuesta_error = _obtener_archivo_pdf_o_respuesta_error(request)
+    if respuesta_error:
+        return respuesta_error
 
     resultado = analizar_legibilidad_pdf(archivo)
 
@@ -979,61 +1028,25 @@ def api_analizar_documento(request):
     """
     Extrae texto, mide legibilidad e interpreta el documento antes de guardarlo.
     """
-    archivo = request.FILES.get("archivo")
-
-    if archivo is None:
-        return Response(
-            {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if not archivo.name.lower().endswith(".pdf"):
-        return Response(
-            {"error": ERROR_SOLO_PDF},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    archivo, respuesta_error = _obtener_archivo_pdf_o_respuesta_error(request)
+    if respuesta_error:
+        return respuesta_error
 
     try:
         resultado_texto = extraer_texto_pdf(archivo)
         interpretacion_ia = generar_interpretacion_documento(resultado_texto, archivo.name)
         interpretacion = interpretacion_ia["interpretacion"]
 
-        return Response(
-            {
-                **interpretacion,
-                "nombre_archivo": archivo.name,
-                "estado_extraccion": "EXTRAIDO",
-                "paginas": resultado_texto["total_paginas"],
-                "paginas_con_texto": resultado_texto["paginas_con_texto"],
-                "paginas_sin_texto": resultado_texto["paginas_sin_texto"],
-                "paginas_con_poco_texto": resultado_texto["paginas_con_poco_texto"],
-                "paginas_con_imagenes": resultado_texto["paginas_con_imagenes"],
-                "porcentaje_paginas_con_texto": resultado_texto["porcentaje_paginas_con_texto"],
-                "porcentaje_paginas_sin_texto": resultado_texto["porcentaje_paginas_sin_texto"],
-                "porcentaje_paginas_con_imagenes": resultado_texto["porcentaje_paginas_con_imagenes"],
-                "porcentaje_texto": resultado_texto["porcentaje_texto"],
-                "porcentaje_imagenes": resultado_texto["porcentaje_imagenes"],
-                "total_imagenes": resultado_texto["total_imagenes"],
-                "requiere_revision": resultado_texto["requiere_revision"],
-                "caracteres_extraidos": resultado_texto["caracteres_extraidos"],
-                "analisis_paginas": resultado_texto["analisis_paginas"],
-                "texto_extraido": resultado_texto["texto_total"],
-                "interpretacion_ia": interpretacion_ia,
-                "mensaje": "Documento extraido e interpretado. Revise las sugerencias antes de guardar.",
-            },
-            status=status.HTTP_200_OK,
+        payload = _construir_payload_extraccion_pdf(
+            archivo,
+            resultado_texto,
+            extras={**interpretacion, "interpretacion_ia": interpretacion_ia},
+            mensaje="Documento extraido e interpretado. Revise las sugerencias antes de guardar.",
         )
+        return Response(payload, status=status.HTTP_200_OK)
 
     except Exception as exc:
-        return Response(
-            {
-                "nombre_archivo": archivo.name,
-                "estado_extraccion": "ERROR",
-                "texto_extraido": "",
-                "mensaje": f"No se pudo analizar el documento: {exc}",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return _respuesta_error_extraccion_pdf(archivo, f"No se pudo analizar el documento: {exc}")
 
 
 @api_view(["POST"])
@@ -1043,56 +1056,21 @@ def api_extraer_texto_documento(request):
     Recibe un PDF, extrae texto y metricas, consulta Qwen para generar el
     analisis de IA y devuelve todo en un JSON listo para previsualizar.
     """
-    archivo = request.FILES.get("archivo")
-
-    if archivo is None:
-        return Response(
-            {"error": ERROR_ARCHIVO_PDF_REQUERIDO},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if not archivo.name.lower().endswith(".pdf"):
-        return Response(
-            {"error": ERROR_SOLO_PDF},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    archivo, respuesta_error = _obtener_archivo_pdf_o_respuesta_error(request)
+    if respuesta_error:
+        return respuesta_error
 
     try:
         resultado_texto = extraer_texto_pdf(archivo)
         feedback_ia = generar_feedback_documento(resultado_texto)
 
-        return Response(
-            {
-                "nombre_archivo": archivo.name,
-                "estado_extraccion": "EXTRAIDO",
-                "paginas": resultado_texto["total_paginas"],
-                "paginas_con_texto": resultado_texto["paginas_con_texto"],
-                "paginas_sin_texto": resultado_texto["paginas_sin_texto"],
-                "paginas_con_poco_texto": resultado_texto["paginas_con_poco_texto"],
-                "paginas_con_imagenes": resultado_texto["paginas_con_imagenes"],
-                "porcentaje_paginas_con_texto": resultado_texto["porcentaje_paginas_con_texto"],
-                "porcentaje_paginas_sin_texto": resultado_texto["porcentaje_paginas_sin_texto"],
-                "porcentaje_paginas_con_imagenes": resultado_texto["porcentaje_paginas_con_imagenes"],
-                "porcentaje_texto": resultado_texto["porcentaje_texto"],
-                "porcentaje_imagenes": resultado_texto["porcentaje_imagenes"],
-                "total_imagenes": resultado_texto["total_imagenes"],
-                "requiere_revision": resultado_texto["requiere_revision"],
-                "caracteres_extraidos": resultado_texto["caracteres_extraidos"],
-                "analisis_paginas": resultado_texto["analisis_paginas"],
-                "texto_extraido": resultado_texto["texto_total"],
-                "feedback_ia": feedback_ia,
-                "mensaje": "Texto extraído correctamente. Revise el contenido antes de confirmar el procesamiento.",
-            },
-            status=status.HTTP_200_OK,
+        payload = _construir_payload_extraccion_pdf(
+            archivo,
+            resultado_texto,
+            extras={"feedback_ia": feedback_ia},
+            mensaje="Texto extraído correctamente. Revise el contenido antes de confirmar el procesamiento.",
         )
+        return Response(payload, status=status.HTTP_200_OK)
 
     except Exception as exc:
-        return Response(
-            {
-                "nombre_archivo": archivo.name,
-                "estado_extraccion": "ERROR",
-                "texto_extraido": "",
-                "mensaje": f"No se pudo extraer el texto del documento: {exc}",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return _respuesta_error_extraccion_pdf(archivo, f"No se pudo extraer el texto del documento: {exc}")

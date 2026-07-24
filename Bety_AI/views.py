@@ -499,8 +499,12 @@ def api_buscar_fragmentos(request):
     )
 
 
+TIPOS_RESPUESTA_SIN_HISTORIAL_QA = {"SOLICITUD_CONTEXTO_SGA", "SOLICITUD_CONTEXTO_WEB"}
+
+
 def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta):
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    if tipo_respuesta not in TIPOS_RESPUESTA_SIN_HISTORIAL_QA:
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -695,15 +699,12 @@ def _es_fuera_de_ambito(pregunta, interpretacion_consulta):
 
 
 def _construir_pregunta_busqueda(pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario):
+    # consulta_busqueda ya incluye pregunta + consulta_normalizada + palabras_clave
+    # (ver normalizar_interpretacion en interpretacion_consulta.py), asi que no hace
+    # falta volver a concatenar consulta_normalizada aparte.
     pregunta_interpretada = (
-        " ".join(
-            parte
-            for parte in [
-                interpretacion_consulta.get("consulta_normalizada"),
-                interpretacion_consulta.get("consulta_busqueda"),
-            ]
-            if parte
-        )
+        interpretacion_consulta.get("consulta_busqueda")
+        or interpretacion_consulta.get("consulta_normalizada")
         or pregunta
     )
 

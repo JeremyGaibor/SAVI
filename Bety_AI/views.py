@@ -54,7 +54,6 @@ from .view_logic.chat_conversacion import (
     obtener_ultima_pregunta_conversacion,
     obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
-    es_solicitud_reformulacion,
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
@@ -646,19 +645,8 @@ def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, context
         return interpretacion_fallback(pregunta)
 
 
-def _debe_reformular(pregunta, interpretacion_consulta):
-    tipo_operacion_llm = interpretacion_consulta.get("tipo_operacion")
-    regex_marca_reformulacion = es_solicitud_reformulacion(pregunta)
-    resultado = tipo_operacion_llm == "reformulacion" or regex_marca_reformulacion
-
-    print(
-        "[DEBUG_TEMPORAL_REFORMULACION] "
-        f"pregunta={pregunta!r} tipo_operacion_llm={tipo_operacion_llm!r} "
-        f"regex_marca_reformulacion={regex_marca_reformulacion!r} resultado={resultado!r}",
-        flush=True,
-    )
-
-    return resultado
+def _debe_reformular(interpretacion_consulta):
+    return interpretacion_consulta.get("tipo_operacion") == "reformulacion"
 
 
 def _responder_reformulacion(request, conversation_id, pregunta):
@@ -938,7 +926,7 @@ def api_consulta_ia(request):
     if respuesta_historial:
         return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
 
-    if _debe_reformular(pregunta, interpretacion_consulta):
+    if _debe_reformular(interpretacion_consulta):
         return _responder_reformulacion(request, conversation_id, pregunta)
 
     if es_pregunta_identidad(pregunta):

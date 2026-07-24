@@ -950,12 +950,27 @@ def api_consulta_ia(request):
         pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario
     )
 
+    print(
+        "[DEBUG_TEMPORAL_INASISTENCIAS] "
+        f"pregunta={pregunta!r} ultima_pregunta={ultima_pregunta!r} "
+        f"interpretacion_consulta={interpretacion_consulta!r} "
+        f"filtros={filtros!r} pregunta_busqueda={pregunta_busqueda!r}",
+        flush=True,
+    )
+
     resultado_busqueda = _buscar_fragmentos_para_pregunta(
         pregunta, pregunta_busqueda, perfil_usuario, filtros, interpretacion_consulta, ultima_pregunta
     )
     if isinstance(resultado_busqueda, Response):
         return resultado_busqueda
     fragmentos, filtros_aplicados = resultado_busqueda
+
+    print(
+        "[DEBUG_TEMPORAL_INASISTENCIAS] "
+        f"filtros_aplicados={filtros_aplicados!r} "
+        f"fragmentos={[(f.get('metadata', {}).get('id_documento'), f.get('metadata', {}).get('titulo'), f.get('coincidencia_lexica'), f.get('distancia')) for f in fragmentos]!r}",
+        flush=True,
+    )
 
     fragmentos = filtrar_fragmentos_por_tipo_estudiante(pregunta_busqueda, perfil_usuario, fragmentos)
 

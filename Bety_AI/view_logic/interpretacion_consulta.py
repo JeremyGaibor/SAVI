@@ -131,7 +131,7 @@ PERFIL DEL USUARIO:
 Estructura obligatoria:
 {{
   "tipo_operacion": "consulta_documental, reformulacion, historial o fuera_ambito",
-  "consulta_normalizada": "consulta clara y enriquecida para busqueda semantica",
+  "consulta_normalizada": "consulta clara y enriquecida para busqueda semantica, solo sobre el tema/proceso/documento consultado",
   "depende_historial": false,
   "formato_respuesta": "normal, tabla, lista, pasos o resumen",
   "palabras_clave": ["termino importante 1", "termino importante 2"],
@@ -147,6 +147,8 @@ Reglas:
 - Si la pregunta es una consulta documental corta o ambigua y depende del historial, marca depende_historial true.
 - Cuando depende_historial sea true, consulta_normalizada debe reconstruir la consulta completa usando el tema del historial reciente. No devuelvas frases genericas como "requisitos que debo cumplir" o "documentos necesarios" sin el tema anterior.
 - Normaliza sinonimos y expresiones equivalentes en consulta_normalizada segun el historial reciente y la pregunta del usuario.
+- consulta_normalizada debe describir UNICAMENTE el tema, proceso o documento que se busca. NO incluyas ahi datos del PERFIL DEL USUARIO (facultad, carrera, rol, nivel de estudio) como texto descriptivo -- por ejemplo, evita frases como "para estudiantes de la Facultad de Software" o "como estudiante de la carrera de FCC". El perfil se usa aparte para filtrar resultados; repetirlo dentro del texto de busqueda semantica diluye la relevancia y puede hacer que se encuentren documentos genericos de perfil en vez del documento especifico del tema.
+- Si el perfil es relevante para filtrar, indicalo en filtros_sugeridos, nunca como texto dentro de consulta_normalizada.
 - No inventes filtros. Usa filtros_sugeridos solo si la pregunta o el perfil los indican claramente.
 - No agregues texto fuera del JSON.
 """

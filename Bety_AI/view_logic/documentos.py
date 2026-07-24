@@ -1,8 +1,8 @@
 import json
-import re
 
 from ..services.ollama_service import consultar_qwen
 from .chat_respuestas_ia import limpiar_respuesta_ia
+from .comun import extraer_json_desde_respuesta_ia
 
 
 def parsear_metadata_formulario(valor):
@@ -114,17 +114,7 @@ def extraer_json_respuesta(respuesta):
     Esta funcion recorta desde la primera llave hasta la ultima para recuperar
     el objeto JSON que espera la pantalla de analisis.
     """
-    respuesta = respuesta.strip()
-    respuesta = re.sub(r"^```(?:json)?\s*", "", respuesta)
-    respuesta = re.sub(r"\s*```$", "", respuesta)
-
-    inicio = respuesta.find("{")
-    fin = respuesta.rfind("}")
-
-    if inicio != -1 and fin != -1 and fin > inicio:
-        respuesta = respuesta[inicio:fin + 1]
-
-    return json.loads(respuesta)
+    return extraer_json_desde_respuesta_ia(respuesta)
 
 
 def generar_feedback_documento(resultado_texto):

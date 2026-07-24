@@ -22,9 +22,8 @@ def limpiar_respuesta_ia(respuesta):
 
 
 def generar_respuesta_controlada(pregunta, tipo_respuesta, contexto_usuario=""):
-    """
-    Usa Qwen para responder consultas no documentales sin consultar ChromaDB.
-    """
+
+    #Usa Qwen para responder consultas no documentales sin consultar ChromaDB.
     prompt = f"""
 Eres Bety, una asistente virtual institucional del SGA UTEQ.
 

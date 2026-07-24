@@ -36,6 +36,15 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Desplegar en AWS
+        env:
+          OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
+          OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
+          CHROMA_HOST: ${{ secrets.CHROMA_HOST }}
+          CHROMA_PORT: ${{ secrets.CHROMA_PORT }}
+          CHROMA_COLLECTION: ${{ secrets.CHROMA_COLLECTION }}
+          DOCUMENT_FRAGMENTATION_MODE: ${{ secrets.DOCUMENT_FRAGMENTATION_MODE }}
+
         run: |
           set -e
 
@@ -43,6 +52,20 @@ jobs:
 
           git fetch origin
           git reset --hard origin/main
+
+          umask 077
+
+          {
+            echo "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
+            echo "OLLAMA_MODEL=${OLLAMA_MODEL}"
+            echo "OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS}"
+            echo "CHROMA_HOST=${CHROMA_HOST}"
+            echo "CHROMA_PORT=${CHROMA_PORT}"
+            echo "CHROMA_COLLECTION=${CHROMA_COLLECTION}"
+            echo ""
+            echo "# Modes: pages - caracteres1200"
+            echo "DOCUMENT_FRAGMENTATION_MODE=${DOCUMENT_FRAGMENTATION_MODE}"
+          } > .env
 
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
             -u "${{ secrets.DOCKERHUB_USERNAME }}" \

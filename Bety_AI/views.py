@@ -50,6 +50,7 @@ from .view_logic.chat_conversacion import (
     guardar_respuesta_campo_conversacion,
     iniciar_recoleccion_perfil_conversacion,
     formatear_historial_conversacion,
+    formatear_historial_para_router,
     agregar_historial_conversacion,
     obtener_ultima_pregunta_conversacion,
     obtener_ultima_respuesta_conversacion,
@@ -549,7 +550,7 @@ TIPOS_RESPUESTA_SIN_HISTORIAL_QA = {"SOLICITUD_CONTEXTO_SGA", "SOLICITUD_CONTEXT
 
 def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta, modelo=None):
     if tipo_respuesta not in TIPOS_RESPUESTA_SIN_HISTORIAL_QA:
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta=tipo_respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -598,7 +599,7 @@ def _responder_con_ia_controlada(request, conversation_id, pregunta, tipo_respue
         return _responder_ia_no_disponible(request, pregunta, exc)
 
     respuesta = resultado_controlado["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta=tipo_respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -706,7 +707,7 @@ def _responder_reformulacion(request, conversation_id, pregunta):
         return _responder_ia_no_disponible(request, pregunta, exc, conversation_id=conversation_id)
 
     respuesta = resultado_reformulacion["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta="REFORMULACION")
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -927,7 +928,7 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
     try:
         resultado_qwen = consultar_qwen(prompt)
         respuesta = limpiar_respuesta_ia(resultado_qwen["respuesta"])
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta="RESPUESTA")
         historial = guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -955,7 +956,9 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
 def _accion_buscar_documentos(request, conversation_id, pregunta, decision, datos_extra):
     perfil_usuario = datos_extra["perfil_usuario"]
     contexto_usuario = datos_extra["contexto_usuario"]
-    historial_conversacion = datos_extra["historial_conversacion"]
+    # Historial completo (sin filtrar), solo para el prompt de respuesta documental final.
+    # El router ya tomo su decision con el historial recortado (formatear_historial_para_router).
+    historial_conversacion = formatear_historial_conversacion(conversation_id)
 
     filtros = combinar_filtros_consulta_y_perfil(
         extraer_filtros_consulta(request.data),
@@ -1030,8 +1033,8 @@ def api_consulta_ia(request):
         return respuesta_pendiente
 
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
-    historial_conversacion = formatear_historial_conversacion(conversation_id)
-    decision = _enrutar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
+    historial_router = formatear_historial_para_router(conversation_id)
+    decision = _enrutar_consulta_con_fallback(pregunta, historial_router, contexto_usuario)
 
     respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
     if respuesta_historial:
@@ -1040,7 +1043,6 @@ def api_consulta_ia(request):
     datos_extra = {
         "perfil_usuario": perfil_usuario,
         "contexto_usuario": contexto_usuario,
-        "historial_conversacion": historial_conversacion,
     }
     handler = ACCIONES.get(decision.get("accion"), _accion_buscar_documentos)
     return handler(request, conversation_id, pregunta, decision, datos_extra)

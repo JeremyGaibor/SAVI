@@ -134,27 +134,3 @@ def pregunta_necesita_perfil_web(pregunta):
         es_consulta_ambito_bety(pregunta)
         or any(indicador in f" {texto} " for indicador in indicadores_personales)
     )
-
-
-def es_pregunta_fuera_ambito(pregunta):
-    """
-    Detecta preguntas claramente ajenas al alcance documental de Bety-AI.
-    """
-    texto = normalizar_texto(pregunta)
-
-    if es_consulta_ambito_bety(pregunta):
-        return False
-
-    patrones_fuera = [
-        r"\b(chiste|cuento|poema|cancion|receta)\b",
-        r"\b(futbol|partido|mundial|barcelona|real madrid)\b",
-        r"\b(clima|temperatura|lluvia|pronostico)\b",
-        r"\b(politica|presidente|elecciones)\b",
-        r"\b(amor|novia|novio|relacion)\b",
-        r"\b(programa|codigo|python|javascript)\b",
-        r"\b(agujero negro|planeta|espacio|universo)\b",
-        r"\b(dolar|bitcoin|acciones|inversion)\b",
-        r"\b(capital de|capital del|pais|continente|geografia)\b",
-    ]
-
-    return any(re.search(patron, texto) for patron in patrones_fuera)

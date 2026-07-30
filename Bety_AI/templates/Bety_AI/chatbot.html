@@ -9,7 +9,7 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Bety IA</title>
+    <title>BettIA</title>
 
     <style>
         * {
@@ -47,7 +47,7 @@
             border: none;
             border-radius: 50%;
 
-            background: #1f8f4d;
+            background: linear-gradient(135deg, #22995a, #176b3a);
             color: white;
 
             font-size: 28px;
@@ -58,14 +58,32 @@
 
             z-index: 9998;
 
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+
             transition:
                 transform 0.2s ease,
-                background 0.2s ease;
+                filter 0.2s ease,
+                opacity 0.18s ease,
+                visibility 0s linear 0s;
         }
 
         #bety-chat-button:hover {
-            background: #18753f;
+            filter: brightness(1.08);
             transform: scale(1.06);
+        }
+
+        #bety-chat-button.oculto {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.5);
+            pointer-events: none;
+
+            transition:
+                transform 0.18s ease,
+                opacity 0.18s ease,
+                visibility 0s linear 0.18s;
         }
 
         #bety-chat-button img {
@@ -87,23 +105,68 @@
             max-width: calc(100vw - 20px);
             max-height: calc(100vh - 20px);
 
-            display: none;
+            display: flex;
             flex-direction: column;
 
             overflow: hidden;
 
             border: 1px solid #d9d9d9;
-            border-radius: 15px;
+            border-radius: 18px;
 
             background: white;
 
             box-shadow: 0 7px 26px rgba(0, 0, 0, 0.28);
 
             z-index: 9999;
+
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(0.15) translateY(12px);
+            transform-origin: bottom right;
+
+            transition:
+                transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.22s ease,
+                visibility 0s linear 0.32s;
         }
 
         #bety-chat-window.abierto {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1) translateY(0);
+
+            transition:
+                transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.22s ease,
+                visibility 0s linear 0s;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #bety-chat-button,
+            #bety-chat-window,
+            #bety-chat-messages,
+            #bety-chat-greeting,
+            #bety-chat-input-area,
+            .bety-message,
+            .bety-sources {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+
+        /* Cuerpo: mensajes + saludo inicial + entrada de texto */
+        #bety-chat-body {
+            flex: 1;
+            min-height: 0;
+
             display: flex;
+            flex-direction: column;
+        }
+
+        #bety-chat-body.bety-vacio {
+            justify-content: center;
         }
 
         /* Encabezado */
@@ -115,11 +178,13 @@
             align-items: center;
             gap: 11px;
 
-            background: #1f8f4d;
+            background: linear-gradient(135deg, #22995a, #176b3a);
             color: white;
         }
 
         #bety-chat-avatar {
+            position: relative;
+
             width: 43px;
             height: 43px;
 
@@ -143,6 +208,36 @@
             height: 100%;
             display: block;
             object-fit: cover;
+        }
+
+        .bety-status-dot {
+            position: absolute;
+            right: -1px;
+            bottom: -1px;
+
+            width: 11px;
+            height: 11px;
+
+            border-radius: 50%;
+            border: 2px solid #1f8f4d;
+
+            background: #3ddc72;
+
+            animation: betyStatusPulse 2.4s infinite;
+        }
+
+        @keyframes betyStatusPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(61, 220, 114, 0.55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(61, 220, 114, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(61, 220, 114, 0);
+            }
         }
 
         #bety-chat-info {
@@ -213,12 +308,97 @@
         /* Área de mensajes */
         #bety-chat-messages {
             flex: 1;
+            min-height: 0;
 
             padding: 15px;
 
             overflow-y: auto;
 
             background: #f5f6fa;
+
+            opacity: 1;
+            visibility: visible;
+
+            scrollbar-width: thin;
+            scrollbar-color: #b9d9c6 transparent;
+
+            transition: opacity 0.2s ease, visibility 0s linear 0s;
+        }
+
+        #bety-chat-body.bety-vacio #bety-chat-messages {
+            flex: 0 0 0;
+            min-height: 0;
+            padding: 0;
+
+            opacity: 0;
+            visibility: hidden;
+            overflow: hidden;
+
+            transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+        }
+
+        /* Saludo centrado, visible solo cuando el chat aún no tiene mensajes */
+        #bety-chat-greeting {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            margin: 0 22px 0;
+            padding: 0;
+
+            max-height: 0;
+            opacity: 0;
+            visibility: hidden;
+            overflow: hidden;
+
+            color: #1c3326;
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+
+            transition:
+                opacity 0.15s ease,
+                max-height 0.3s ease,
+                margin 0.3s ease,
+                visibility 0s linear 0.3s;
+        }
+
+        #bety-chat-body.bety-vacio #bety-chat-greeting {
+            max-height: 60px;
+            opacity: 1;
+            visibility: visible;
+            margin: 0 22px 16px;
+
+            transition:
+                opacity 0.25s ease 0.05s,
+                max-height 0.3s ease,
+                margin 0.3s ease,
+                visibility 0s linear 0s;
+        }
+
+        #bety-chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #bety-chat-messages::-webkit-scrollbar-thumb {
+            background: #b9d9c6;
+            border-radius: 10px;
+        }
+
+        #bety-chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        @keyframes betyMessageIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .bety-message {
@@ -235,6 +415,8 @@
 
             white-space: pre-wrap;
             overflow-wrap: anywhere;
+
+            animation: betyMessageIn 0.25s ease;
         }
 
         .bety-message.bot {
@@ -346,6 +528,8 @@
             background: #f9fffb;
 
             font-size: 12px;
+
+            animation: betyMessageIn 0.25s ease;
         }
 
         .bety-sources-title {
@@ -378,19 +562,43 @@
         /* Área inferior */
         #bety-chat-input-area {
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             gap: 8px;
 
+            margin: 0;
             padding: 11px;
 
             border-top: 1px solid #dddddd;
+            border-radius: 0;
 
             background: white;
+            box-shadow: none;
+
+            transition:
+                margin 0.3s ease,
+                padding 0.3s ease,
+                border-color 0.3s ease,
+                border-radius 0.3s ease,
+                box-shadow 0.3s ease,
+                background 0.3s ease;
+        }
+
+        #bety-chat-body.bety-vacio #bety-chat-input-area {
+            margin: 0 18px;
+            padding: 10px;
+
+            border: 1px solid #e2e2e2;
+            border-radius: 22px;
+
+            background: #fafbfa;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
         }
 
         #bety-chat-input {
             flex: 1;
             min-width: 0;
+            min-height: 40px;
+            max-height: 116px;
 
             padding: 10px 13px;
 
@@ -398,7 +606,18 @@
             border-radius: 20px;
 
             font-size: 14px;
+            line-height: 1.35;
+            font-family: inherit;
+
+            resize: none;
+            overflow-y: hidden;
+
             outline: none;
+
+            transition:
+                border-radius 0.15s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
         }
 
         #bety-chat-input:focus {
@@ -408,22 +627,24 @@
         }
 
         #bety-chat-send {
+            flex-shrink: 0;
+
             padding: 10px 16px;
 
             border: none;
             border-radius: 20px;
 
-            background: #1f8f4d;
+            background: linear-gradient(135deg, #22995a, #176b3a);
             color: white;
 
             font-weight: bold;
             cursor: pointer;
 
-            transition: background 0.2s ease;
+            transition: filter 0.2s ease;
         }
 
         #bety-chat-send:hover {
-            background: #18753f;
+            filter: brightness(1.08);
         }
 
         #bety-chat-input:disabled,
@@ -466,25 +687,27 @@
 <button
     type="button"
     id="bety-chat-button"
-    title="Abrir chat con Bety"
-    aria-label="Abrir chat con Bety"
+    title="Abrir chat con BettIA"
+    aria-label="Abrir chat con BettIA"
 >
-    <img src="{% static 'Bety_AI/img/bety.png' %}" alt="Bety IA">
+    <img src="{% static 'Bety_AI/img/bety.png' %}" alt="BettIA">
 </button>
 
 <!-- Ventana del chatbot -->
 <section
     id="bety-chat-window"
-    aria-label="Chat de Bety IA"
+    aria-label="Chat de BettIA"
+    aria-hidden="true"
 >
     <header id="bety-chat-header">
 
         <div id="bety-chat-avatar">
             <img src="{% static 'Bety_AI/img/bety.png' %}" alt="">
+            <span class="bety-status-dot" aria-hidden="true"></span>
         </div>
 
         <div id="bety-chat-info">
-            <strong>Bety IA</strong>
+            <strong>BettIA</strong>
             <small>Asistente documental</small>
         </div>
 
@@ -508,32 +731,32 @@
 
     </header>
 
-    <main id="bety-chat-messages">
+    <div id="bety-chat-body" class="bety-vacio">
 
-        <div class="bety-message bot">
-            Hola, soy Bety. Pregúntame sobre los documentos disponibles.
-        </div>
+        <main id="bety-chat-messages"></main>
 
-    </main>
+        <div id="bety-chat-greeting"></div>
 
-    <footer id="bety-chat-input-area">
+        <footer id="bety-chat-input-area">
 
-        <input
-            type="text"
-            id="bety-chat-input"
-            placeholder="Escribe tu pregunta..."
-            autocomplete="off"
-            maxlength="1500"
-        >
+            <textarea
+                id="bety-chat-input"
+                placeholder="¿Qué información de documentos deseas saber?"
+                autocomplete="off"
+                maxlength="1500"
+                rows="1"
+            ></textarea>
 
-        <button
-            type="button"
-            id="bety-chat-send"
-        >
-            Enviar
-        </button>
+            <button
+                type="button"
+                id="bety-chat-send"
+            >
+                Enviar
+            </button>
 
-    </footer>
+        </footer>
+
+    </div>
 </section>
 
 <script>
@@ -564,8 +787,20 @@
                 'bety-chat-send'
             );
 
+            const chatBody = document.getElementById(
+                'bety-chat-body'
+            );
+
             const messages = document.getElementById(
                 'bety-chat-messages'
+            );
+
+            const greeting = document.getElementById(
+                'bety-chat-greeting'
+            );
+
+            const inputArea = document.getElementById(
+                'bety-chat-input-area'
             );
 
             const csrfInput = document.querySelector(
@@ -630,6 +865,20 @@
                     }
                 }
             );
+
+            function obtenerSaludo() {
+                const hora = new Date().getHours();
+
+                if (hora >= 5 && hora < 12) {
+                    return '🌅 Buenos días';
+                }
+
+                if (hora >= 12 && hora < 19) {
+                    return '☀️ Buenas tardes';
+                }
+
+                return '🌙 Buenas noches';
+            }
 
             function avisarAlCliente(tipo) {
                 if (window.parent === window) {
@@ -733,7 +982,14 @@
                     'abierto'
                 );
 
-                chatButton.style.display = 'none';
+                chatWindow.setAttribute(
+                    'aria-hidden',
+                    'false'
+                );
+
+                chatButton.classList.add(
+                    'oculto'
+                );
 
                 avisarAlCliente(
                     'BETY_CHAT_ABIERTO'
@@ -743,7 +999,7 @@
                     function () {
                         input.focus();
                     },
-                    100
+                    220
                 );
             }
 
@@ -752,14 +1008,70 @@
                     'abierto'
                 );
 
+                chatWindow.setAttribute(
+                    'aria-hidden',
+                    'true'
+                );
+
                 if (lectorVozDisponible) {
                     window.speechSynthesis.cancel();
                 }
 
-                chatButton.style.display = 'flex';
+                chatButton.classList.remove(
+                    'oculto'
+                );
 
                 avisarAlCliente(
                     'BETY_CHAT_CERRADO'
+                );
+            }
+
+            function pasarAModoChat() {
+                if (!chatBody.classList.contains('bety-vacio')) {
+                    return;
+                }
+
+                const posicionAntes = inputArea.getBoundingClientRect();
+
+                chatBody.classList.remove('bety-vacio');
+                input.placeholder = 'Escribe tu pregunta...';
+
+                const posicionDespues = inputArea.getBoundingClientRect();
+                const deltaY = posicionAntes.top - posicionDespues.top;
+
+                if (!deltaY) {
+                    return;
+                }
+
+                inputArea.style.transition = 'none';
+                inputArea.style.transform = `translateY(${deltaY}px)`;
+
+                requestAnimationFrame(
+                    function () {
+                        requestAnimationFrame(
+                            function () {
+                                inputArea.style.transition =
+                                    'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+                                inputArea.style.transform = 'translateY(0)';
+                            }
+                        );
+                    }
+                );
+
+                inputArea.addEventListener(
+                    'transitionend',
+                    function limpiarTransicion(evento) {
+                        if (evento.propertyName !== 'transform') {
+                            return;
+                        }
+
+                        inputArea.style.transition = '';
+                        inputArea.style.transform = '';
+                        inputArea.removeEventListener(
+                            'transitionend',
+                            limpiarTransicion
+                        );
+                    }
                 );
             }
 
@@ -1186,6 +1498,50 @@
                 sendButton.disabled = estado;
             }
 
+            const INPUT_FONT_MAX = 14;
+            const INPUT_FONT_MIN = 12;
+            const INPUT_MAX_HEIGHT = 116;
+            const INPUT_LINE_HEIGHT_RATIO = 1.35;
+
+            function ajustarInput() {
+                input.style.fontSize = INPUT_FONT_MAX + 'px';
+                input.style.height = 'auto';
+
+                const alturaLineaMax = INPUT_FONT_MAX * INPUT_LINE_HEIGHT_RATIO;
+
+                const lineas = Math.max(
+                    1,
+                    Math.round(input.scrollHeight / alturaLineaMax)
+                );
+
+                const tamano = Math.max(
+                    INPUT_FONT_MIN,
+                    INPUT_FONT_MAX - Math.max(0, lineas - 3)
+                );
+
+                if (tamano !== INPUT_FONT_MAX) {
+                    input.style.fontSize = tamano + 'px';
+                    input.style.height = 'auto';
+                }
+
+                const alturaDeseada = Math.min(
+                    input.scrollHeight,
+                    INPUT_MAX_HEIGHT
+                );
+
+                input.style.height = alturaDeseada + 'px';
+
+                input.style.overflowY =
+                    input.scrollHeight > INPUT_MAX_HEIGHT
+                        ? 'auto'
+                        : 'hidden';
+
+                input.style.borderRadius =
+                    alturaDeseada > 44
+                        ? '16px'
+                        : '20px';
+            }
+
             async function enviarPregunta() {
                 if (enviando) {
                     return;
@@ -1197,12 +1553,15 @@
                     return;
                 }
 
+                pasarAModoChat();
+
                 agregarMensaje(
                     pregunta,
                     'user'
                 );
 
                 input.value = '';
+                ajustarInput();
 
                 const mensajesCarga = [
                     'Procesando...',
@@ -1360,11 +1719,19 @@
                 }
             );
 
+            input.addEventListener(
+                'input',
+                ajustarInput
+            );
+
             avisarAlCliente(
                 'BETY_CHAT_CERRADO'
             );
 
+            greeting.textContent = obtenerSaludo();
+
             actualizarBotonVoz();
+            ajustarInput();
         }
     );
 </script>

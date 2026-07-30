@@ -597,8 +597,9 @@
         #bety-chat-input {
             flex: 1;
             min-width: 0;
-            min-height: 40px;
-            max-height: 116px;
+            height: 44px;
+            min-height: 44px;
+            max-height: 92px;
 
             padding: 10px 13px;
 
@@ -671,6 +672,17 @@
                 max-height: none;
 
                 border-radius: 12px;
+            }
+
+            #bety-chat-body.bety-vacio #bety-chat-input-area {
+                margin: 0 14px;
+                padding: 8px;
+            }
+
+            #bety-chat-input {
+                height: 42px;
+                min-height: 42px;
+                max-height: 84px;
             }
         }
     </style>
@@ -1500,10 +1512,19 @@
 
             const INPUT_FONT_MAX = 14;
             const INPUT_FONT_MIN = 12;
-            const INPUT_MAX_HEIGHT = 116;
+            const INPUT_EMPTY_HEIGHT = 44;
+            const INPUT_MAX_HEIGHT = 92;
             const INPUT_LINE_HEIGHT_RATIO = 1.35;
 
             function ajustarInput() {
+                if (!input.value.trim()) {
+                    input.style.fontSize = INPUT_FONT_MAX + 'px';
+                    input.style.height = INPUT_EMPTY_HEIGHT + 'px';
+                    input.style.overflowY = 'hidden';
+                    input.style.borderRadius = '20px';
+                    return;
+                }
+
                 input.style.fontSize = INPUT_FONT_MAX + 'px';
                 input.style.height = 'auto';
 

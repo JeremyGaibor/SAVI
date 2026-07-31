@@ -39,6 +39,17 @@ def normalizar_valor_metadata(valor):
     return str(valor)
 
 
+def valor_metadata_presente(valor):
+    if valor is None:
+        return False
+    if isinstance(valor, str):
+        texto = valor.strip()
+        return bool(texto) and texto != "[]"
+    if isinstance(valor, (list, dict)):
+        return bool(valor)
+    return True
+
+
 def obtener_primer_valor_metadata(request, metadata_extra, campos, defecto=""):
     for campo in campos:
         valor = obtener_valor_request(request, campo, None)
@@ -53,6 +64,42 @@ def obtener_primer_valor_metadata(request, metadata_extra, campos, defecto=""):
     return defecto
 
 
+def obtener_valor_metadata_documental(request, metadata_extra, campo, defecto=None):
+    valor = obtener_valor_request(request, campo, None)
+    if valor_metadata_presente(valor):
+        return valor
+
+    valor = metadata_extra.get(campo)
+    if valor_metadata_presente(valor):
+        return valor
+
+    return defecto
+
+
+def agregar_metadata_si_presente(metadata, clave, valor):
+    if valor_metadata_presente(valor):
+        metadata[clave] = normalizar_valor_metadata(valor)
+
+
+METADATA_DOCUMENTAL_PERMITIDA = [
+    "accion_chroma",
+    "id_version",
+    "uuid_documento",
+    "uuid_version",
+    "id_version_anterior",
+    "uuid_version_anterior",
+    "numero_version",
+    "numero_version_anterior",
+    "archivo_path",
+    "estado_vigencia",
+    "anio_documento",
+    "perfiles",
+    "grupos",
+    "tipos_periodo",
+    "resumen_documento",
+]
+
+
 def construir_metadata_documento(request, archivo):
     metadata_json = obtener_valor_request(request, "metadata", "")
     metadata_extra = {}
@@ -64,35 +111,21 @@ def construir_metadata_documento(request, archivo):
 
     nombre_archivo = archivo.name if archivo is not None else obtener_valor_request(request, "nombre_archivo", "")
 
-    perfil = obtener_primer_valor_metadata(request, metadata_extra, ["perfil"])
-    periodo = obtener_primer_valor_metadata(request, metadata_extra, ["periodo", "periodo_academico"])
+    metadata_base = {}
+    for clave in METADATA_DOCUMENTAL_PERMITIDA:
+        agregar_metadata_si_presente(
+            metadata_base,
+            clave,
+            obtener_valor_metadata_documental(request, metadata_extra, clave),
+        )
 
-    metadata_base = {
-        "accion_chroma": obtener_valor_request(request, "accion_chroma", ""),
-        "id_version": str(obtener_valor_request(request, "id_version", "")),
-        "uuid_documento": str(obtener_valor_request(request, "uuid_documento", "")),
-        "uuid_version": str(obtener_valor_request(request, "uuid_version", "")),
-        "id_version_anterior": str(obtener_valor_request(request, "id_version_anterior", "")),
-        "uuid_version_anterior": str(obtener_valor_request(request, "uuid_version_anterior", "")),
-        "tipo_documento": obtener_valor_request(request, "tipo_documento", "GENERAL"),
-        "ambito": obtener_valor_request(request, "ambito", "PUBLICO"),
-        "estado_vigencia": obtener_valor_request(request, "estado_vigencia", "VIGENTE"),
-        "anio_documento": str(obtener_valor_request(request, "anio_documento", "")),
-        "periodo": normalizar_valor_metadata(periodo),
-        "perfil": normalizar_valor_metadata(perfil),
-        "carrera": obtener_valor_request(request, "carrera", ""),
-        "grupo": obtener_valor_request(request, "grupo", ""),
-        "tipo_estudio": obtener_valor_request(request, "tipo_estudio", ""),
-        "nombre_archivo": nombre_archivo,
-        "resumen_documento": obtener_valor_request(request, "resumen_documento", ""),
-        "temas_detectados": normalizar_valor_metadata(obtener_valor_request(request, "temas_detectados", "")),
-        "advertencias": normalizar_valor_metadata(obtener_valor_request(request, "advertencias", "")),
-        "requiere_revision_humana": str(obtener_valor_request(request, "requiere_revision_humana", "")),
-    }
-
-    for clave, valor in metadata_extra.items():
-        if clave not in {"id_documento", "titulo", "numero_fragmento", "rol", "periodo_academico"}:
-            metadata_base[clave] = normalizar_valor_metadata(valor)
+    if "tipos_periodo" not in metadata_base:
+        agregar_metadata_si_presente(
+            metadata_base,
+            "tipos_periodo",
+            obtener_valor_metadata_documental(request, metadata_extra, "tipo_periodo"),
+        )
+    agregar_metadata_si_presente(metadata_base, "nombre_archivo", nombre_archivo)
 
     return metadata_base
 

@@ -522,13 +522,13 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
                 "id_version_anterior": "44",
                 "uuid_version_anterior": "uuid-version-anterior",
                 "reemplazar_existente": True,
-                "perfil": "ESTUDIANTE",
-                "periodo": "2026-S1",
-                "grupo": "POSGRADO",
                 "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
                 "metadata": {
                     "numero_version": "3",
                     "numero_version_anterior": "2",
+                    "perfiles": ["ESTUDIANTE"],
+                    "grupos": ["POSGRADO"],
+                    "tipos_periodo": ["2026-S1"],
                 },
             },
             format="json",
@@ -544,9 +544,12 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertEqual(metadata_base["uuid_version"], "uuid-version-nueva")
         self.assertEqual(metadata_base["uuid_version_anterior"], "uuid-version-anterior")
         self.assertEqual(metadata_base["numero_version"], "3")
-        self.assertEqual(metadata_base["perfil"], "ESTUDIANTE")
-        self.assertEqual(metadata_base["periodo"], "2026-S1")
-        self.assertEqual(metadata_base["grupo"], "POSGRADO")
+        self.assertEqual(metadata_base["perfiles"], '["ESTUDIANTE"]')
+        self.assertEqual(metadata_base["grupos"], '["POSGRADO"]')
+        self.assertEqual(metadata_base["tipos_periodo"], '["2026-S1"]')
+        self.assertNotIn("perfil", metadata_base)
+        self.assertNotIn("periodo", metadata_base)
+        self.assertNotIn("grupo", metadata_base)
         self.assertNotIn("rol", metadata_base)
         self.assertTrue(response.data["reemplazo_por_uuid_anterior"])
 
@@ -581,8 +584,131 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
         metadata_base = guardar_mock.call_args.kwargs["metadata_base"]
-        self.assertEqual(metadata_base["perfil"], "")
+        self.assertNotIn("perfil", metadata_base)
         self.assertNotIn("rol", metadata_base)
+
+    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
+    @patch("Bety_AI.views.eliminar_documento_chroma")
+    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch(
+        "Bety_AI.views.dividir_documento_en_fragmentos",
+        return_value=([{"contenido": "fragmento nuevo"}], "characters"),
+    )
+    def test_guarda_solo_metadata_documental_permitida(
+        self,
+        dividir_mock,
+        eliminar_version_mock,
+        eliminar_documento_mock,
+        guardar_mock,
+    ):
+        request = self.factory.post(
+            "/api/integracion/documentos/guardar-chroma/",
+            {
+                "id_documento": "DOC-META",
+                "id_version": "8",
+                "uuid_documento": "uuid-doc",
+                "uuid_version": "uuid-ver",
+                "anio_documento": "2026",
+                "ambito": "ACADEMICO",
+                "tipo_documento": "MANUAL",
+                "nombre_archivo": "manual.pdf",
+                "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
+                "metadata": {
+                    "perfiles": ["Estudiante", "Docente"],
+                    "grupos": ["Computacion"],
+                    "tipos_periodo": ["Nivelacion", "Grado"],
+                    "resumen_documento": "Resumen generado por IA.",
+                    "temas_detectados": ["matricula"],
+                    "perfiles_acceso": [{"id": 1, "nombre": "Estudiante"}],
+                    "id_perfil_externo": [1],
+                    "grupos_acceso": [{"id": 10, "nombre": "Computacion"}],
+                    "id_grupo_externo": [10],
+                    "tipos_periodo_acceso": [{"id": 1, "nombre": "Nivelacion"}],
+                    "id_tipo_periodo_externo": [1],
+                    "fuente": "Django_Modulo_GestionDocumentosLegales",
+                    "porcentaje_texto": "100.0",
+                    "porcentaje_imagenes": "0.0",
+                    "advertencias": ["texto repetido"],
+                    "requiere_revision_humana": True,
+                    "perfil": "",
+                    "grupo": "",
+                    "periodo": "",
+                    "carrera": "GENERAL",
+                    "tipo_estudio": "GENERAL",
+                },
+            },
+            format="json",
+        )
+
+        response = api_procesar_documento(request)
+
+        self.assertEqual(response.status_code, 200)
+        metadata_base = guardar_mock.call_args.kwargs["metadata_base"]
+        self.assertEqual(metadata_base["id_version"], "8")
+        self.assertEqual(metadata_base["uuid_documento"], "uuid-doc")
+        self.assertEqual(metadata_base["uuid_version"], "uuid-ver")
+        self.assertEqual(metadata_base["anio_documento"], "2026")
+        self.assertEqual(metadata_base["nombre_archivo"], "manual.pdf")
+        self.assertEqual(metadata_base["perfiles"], '["Estudiante", "Docente"]')
+        self.assertEqual(metadata_base["grupos"], '["Computacion"]')
+        self.assertEqual(metadata_base["tipos_periodo"], '["Nivelacion", "Grado"]')
+        self.assertEqual(metadata_base["resumen_documento"], "Resumen generado por IA.")
+
+        for clave in [
+            "porcentaje_texto",
+            "porcentaje_imagenes",
+            "advertencias",
+            "requiere_revision_humana",
+            "perfil",
+            "grupo",
+            "periodo",
+            "carrera",
+            "tipo_estudio",
+            "tipo_documento",
+            "ambito",
+            "perfiles_acceso",
+            "id_perfil_externo",
+            "grupos_acceso",
+            "id_grupo_externo",
+            "tipos_periodo_acceso",
+            "id_tipo_periodo_externo",
+            "fuente",
+            "temas_detectados",
+        ]:
+            self.assertNotIn(clave, metadata_base)
+
+    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
+    @patch("Bety_AI.views.eliminar_documento_chroma")
+    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch(
+        "Bety_AI.views.dividir_documento_en_fragmentos",
+        return_value=([{"contenido": "fragmento nuevo"}], "characters"),
+    )
+    def test_tipo_periodo_se_guarda_como_tipos_periodo(
+        self,
+        dividir_mock,
+        eliminar_version_mock,
+        eliminar_documento_mock,
+        guardar_mock,
+    ):
+        request = self.factory.post(
+            "/api/integracion/documentos/guardar-chroma/",
+            {
+                "id_documento": "DOC-PERIODO",
+                "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
+                "metadata": {
+                    "tipo_periodo": ["Nivelacion", "Grado"],
+                },
+            },
+            format="json",
+        )
+
+        response = api_procesar_documento(request)
+
+        self.assertEqual(response.status_code, 200)
+        metadata_base = guardar_mock.call_args.kwargs["metadata_base"]
+        self.assertEqual(metadata_base["tipos_periodo"], '["Nivelacion", "Grado"]')
+        self.assertNotIn("tipo_periodo", metadata_base)
 
     @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
     @patch("Bety_AI.views.eliminar_documento_chroma")

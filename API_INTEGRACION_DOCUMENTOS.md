@@ -61,22 +61,51 @@ Campos opcionales:
 - `uuid_version`
 - `id_version_anterior`
 - `uuid_version_anterior`: UUID de la version que debe eliminarse de Chroma antes de indexar la nueva.
-- `tipo_documento`
-- `ambito`
 - `estado_vigencia`
 - `anio_documento`
-- `periodo`
-- `perfil`
-- `carrera`
-- `grupo`
-- `tipo_estudio`
 - `resumen_documento`
 - `temas_detectados`
+- `nombre_archivo`
+- `metadata`: objeto JSON con metadatos documentales permitidos.
+- `reemplazar_existente`: `true` por defecto. Con `accion_chroma=reemplazar_version_vigente` y `uuid_version_anterior`, borra los fragmentos de esa version anterior. Si no se envia `uuid_version_anterior`, mantiene el comportamiento anterior y borra por `id_documento`.
+
+Campos permitidos dentro de `metadata`:
+
+- `numero_version`
+- `numero_version_anterior`
+- `archivo_path`
+- `perfiles`
+- `grupos`
+- `tipos_periodo`
+- `resumen_documento`
+
+Para filtrado documental, Bety-AI guarda los nombres en campos simples de lista:
+
+- `perfiles`: uno o varios nombres de perfil.
+- `grupos`: uno o varios nombres de grupo/facultad.
+- `tipos_periodo`: uno o varios nombres de tipo de periodo. Si se envia `tipo_periodo`, se toma como alias y se guarda como `tipos_periodo`.
+
+El guardado ignora campos tecnicos de legibilidad y campos simples o no confirmados, aunque se envien en `metadata`, por ejemplo:
+
+- `porcentaje_texto`
+- `porcentaje_imagenes`
 - `advertencias`
 - `requiere_revision_humana`
-- `nombre_archivo`
-- `metadata`: objeto JSON con metadatos adicionales.
-- `reemplazar_existente`: `true` por defecto. Con `accion_chroma=reemplazar_version_vigente` y `uuid_version_anterior`, borra los fragmentos de esa version anterior. Si no se envia `uuid_version_anterior`, mantiene el comportamiento anterior y borra por `id_documento`.
+- `perfil`
+- `grupo`
+- `periodo`
+- `carrera`
+- `tipo_estudio`
+- `fuente`
+- `temas_detectados`
+- `ambito`
+- `tipo_documento`
+- `perfiles_acceso`
+- `id_perfil_externo`
+- `grupos_acceso`
+- `id_grupo_externo`
+- `tipos_periodo_acceso`
+- `id_tipo_periodo_externo`
 
 Configuracion de fragmentacion:
 

@@ -26,6 +26,11 @@ from .view_logic.interpretacion_consulta import (
     normalizar_interpretacion,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
+from .view_logic.chat_clasificacion import (
+    es_consulta_ambito_bety,
+    es_pregunta_fuera_ambito,
+    pregunta_necesita_perfil_web,
+)
 from .view_logic.chat_conversacion import (
     agregar_historial_conversacion,
     es_solicitud_reformulacion,
@@ -363,6 +368,15 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertEqual(len(filtrados), 1)
         self.assertIn("pregrado", filtrados[0]["contenido"])
+
+
+class ClasificacionConsultaTests(SimpleTestCase):
+    def test_justificacion_inasistencia_es_consulta_sga(self):
+        pregunta = "Como puedo justificar mi inasistencia"
+
+        self.assertTrue(es_consulta_ambito_bety(pregunta))
+        self.assertFalse(es_pregunta_fuera_ambito(pregunta))
+        self.assertTrue(pregunta_necesita_perfil_web(pregunta))
 
 
 @override_settings(CACHES={

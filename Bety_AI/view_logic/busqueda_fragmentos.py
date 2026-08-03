@@ -1,6 +1,10 @@
 import re
 
-from ..services.chroma_service import buscar_fragmentos
+from ..services.chroma_service import (
+    buscar_fragmentos,
+    extraer_tokens_busqueda,
+    puntuar_coincidencia_lexica,
+)
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
 
@@ -32,6 +36,27 @@ def fragmentos_suficientes_para_responder(fragmentos):
     )
 
     return mejor_coincidencia > 0
+
+
+def fragmento_pertinente_consulta(pregunta, fragmento):
+    tokens = extraer_tokens_busqueda(pregunta)
+    if not tokens:
+        return True
+
+    metadata = fragmento.get("metadata") or {}
+    contenido = fragmento.get("contenido", "")
+    return puntuar_coincidencia_lexica(pregunta, contenido, metadata) > 0
+
+
+def filtrar_fragmentos_por_pertinencia(pregunta, fragmentos):
+    if not fragmentos:
+        return []
+
+    return [
+        fragmento
+        for fragmento in fragmentos
+        if fragmento_pertinente_consulta(pregunta, fragmento)
+    ]
 
 
 def extraer_filtros_consulta(data):
@@ -509,7 +534,6 @@ def fragmento_pertenece_tema(fragmento, tema):
 
 def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
     ultimo_error = None
-    tema = detectar_tema_consulta(pregunta)
 
     for filtros_actuales in relajar_filtros_busqueda(filtros):
         try:
@@ -522,17 +546,12 @@ def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
             ultimo_error = exc
             continue
 
-        if tema:
-            fragmentos = [
-                fragmento
-                for fragmento in fragmentos
-                if fragmento_pertenece_tema(fragmento, tema)
-            ]
+        fragmentos = filtrar_fragmentos_por_pertinencia(pregunta, fragmentos)
 
         if fragmentos and fragmentos_suficientes_para_responder(fragmentos):
             return fragmentos, filtros_actuales
 
-        if fragmentos and not filtros_actuales and not tema:
+        if fragmentos and not filtros_actuales:
             return fragmentos, filtros_actuales
 
     if ultimo_error:

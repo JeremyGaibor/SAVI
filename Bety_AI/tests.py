@@ -3,7 +3,12 @@ from rest_framework.test import APIRequestFactory
 
 from unittest.mock import patch
 
-from .views import api_consulta_ia, api_procesar_documento
+from .views import (
+    _construir_prompt_documental,
+    _describir_filtros_relajados,
+    api_consulta_ia,
+    api_procesar_documento,
+)
 from .view_logic.busqueda_fragmentos import (
     combinar_filtros_consulta_y_perfil,
     construir_filtros_desde_perfil,
@@ -180,6 +185,38 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
                 "tipos_periodo": "2026-S1",
             },
         ))
+
+    def test_describe_filtros_relajados_para_avisar_al_usuario(self):
+        aviso = _describir_filtros_relajados(
+            {"perfiles": "estudiante", "grupos": "FCC"},
+            {"perfiles": "estudiante"},
+        )
+
+        self.assertIn("grupo/facultad: FCC", aviso)
+        self.assertIn("filtros mas generales", aviso)
+
+    def test_no_avisa_filtros_relajados_si_se_conservan(self):
+        aviso = _describir_filtros_relajados(
+            {"perfiles": "estudiante", "grupos": "FCC"},
+            {"perfiles": "estudiante", "grupos": "FCC"},
+        )
+
+        self.assertEqual(aviso, "")
+
+    def test_prompt_incluye_aviso_de_filtros_relajados(self):
+        prompt = _construir_prompt_documental(
+            pregunta="matricula",
+            pregunta_busqueda="matricula pregrado",
+            contexto_usuario="- Perfil: estudiante",
+            historial_conversacion="",
+            contexto="Documento relacionado",
+            interpretacion_consulta={"formato_respuesta": "normal", "depende_historial": False},
+            perfil_desambiguo_documento=False,
+            aviso_filtros_relajados="No se encontro para grupo/facultad: FCC.",
+        )
+
+        self.assertIn("AVISO_FILTROS_RELAJADOS", prompt)
+        self.assertIn("grupo/facultad: FCC", prompt)
 
     def test_tipo_estudiante_pregrado_no_se_usa_como_filtro_duro(self):
         filtros = extraer_filtros_consulta({"tipo_estudiante": "Pregrado"})

@@ -823,6 +823,29 @@ def _perfil_desambiguo_documento(filtros_aplicados):
     )
 
 
+def _describir_filtros_relajados(filtros_originales, filtros_aplicados):
+    etiquetas = {
+        "perfiles": "perfil",
+        "grupos": "grupo/facultad",
+        "tipos_periodo": "periodo",
+    }
+    partes = []
+
+    for clave, etiqueta in etiquetas.items():
+        valor_original = (filtros_originales or {}).get(clave)
+        if not valor_original or (filtros_aplicados or {}).get(clave) == valor_original:
+            continue
+        partes.append(f"{etiqueta}: {valor_original}")
+
+    if not partes:
+        return ""
+
+    return (
+        "No se encontro contexto documental suficiente con estos filtros solicitados: "
+        f"{'; '.join(partes)}. La busqueda uso documentos relacionados con filtros mas generales."
+    )
+
+
 def _valor_metadata_documental(metadata, clave_nueva, clave_legacy=""):
     return metadata.get(clave_nueva) or metadata.get(clave_legacy) or ""
 
@@ -859,6 +882,7 @@ def _construir_prompt_documental(
     contexto,
     interpretacion_consulta,
     perfil_desambiguo_documento,
+    aviso_filtros_relajados="",
 ):
     bloque_historial = (
         f"\nHISTORIAL RECIENTE DE ESTA MISMA CONVERSACION:\n{historial_conversacion}\n"
@@ -891,6 +915,7 @@ Reglas de perfil:
 15. No pidas perfil, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
 16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con datos del usuario como perfil, grupo/facultad o periodo. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a ese contexto y que puede pedir otra version si la necesita.
 17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el perfil, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
+18. Si AVISO_FILTROS_RELAJADOS no esta vacio, empieza indicando que no se encontro informacion especifica para esos filtros y que la respuesta usa informacion relacionada o general. No digas que pertenece exactamente a ese perfil, grupo o periodo.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}
@@ -900,6 +925,9 @@ CONTEXTO DOCUMENTAL:
 
 SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO:
 {"si" if perfil_desambiguo_documento else "no"}
+
+AVISO_FILTROS_RELAJADOS:
+{aviso_filtros_relajados or "ninguno"}
 
 PREGUNTA ORIGINAL DEL USUARIO:
 {pregunta}
@@ -1017,6 +1045,7 @@ def api_consulta_ia(request):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
 
     contexto = _construir_contexto_documental(fragmentos)
+    aviso_filtros_relajados = _describir_filtros_relajados(filtros, filtros_aplicados)
     prompt = _construir_prompt_documental(
         pregunta,
         pregunta_busqueda,
@@ -1025,6 +1054,7 @@ def api_consulta_ia(request):
         contexto,
         interpretacion_consulta,
         _perfil_desambiguo_documento(filtros_aplicados),
+        aviso_filtros_relajados,
     )
 
     return _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos)

@@ -6,6 +6,7 @@ from unittest.mock import patch
 from .views import (
     _construir_prompt_documental,
     _describir_filtros_relajados,
+    _debe_reformular,
     api_consulta_ia,
     api_procesar_documento,
 )
@@ -602,6 +603,34 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(interpretacion["tipo_operacion"], "reformulacion")
         self.assertTrue(interpretacion["depende_historial"])
         self.assertEqual(interpretacion["formato_respuesta"], "tabla")
+
+    def test_pregunta_con_tema_claro_no_se_normaliza_como_reformulacion(self):
+        interpretacion = normalizar_interpretacion(
+            {
+                "tipo_operacion": "reformulacion",
+                "consulta_normalizada": "reformatear respuesta anterior",
+                "depende_historial": True,
+                "formato_respuesta": "normal",
+            },
+            "como evalua el sga",
+        )
+
+        self.assertEqual(interpretacion["tipo_operacion"], "consulta_documental")
+        self.assertFalse(interpretacion["depende_historial"])
+
+    def test_views_no_reformula_si_la_pregunta_tiene_tema_nuevo(self):
+        self.assertFalse(
+            _debe_reformular(
+                "como evalua el sga",
+                {"tipo_operacion": "reformulacion", "depende_historial": True},
+            )
+        )
+        self.assertTrue(
+            _debe_reformular(
+                "dame una tabla",
+                {"tipo_operacion": "reformulacion", "depende_historial": True},
+            )
+        )
 
     @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")

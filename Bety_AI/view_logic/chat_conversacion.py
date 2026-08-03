@@ -12,11 +12,6 @@ CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
 CONVERSACION_TTL_SEGUNDOS = 60 * 30
 MAX_HISTORIAL_CONVERSACION = 20
 MAX_HISTORIAL_PROMPT = 4
-MAX_HISTORIAL_ROUTER = 3
-# Turnos puramente conversacionales (sin contenido documental) que se excluyen del
-# historial que ve el router: no aportan continuidad de tema y en la practica arrastran
-# su tono (saludos, cortesias) hacia mensajes nuevos que no lo piden.
-TIPOS_RESPUESTA_CONVERSACIONALES_ROUTER = {"SALUDO", "IDENTIDAD", "CONVERSACION"}
 # Si el usuario falla la validacion del mismo campo mas de esta cantidad de
 # veces, se acepta la respuesta tal cual para no dejar la conversacion
 # trabada (por ejemplo, si el LLM de validacion esta caido).
@@ -100,39 +95,6 @@ def formatear_historial_conversacion(conversation_id):
     bloques = [
         f"Usuario: {item.get('pregunta', '')}\nBety: {item.get('respuesta', '')}"
         for item in historial_qa[-MAX_HISTORIAL_PROMPT:]
-        if item.get("pregunta") and item.get("respuesta")
-    ]
-
-    return "\n\n".join(bloques)
-
-
-def formatear_historial_para_router(conversation_id):
-    """
-    Historial recortado para el router de intencion: excluye turnos puramente
-    conversacionales (saludos, cortesias, identidad) porque no aportan continuidad de
-    tema y arrastran su tono hacia mensajes nuevos que no lo piden. Deja solo turnos con
-    contenido real (respuestas documentales, reformulaciones) para que el router pueda
-    resolver referencias como "resumelo" o "eso" sin heredar el tono de charlas previas.
-    Se usa unicamente para la clasificacion del router; el prompt de respuesta documental
-    final sigue usando formatear_historial_conversacion (sin filtrar).
-    """
-    if not conversation_id:
-        return ""
-
-    estado = obtener_estado_conversacion(conversation_id)
-    historial_qa = estado.get("historial_qa")
-    if not isinstance(historial_qa, list) or not historial_qa:
-        return ""
-
-    turnos_relevantes = [
-        item
-        for item in historial_qa
-        if item.get("tipo_respuesta") not in TIPOS_RESPUESTA_CONVERSACIONALES_ROUTER
-    ]
-
-    bloques = [
-        f"Usuario: {item.get('pregunta', '')}\nBety: {item.get('respuesta', '')}"
-        for item in turnos_relevantes[-MAX_HISTORIAL_ROUTER:]
         if item.get("pregunta") and item.get("respuesta")
     ]
 

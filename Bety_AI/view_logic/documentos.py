@@ -50,20 +50,6 @@ def valor_metadata_presente(valor):
     return True
 
 
-def obtener_primer_valor_metadata(request, metadata_extra, campos, defecto=""):
-    for campo in campos:
-        valor = obtener_valor_request(request, campo, None)
-        if valor not in [None, ""]:
-            return valor
-
-    for campo in campos:
-        valor = metadata_extra.get(campo)
-        if valor not in [None, ""]:
-            return valor
-
-    return defecto
-
-
 def obtener_valor_metadata_documental(request, metadata_extra, campo, defecto=None):
     valor = obtener_valor_request(request, campo, None)
     if valor_metadata_presente(valor):

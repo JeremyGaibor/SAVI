@@ -494,18 +494,6 @@ def fragmento_pertenece_tema(fragmento, tema):
     return True
 
 
-def filtrar_fragmentos_por_tema(pregunta, fragmentos):
-    tema = detectar_tema_consulta(pregunta)
-    if not tema:
-        return fragmentos
-
-    return [
-        fragmento
-        for fragmento in fragmentos
-        if fragmento_pertenece_tema(fragmento, tema)
-    ]
-
-
 def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
     ultimo_error = None
 

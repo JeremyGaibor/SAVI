@@ -1,5 +1,6 @@
 from ..services.ollama_service import consultar_qwen
-from .busqueda_fragmentos import detectar_tema_consulta, normalizar_filtros_documentales
+from .busqueda_fragmentos import normalizar_filtros_documentales
+from .chat_conversacion import es_solicitud_reformulacion
 from .comun import extraer_json_desde_respuesta_ia
 from .contexto_usuario import limpiar_texto_contexto
 
@@ -64,15 +65,15 @@ def normalizar_interpretacion(data, pregunta):
     consulta_busqueda = " ".join(parte for parte in partes_busqueda if parte)
 
     tipo_operacion = normalizar_tipo_operacion(data.get("tipo_operacion"))
-    tiene_tema_documental = bool(detectar_tema_consulta(pregunta_limpia))
-    if tipo_operacion == "reformulacion" and tiene_tema_documental:
+    es_reformulacion_pura = es_solicitud_reformulacion(pregunta_limpia)
+    if tipo_operacion == "reformulacion" and not es_reformulacion_pura:
         tipo_operacion = "consulta_documental"
 
     return {
         "tipo_operacion": tipo_operacion,
         "consulta_normalizada": consulta_normalizada,
         "consulta_busqueda": limpiar_texto_contexto(consulta_busqueda, 1000),
-        "depende_historial": bool(data.get("depende_historial", False)) and not tiene_tema_documental,
+        "depende_historial": bool(data.get("depende_historial", False)) and es_reformulacion_pura,
         "formato_respuesta": normalizar_formato_respuesta(data.get("formato_respuesta")),
         "palabras_clave": palabras_clave,
         "filtros_sugeridos": normalizar_filtros_sugeridos(data.get("filtros_sugeridos")),

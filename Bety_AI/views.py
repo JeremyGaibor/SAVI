@@ -51,6 +51,7 @@ from .view_logic.chat_conversacion import (
     iniciar_recoleccion_perfil_conversacion,
     formatear_historial_conversacion,
     agregar_historial_conversacion,
+    es_solicitud_reformulacion,
     obtener_ultima_pregunta_conversacion,
     obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
@@ -74,7 +75,6 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
-    detectar_tema_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
 )
@@ -676,9 +676,19 @@ def _resolver_perfil_o_respuesta_pendiente(request, conversation_id, pregunta, p
 
 
 def _iniciar_perfil_web_si_hace_falta(
-    request, conversation_id, pregunta, perfil_sga, pregunta_original_web, perfil_en_recoleccion
+    request,
+    conversation_id,
+    pregunta,
+    perfil_sga,
+    pregunta_original_web,
+    perfil_en_recoleccion,
+    interpretacion_consulta,
 ):
-    if perfil_sga or pregunta_original_web or not pregunta_necesita_perfil_web(pregunta):
+    if (
+        perfil_sga
+        or pregunta_original_web
+        or not pregunta_necesita_perfil_web(pregunta, interpretacion_consulta)
+    ):
         return None
 
     respuesta = iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil_en_recoleccion or {})
@@ -696,9 +706,10 @@ def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, context
 
 
 def _debe_reformular(pregunta, interpretacion_consulta):
-    if detectar_tema_consulta(pregunta):
-        return False
-    return interpretacion_consulta.get("tipo_operacion") == "reformulacion"
+    return (
+        interpretacion_consulta.get("tipo_operacion") == "reformulacion"
+        and es_solicitud_reformulacion(pregunta)
+    )
 
 
 def _responder_reformulacion(request, conversation_id, pregunta):
@@ -998,22 +1009,12 @@ def api_consulta_ia(request):
         return resultado_perfil
     perfil_usuario, pregunta, pregunta_original_web, perfil_en_recoleccion = resultado_perfil
 
-    respuesta_pendiente = _iniciar_perfil_web_si_hace_falta(
-        request, conversation_id, pregunta, perfil_sga, pregunta_original_web, perfil_en_recoleccion
-    )
-    if respuesta_pendiente:
-        return respuesta_pendiente
-
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
     historial_conversacion = formatear_historial_conversacion(conversation_id)
-    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
 
     respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
     if respuesta_historial:
         return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
-
-    if _debe_reformular(pregunta, interpretacion_consulta):
-        return _responder_reformulacion(request, conversation_id, pregunta)
 
     if es_pregunta_identidad(pregunta):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "IDENTIDAD", contexto_usuario)
@@ -1021,8 +1022,25 @@ def api_consulta_ia(request):
     if es_interaccion_social(pregunta):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "SALUDO", contexto_usuario)
 
+    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
+
+    if _debe_reformular(pregunta, interpretacion_consulta):
+        return _responder_reformulacion(request, conversation_id, pregunta)
+
     if _es_fuera_de_ambito(pregunta, interpretacion_consulta):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
+
+    respuesta_pendiente = _iniciar_perfil_web_si_hace_falta(
+        request,
+        conversation_id,
+        pregunta,
+        perfil_sga,
+        pregunta_original_web,
+        perfil_en_recoleccion,
+        interpretacion_consulta,
+    )
+    if respuesta_pendiente:
+        return respuesta_pendiente
 
     filtros_consulta = extraer_filtros_consulta(request.data)
     filtros_sugeridos = interpretacion_consulta.get("filtros_sugeridos") or {}

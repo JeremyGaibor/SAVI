@@ -29,7 +29,6 @@ from .view_logic.interpretacion_consulta import (
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_clasificacion import (
-    es_consulta_ambito_bety,
     es_pregunta_fuera_ambito,
     pregunta_necesita_perfil_web,
 )
@@ -430,12 +429,18 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
 
 class ClasificacionConsultaTests(SimpleTestCase):
-    def test_justificacion_inasistencia_es_consulta_sga(self):
+    def test_pide_perfil_web_si_la_ia_clasifica_como_documental(self):
         pregunta = "Como puedo justificar mi inasistencia"
+        interpretacion = {"tipo_operacion": "consulta_documental"}
 
-        self.assertTrue(es_consulta_ambito_bety(pregunta))
         self.assertFalse(es_pregunta_fuera_ambito(pregunta))
-        self.assertTrue(pregunta_necesita_perfil_web(pregunta))
+        self.assertTrue(pregunta_necesita_perfil_web(pregunta, interpretacion))
+
+    def test_no_pide_perfil_web_si_la_ia_clasifica_fuera_de_ambito(self):
+        pregunta = "ayudas economicas"
+        interpretacion = {"tipo_operacion": "fuera_ambito"}
+
+        self.assertFalse(pregunta_necesita_perfil_web(pregunta, interpretacion))
 
 
 @override_settings(CACHES={
@@ -633,6 +638,43 @@ class HistorialConversacionTests(SimpleTestCase):
         )
 
     @patch("Bety_AI.views.consultar_qwen")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_pide_perfil_web_para_ayudas_economicas_sin_contexto(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        qwen_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "ayudas economicas",
+            "consulta_busqueda": "ayudas economicas",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "ayudas economicas",
+                "conversation_id": "convtest-ayudas-web",
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "SOLICITUD_CONTEXTO_WEB")
+        self.assertIn("eres estudiante", response.data["respuesta"])
+        interpretar_mock.assert_called_once()
+        qwen_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
+
+    @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
     @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
     @patch("Bety_AI.views.interpretar_consulta_ia")
@@ -677,9 +719,15 @@ class HistorialConversacionTests(SimpleTestCase):
             {
                 "pregunta": "programa de becas",
                 "conversation_id": "convtest05",
+                "usuario": {
+                    "perfil": "estudiante",
+                    "tipo_estudiante": "pregrado",
+                    "facultad": "Computacion",
+                },
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 

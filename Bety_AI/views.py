@@ -58,8 +58,6 @@ from .view_logic.chat_conversacion import (
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
-    es_pregunta_identidad,
-    es_interaccion_social,
     es_pregunta_fuera_ambito,
     pregunta_necesita_perfil_web,
 )
@@ -1012,17 +1010,25 @@ def api_consulta_ia(request):
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
     historial_conversacion = formatear_historial_conversacion(conversation_id)
 
-    respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
-    if respuesta_historial:
-        return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
+    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
+    tipo_operacion = interpretacion_consulta.get("tipo_operacion")
 
-    if es_pregunta_identidad(pregunta):
+    if tipo_operacion == "historial":
+        respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
+        if respuesta_historial:
+            return _responder_directo(
+                request,
+                conversation_id,
+                pregunta,
+                "HISTORIAL_CONVERSACION",
+                respuesta_historial,
+            )
+
+    if tipo_operacion == "identidad":
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "IDENTIDAD", contexto_usuario)
 
-    if es_interaccion_social(pregunta):
+    if tipo_operacion == "saludo":
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "SALUDO", contexto_usuario)
-
-    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
 
     if _debe_reformular(pregunta, interpretacion_consulta):
         return _responder_reformulacion(request, conversation_id, pregunta)

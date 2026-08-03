@@ -10,6 +10,8 @@ TIPOS_OPERACION = {
     "consulta_documental",
     "reformulacion",
     "historial",
+    "saludo",
+    "identidad",
     "fuera_ambito",
 }
 
@@ -102,7 +104,7 @@ PERFIL DEL USUARIO:
 
 Estructura obligatoria:
 {{
-  "tipo_operacion": "consulta_documental, reformulacion, historial o fuera_ambito",
+  "tipo_operacion": "consulta_documental, reformulacion, historial, saludo, identidad o fuera_ambito",
   "consulta_normalizada": "consulta clara y enriquecida para busqueda semantica, solo sobre el tema/proceso/documento consultado",
   "depende_historial": false,
   "formato_respuesta": "normal, tabla, lista, pasos o resumen",
@@ -111,6 +113,8 @@ Estructura obligatoria:
 }}
 
 Reglas:
+- Si el usuario solo saluda, se despide o agradece sin una consulta documental, usa tipo_operacion saludo.
+- Si pregunta quien eres, que eres, que haces, para que sirves o en que puedes ayudar, usa tipo_operacion identidad.
 - Si el usuario pide resumir, aclarar, hacer tabla, hacer lista o cambiar formato de una respuesta anterior, usa tipo_operacion reformulacion y depende_historial true.
 - Si la pregunta solo pide formato o estilo, por ejemplo "dame una tabla", "muestrame en lista", "hazlo paso a paso" o "resumelo", siempre usa tipo_operacion reformulacion y depende_historial true.
 - Si la pregunta incluye formato y tambien un tema documental claro, por ejemplo "dame una tabla sobre evaluacion del SGA", usa consulta_documental.

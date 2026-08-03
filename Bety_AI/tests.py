@@ -638,6 +638,13 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(data["tipo_operacion"], "consulta_documental")
         self.assertEqual(data["formato_respuesta"], "lista")
 
+    def test_normaliza_interpretacion_de_saludo_e_identidad(self):
+        saludo = normalizar_interpretacion({"tipo_operacion": "saludo"}, "holaaaa")
+        identidad = normalizar_interpretacion({"tipo_operacion": "identidad"}, "quien eres")
+
+        self.assertEqual(saludo["tipo_operacion"], "saludo")
+        self.assertEqual(identidad["tipo_operacion"], "identidad")
+
     def test_normaliza_interpretacion_de_formato_como_reformulacion(self):
         interpretacion = normalizar_interpretacion(
             {
@@ -716,6 +723,88 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertIn("eres estudiante", response.data["respuesta"])
         interpretar_mock.assert_called_once()
         qwen_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
+
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.generar_respuesta_controlada")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_saludo_lo_decide_interpretacion_ia(
+        self,
+        interpretar_mock,
+        respuesta_controlada_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "saludo",
+            "consulta_normalizada": "holaaaa",
+            "consulta_busqueda": "holaaaa",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        respuesta_controlada_mock.return_value = {
+            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "modelo": "qwen-control",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "holaaaa",
+                "conversation_id": "convtest-saludo-ia",
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "SALUDO")
+        interpretar_mock.assert_called_once()
+        respuesta_controlada_mock.assert_called_once()
+        buscar_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
+
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_historial_lo_decide_interpretacion_ia(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        conversation_id = "convtest-historial-ia"
+        agregar_historial_conversacion(conversation_id, "Pregunta inicial", "Respuesta inicial")
+        interpretar_mock.return_value = {
+            "tipo_operacion": "historial",
+            "consulta_normalizada": "primera pregunta",
+            "consulta_busqueda": "primera pregunta",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "cual fue mi primera pregunta?",
+                "conversation_id": conversation_id,
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "HISTORIAL_CONVERSACION")
+        self.assertIn("Pregunta inicial", response.data["respuesta"])
+        interpretar_mock.assert_called_once()
+        buscar_mock.assert_not_called()
         guardar_temporal_mock.assert_called_once()
 
     @patch("Bety_AI.views.consultar_qwen")

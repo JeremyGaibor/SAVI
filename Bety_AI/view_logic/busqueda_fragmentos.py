@@ -397,7 +397,14 @@ def detectar_tema_consulta(pregunta):
     if "aula virtual" in texto or texto.strip() == "aula":
         return "aula_virtual"
 
-    if any(palabra in texto for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion", "calificaciones"]):
+    if any(palabra in texto for palabra in [
+        "evaluacion",
+        "evaluaciones",
+        "evalua",
+        "evaluar",
+        "calificacion",
+        "calificaciones",
+    ]):
         return "evaluacion"
 
     if any(palabra in texto for palabra in [
@@ -475,7 +482,13 @@ def fragmento_pertenece_tema(fragmento, tema):
         return "aula virtual" in texto_revision
 
     if tema == "evaluacion":
-        return any(palabra in texto_revision for palabra in ["evaluacion", "evaluaciones", "evaluar", "calificacion"])
+        return any(palabra in texto_revision for palabra in [
+            "evaluacion",
+            "evaluaciones",
+            "evalua",
+            "evaluar",
+            "calificacion",
+        ])
 
     if tema == "asistencia":
         return any(palabra in texto_revision for palabra in [

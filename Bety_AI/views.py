@@ -74,6 +74,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
+    detectar_tema_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
 )
@@ -694,7 +695,9 @@ def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, context
         return interpretacion_fallback(pregunta)
 
 
-def _debe_reformular(interpretacion_consulta):
+def _debe_reformular(pregunta, interpretacion_consulta):
+    if detectar_tema_consulta(pregunta):
+        return False
     return interpretacion_consulta.get("tipo_operacion") == "reformulacion"
 
 
@@ -1009,7 +1012,7 @@ def api_consulta_ia(request):
     if respuesta_historial:
         return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
 
-    if _debe_reformular(interpretacion_consulta):
+    if _debe_reformular(pregunta, interpretacion_consulta):
         return _responder_reformulacion(request, conversation_id, pregunta)
 
     if es_pregunta_identidad(pregunta):

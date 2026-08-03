@@ -131,6 +131,15 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
             construir_pregunta_busqueda_con_perfil("como puedo matricularme", perfil),
         )
 
+    def test_modo_web_no_pide_carrera_como_dato_obligatorio(self):
+        perfil = {
+            "perfil": "estudiante",
+            "tipo_estudiante": "Pregrado",
+            "facultad": "Ciencias Informaticas",
+        }
+
+        self.assertIsNone(obtener_siguiente_campo_perfil_web(perfil))
+
     def test_filtros_directos_se_alinean_con_metadata_documental(self):
         filtros = extraer_filtros_consulta({
             "perfil": "Docente invitado",

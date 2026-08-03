@@ -814,12 +814,17 @@ def _buscar_fragmentos_para_pregunta(
 
 
 def _perfil_desambiguo_documento(filtros_aplicados):
-    # Si la busqueda solo tuvo exito manteniendo el filtro de facultad/carrera
-    # del perfil (es decir, no hizo falta relajarlo), es señal de que existian
-    # documentos similares para otras facultades/carreras y el perfil fue lo
-    # que permitio elegir el correcto. Ese caso es el unico donde vale la
-    # pena que la respuesta mencione el perfil del usuario.
-    return bool(filtros_aplicados.get("facultad") or filtros_aplicados.get("carrera"))
+    # Si la busqueda mantuvo filtros del perfil/contexto del usuario, vale la
+    # pena mencionar brevemente que la respuesta corresponde a ese contexto.
+    return bool(
+        filtros_aplicados.get("perfiles")
+        or filtros_aplicados.get("grupos")
+        or filtros_aplicados.get("tipos_periodo")
+    )
+
+
+def _valor_metadata_documental(metadata, clave_nueva, clave_legacy=""):
+    return metadata.get(clave_nueva) or metadata.get(clave_legacy) or ""
 
 
 def _construir_contexto_documental(fragmentos):
@@ -836,8 +841,9 @@ ID documento: {metadata.get("id_documento", "")}
 Tipo: {metadata.get("tipo_documento", "")}
 Vigencia: {metadata.get("estado_vigencia", "")}
 Año: {metadata.get("anio_documento", "")}
-Periodo: {metadata.get("periodo", "")}
-Perfil: {metadata.get("perfil", "")}
+Periodo: {_valor_metadata_documental(metadata, "tipos_periodo", "periodo")}
+Perfil: {_valor_metadata_documental(metadata, "perfiles", "perfil")}
+Grupo: {_valor_metadata_documental(metadata, "grupos", "grupo")}
 Fragmento:
 {contenido}
 """
@@ -883,7 +889,7 @@ Reglas obligatorias:
 Reglas de perfil:
 14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar perfil, carrera, nivel o periodo academico; no lo trates como fuente documental.
 15. No pidas perfil, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
-16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con la facultad/carrera del usuario porque existe mas de un documento similar para distintas facultades o carreras. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a su facultad/carrera y que puede pedir la version de otra si la necesita.
+16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con datos del usuario como perfil, grupo/facultad o periodo. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a ese contexto y que puede pedir otra version si la necesita.
 17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el perfil, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
 
 PERFIL DEL USUARIO:

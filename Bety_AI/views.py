@@ -50,7 +50,6 @@ from .view_logic.chat_conversacion import (
     guardar_respuesta_campo_conversacion,
     iniciar_recoleccion_perfil_conversacion,
     formatear_historial_conversacion,
-    formatear_historial_para_router,
     agregar_historial_conversacion,
     obtener_ultima_pregunta_conversacion,
     obtener_ultima_respuesta_conversacion,
@@ -58,6 +57,9 @@ from .view_logic.chat_conversacion import (
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
+    es_pregunta_identidad,
+    es_interaccion_social,
+    es_pregunta_fuera_ambito,
     pregunta_necesita_perfil_web,
 )
 from .view_logic.chat_respuestas_ia import (
@@ -75,9 +77,9 @@ from .view_logic.busqueda_fragmentos import (
     filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
 )
-from .view_logic.router_consulta import (
-    enrutar_consulta_ia,
-    decision_router_fallback,
+from .view_logic.interpretacion_consulta import (
+    interpretar_consulta_ia,
+    interpretacion_fallback,
 )
 
 ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
@@ -548,27 +550,25 @@ def api_buscar_fragmentos(request):
 TIPOS_RESPUESTA_SIN_HISTORIAL_QA = {"SOLICITUD_CONTEXTO_SGA", "SOLICITUD_CONTEXTO_WEB"}
 
 
-def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta, modelo=None):
+def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta):
     if tipo_respuesta not in TIPOS_RESPUESTA_SIN_HISTORIAL_QA:
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta=tipo_respuesta)
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
         respuesta=respuesta,
         tipo_respuesta=tipo_respuesta,
-        modelo=modelo,
     )
-    cuerpo = {
-        "ok": True,
-        "pregunta": pregunta,
-        "conversation_id": conversation_id,
-        "tipo_respuesta": tipo_respuesta,
-        "respuesta": respuesta,
-    }
-    if modelo is not None:
-        cuerpo["modelo"] = modelo
-
-    return Response(cuerpo, status=status.HTTP_200_OK)
+    return Response(
+        {
+            "ok": True,
+            "pregunta": pregunta,
+            "conversation_id": conversation_id,
+            "tipo_respuesta": tipo_respuesta,
+            "respuesta": respuesta,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 def _responder_ia_no_disponible(request, pregunta, exc, conversation_id=None):
@@ -599,7 +599,7 @@ def _responder_con_ia_controlada(request, conversation_id, pregunta, tipo_respue
         return _responder_ia_no_disponible(request, pregunta, exc)
 
     respuesta = resultado_controlado["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta=tipo_respuesta)
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -687,11 +687,15 @@ def _iniciar_perfil_web_si_hace_falta(
     return _responder_directo(request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_WEB", respuesta)
 
 
-def _enrutar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario):
+def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario):
     try:
-        return enrutar_consulta_ia(pregunta, historial_conversacion, contexto_usuario)
+        return interpretar_consulta_ia(pregunta, historial_conversacion, contexto_usuario)
     except Exception:
-        return decision_router_fallback(pregunta)
+        return interpretacion_fallback(pregunta)
+
+
+def _debe_reformular(interpretacion_consulta):
+    return interpretacion_consulta.get("tipo_operacion") == "reformulacion"
 
 
 def _responder_reformulacion(request, conversation_id, pregunta):
@@ -707,7 +711,7 @@ def _responder_reformulacion(request, conversation_id, pregunta):
         return _responder_ia_no_disponible(request, pregunta, exc, conversation_id=conversation_id)
 
     respuesta = resultado_reformulacion["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta="REFORMULACION")
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -729,36 +733,19 @@ def _responder_reformulacion(request, conversation_id, pregunta):
     )
 
 
-def _accion_responder(request, conversation_id, pregunta, decision, datos_extra):
-    respuesta = decision.get("respuesta")
+def _es_fuera_de_ambito(pregunta, interpretacion_consulta):
+    if interpretacion_consulta.get("tipo_operacion") == "fuera_ambito":
+        return True
 
-    if not respuesta:
-        # El router eligio "responder" pero no redacto texto: no se inventa nada aqui,
-        # se trata igual que un fallo de IA en vez de fallar silenciosamente.
-        return _responder_ia_no_disponible(
-            request,
-            pregunta,
-            RuntimeError("router: accion=responder sin texto de respuesta"),
-            conversation_id=conversation_id,
-        )
-
-    return _responder_directo(
-        request,
-        conversation_id,
-        pregunta,
-        decision.get("tipo_respuesta") or "CONVERSACION",
-        respuesta,
-        modelo=decision.get("modelo"),
+    return (
+        es_pregunta_fuera_ambito(pregunta)
+        and interpretacion_consulta.get("tipo_operacion") != "consulta_documental"
     )
-
-
-def _accion_reformular(request, conversation_id, pregunta, decision, datos_extra):
-    return _responder_reformulacion(request, conversation_id, pregunta)
 
 
 def _construir_pregunta_busqueda(pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario):
     # consulta_busqueda ya incluye pregunta + consulta_normalizada + palabras_clave
-    # (ver normalizar_decision_router en router_consulta.py), asi que no hace
+    # (ver normalizar_interpretacion en interpretacion_consulta.py), asi que no hace
     # falta volver a concatenar consulta_normalizada aparte.
     pregunta_interpretada = (
         interpretacion_consulta.get("consulta_busqueda")
@@ -827,12 +814,17 @@ def _buscar_fragmentos_para_pregunta(
 
 
 def _perfil_desambiguo_documento(filtros_aplicados):
-    # Si la busqueda solo tuvo exito manteniendo el filtro de facultad/carrera
-    # del perfil (es decir, no hizo falta relajarlo), es señal de que existian
-    # documentos similares para otras facultades/carreras y el perfil fue lo
-    # que permitio elegir el correcto. Ese caso es el unico donde vale la
-    # pena que la respuesta mencione el perfil del usuario.
-    return bool(filtros_aplicados.get("facultad") or filtros_aplicados.get("carrera"))
+    # Si la busqueda mantuvo filtros del perfil/contexto del usuario, vale la
+    # pena mencionar brevemente que la respuesta corresponde a ese contexto.
+    return bool(
+        filtros_aplicados.get("perfiles")
+        or filtros_aplicados.get("grupos")
+        or filtros_aplicados.get("tipos_periodo")
+    )
+
+
+def _valor_metadata_documental(metadata, clave_nueva, clave_legacy=""):
+    return metadata.get(clave_nueva) or metadata.get(clave_legacy) or ""
 
 
 def _construir_contexto_documental(fragmentos):
@@ -849,8 +841,9 @@ ID documento: {metadata.get("id_documento", "")}
 Tipo: {metadata.get("tipo_documento", "")}
 Vigencia: {metadata.get("estado_vigencia", "")}
 Año: {metadata.get("anio_documento", "")}
-Periodo: {metadata.get("periodo", "")}
-Perfil: {metadata.get("perfil", "")}
+Periodo: {_valor_metadata_documental(metadata, "tipos_periodo", "periodo")}
+Perfil: {_valor_metadata_documental(metadata, "perfiles", "perfil")}
+Grupo: {_valor_metadata_documental(metadata, "grupos", "grupo")}
 Fragmento:
 {contenido}
 """
@@ -896,7 +889,7 @@ Reglas obligatorias:
 Reglas de perfil:
 14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar perfil, carrera, nivel o periodo academico; no lo trates como fuente documental.
 15. No pidas perfil, facultad, carrera, nivel o periodo en bloque. La recoleccion de perfil web la hace el sistema antes de este prompt, campo por campo.
-16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con la facultad/carrera del usuario porque existe mas de un documento similar para distintas facultades o carreras. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a su facultad/carrera y que puede pedir la version de otra si la necesita.
+16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con datos del usuario como perfil, grupo/facultad o periodo. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a ese contexto y que puede pedir otra version si la necesita.
 17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el perfil, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
 
 PERFIL DEL USUARIO:
@@ -928,7 +921,7 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
     try:
         resultado_qwen = consultar_qwen(prompt)
         respuesta = limpiar_respuesta_ia(resultado_qwen["respuesta"])
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta="RESPUESTA")
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
         historial = guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -951,58 +944,6 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
         },
         status=status.HTTP_200_OK,
     )
-
-
-def _accion_buscar_documentos(request, conversation_id, pregunta, decision, datos_extra):
-    perfil_usuario = datos_extra["perfil_usuario"]
-    contexto_usuario = datos_extra["contexto_usuario"]
-    # Historial completo (sin filtrar), solo para el prompt de respuesta documental final.
-    # El router ya tomo su decision con el historial recortado (formatear_historial_para_router).
-    historial_conversacion = formatear_historial_conversacion(conversation_id)
-
-    filtros = combinar_filtros_consulta_y_perfil(
-        extraer_filtros_consulta(request.data),
-        perfil_usuario,
-    )
-    ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
-    pregunta_busqueda = _construir_pregunta_busqueda(
-        pregunta, ultima_pregunta, decision, perfil_usuario
-    )
-
-    resultado_busqueda = _buscar_fragmentos_para_pregunta(
-        pregunta, pregunta_busqueda, perfil_usuario, filtros, decision, ultima_pregunta
-    )
-    if isinstance(resultado_busqueda, Response):
-        return resultado_busqueda
-    fragmentos, filtros_aplicados = resultado_busqueda
-
-    fragmentos = filtrar_fragmentos_por_tipo_estudiante(pregunta_busqueda, perfil_usuario, fragmentos)
-
-    if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
-        return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
-
-    contexto_documental = _construir_contexto_documental(fragmentos)
-    prompt = _construir_prompt_documental(
-        pregunta,
-        pregunta_busqueda,
-        contexto_usuario,
-        historial_conversacion,
-        contexto_documental,
-        decision,
-        _perfil_desambiguo_documento(filtros_aplicados),
-    )
-
-    return _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos)
-
-
-# Despacho por accion decidida por el router LLM. Diseñado para crecer: sumar una nueva
-# accion (por ejemplo una futura "usar_herramienta") es agregar una entrada aqui, sin tocar
-# api_consulta_ia.
-ACCIONES = {
-    "responder": _accion_responder,
-    "reformular": _accion_reformular,
-    "buscar_documentos": _accion_buscar_documentos,
-}
 
 
 @api_view(["POST"])
@@ -1033,19 +974,60 @@ def api_consulta_ia(request):
         return respuesta_pendiente
 
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
-    historial_router = formatear_historial_para_router(conversation_id)
-    decision = _enrutar_consulta_con_fallback(pregunta, historial_router, contexto_usuario)
+    historial_conversacion = formatear_historial_conversacion(conversation_id)
+    interpretacion_consulta = _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario)
 
     respuesta_historial = responder_pregunta_sobre_historial(conversation_id, pregunta)
     if respuesta_historial:
         return _responder_directo(request, conversation_id, pregunta, "HISTORIAL_CONVERSACION", respuesta_historial)
 
-    datos_extra = {
-        "perfil_usuario": perfil_usuario,
-        "contexto_usuario": contexto_usuario,
-    }
-    handler = ACCIONES.get(decision.get("accion"), _accion_buscar_documentos)
-    return handler(request, conversation_id, pregunta, decision, datos_extra)
+    if _debe_reformular(interpretacion_consulta):
+        return _responder_reformulacion(request, conversation_id, pregunta)
+
+    if es_pregunta_identidad(pregunta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "IDENTIDAD", contexto_usuario)
+
+    if es_interaccion_social(pregunta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "SALUDO", contexto_usuario)
+
+    if _es_fuera_de_ambito(pregunta, interpretacion_consulta):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
+
+    filtros_consulta = extraer_filtros_consulta(request.data)
+    filtros_sugeridos = interpretacion_consulta.get("filtros_sugeridos") or {}
+    filtros = combinar_filtros_consulta_y_perfil(
+        {**filtros_sugeridos, **filtros_consulta},
+        perfil_usuario,
+    )
+    ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
+    pregunta_busqueda = _construir_pregunta_busqueda(
+        pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario
+    )
+
+    resultado_busqueda = _buscar_fragmentos_para_pregunta(
+        pregunta, pregunta_busqueda, perfil_usuario, filtros, interpretacion_consulta, ultima_pregunta
+    )
+    if isinstance(resultado_busqueda, Response):
+        return resultado_busqueda
+    fragmentos, filtros_aplicados = resultado_busqueda
+
+    fragmentos = filtrar_fragmentos_por_tipo_estudiante(pregunta_busqueda, perfil_usuario, fragmentos)
+
+    if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
+        return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
+
+    contexto = _construir_contexto_documental(fragmentos)
+    prompt = _construir_prompt_documental(
+        pregunta,
+        pregunta_busqueda,
+        contexto_usuario,
+        historial_conversacion,
+        contexto,
+        interpretacion_consulta,
+        _perfil_desambiguo_documento(filtros_aplicados),
+    )
+
+    return _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos)
 
 
 @api_view(["POST"])

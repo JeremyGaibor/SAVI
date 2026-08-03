@@ -1,4 +1,5 @@
 import chromadb
+import json
 import os
 import re
 import unicodedata
@@ -12,6 +13,7 @@ load_dotenv()
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "bety_ai_documentos")
+FILTROS_LISTA_METADATA = {"perfiles", "grupos", "tipos_periodo"}
 
 STOPWORDS = {
     "sobre", "para", "como", "cual", "cuales", "donde", "cuando", "quien",
@@ -57,12 +59,18 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
     titulo = normalizar_texto(metadata.get("titulo", ""))
     tipo_documento = normalizar_texto(metadata.get("tipo_documento", ""))
     perfil = normalizar_texto(metadata.get("perfil", ""))
+    perfiles = normalizar_texto(metadata.get("perfiles", ""))
+    grupos = normalizar_texto(metadata.get("grupos", ""))
+    tipos_periodo = normalizar_texto(metadata.get("tipos_periodo", ""))
     ambito = normalizar_texto(metadata.get("ambito", ""))
 
     coincidencias_contenido = sum(1 for token in tokens if token in contenido)
     coincidencias_titulo = sum(1 for token in tokens if token in titulo)
     coincidencias_tipo = sum(1 for token in tokens if token in tipo_documento)
     coincidencias_perfil = sum(1 for token in tokens if token in perfil)
+    coincidencias_perfiles = sum(1 for token in tokens if token in perfiles)
+    coincidencias_grupos = sum(1 for token in tokens if token in grupos)
+    coincidencias_periodo = sum(1 for token in tokens if token in tipos_periodo)
     coincidencias_ambito = sum(1 for token in tokens if token in ambito)
 
     return (
@@ -70,6 +78,9 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
         + (coincidencias_titulo * 3)
         + (coincidencias_tipo * 2)
         + (coincidencias_perfil * 2)
+        + (coincidencias_perfiles * 2)
+        + coincidencias_grupos
+        + coincidencias_periodo
         + coincidencias_ambito
     ) / max(len(tokens), 1)
 
@@ -223,6 +234,59 @@ def eliminar_version_chroma(uuid_version):
     collection.delete(where={"uuid_version": str(uuid_version)})
 
 
+def separar_filtros_chroma(filtros):
+    filtros_exactos = {}
+    filtros_flexibles = {}
+
+    for clave, valor in (filtros or {}).items():
+        if valor in [None, ""]:
+            continue
+        if clave in FILTROS_LISTA_METADATA:
+            filtros_flexibles[clave] = valor
+        else:
+            filtros_exactos[clave] = valor
+
+    return filtros_exactos, filtros_flexibles
+
+
+def valores_metadata_lista(valor):
+    if isinstance(valor, list):
+        return valor
+
+    if isinstance(valor, str):
+        texto = valor.strip()
+        if not texto:
+            return []
+        try:
+            data = json.loads(texto)
+        except json.JSONDecodeError:
+            return [texto]
+        if isinstance(data, list):
+            return data
+        return [data]
+
+    if valor in [None, ""]:
+        return []
+
+    return [valor]
+
+
+def metadata_coincide_filtro_lista(metadata, clave, valor_filtro):
+    valor_normalizado = normalizar_texto(valor_filtro)
+    if not valor_normalizado:
+        return True
+
+    valores = valores_metadata_lista((metadata or {}).get(clave))
+    return any(normalizar_texto(valor) == valor_normalizado for valor in valores)
+
+
+def metadata_cumple_filtros_flexibles(metadata, filtros):
+    return all(
+        metadata_coincide_filtro_lista(metadata, clave, valor)
+        for clave, valor in (filtros or {}).items()
+    )
+
+
 def construir_where_chroma(filtros):
     """
     Convierte filtros simples de Django a formato válido para ChromaDB.
@@ -255,11 +319,14 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
     """
     collection = obtener_coleccion()
 
-    where = construir_where_chroma(filtros)
+    filtros_exactos, filtros_flexibles = separar_filtros_chroma(filtros)
+    where = construir_where_chroma(filtros_exactos)
 
     # Chroma devuelve documentos, metadatos y distancia de similitud.
     # Bety-AI usa estos fragmentos como contexto para la respuesta de Qwen.
     total_candidatos = max(total_resultados, 8)
+    if filtros_flexibles:
+        total_candidatos = max(total_resultados * 10, 30)
 
     consulta_expandida = construir_consulta_expandida(pregunta)
 
@@ -277,6 +344,8 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
     fragmentos = []
 
     for texto, metadata, distancia in zip(documentos, metadatas, distancias):
+        if filtros_flexibles and not metadata_cumple_filtros_flexibles(metadata, filtros_flexibles):
+            continue
         fragmentos.append({
             "contenido": texto,
             "metadata": metadata,

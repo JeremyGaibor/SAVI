@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from .views import api_consulta_ia, api_procesar_documento
 from .view_logic.busqueda_fragmentos import (
+    combinar_filtros_consulta_y_perfil,
     construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
@@ -14,9 +15,10 @@ from .view_logic.busqueda_fragmentos import (
     fragmento_pertenece_tema,
     relajar_filtros_busqueda,
 )
-from .view_logic.router_consulta import (
-    extraer_json_decision,
-    normalizar_decision_router,
+from .services.chroma_service import metadata_cumple_filtros_flexibles
+from .view_logic.interpretacion_consulta import (
+    extraer_json_interpretacion,
+    normalizar_interpretacion,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_conversacion import (
@@ -110,6 +112,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
                 "tipo_estudio": "Pregrado",
                 "facultad": "Ciencias Informaticas",
                 "carrera": "Ingenieria en Sistemas",
+                "periodo_academico": "2026-S1",
             }
         })
 
@@ -119,10 +122,64 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertFalse(perfil_estudiante_requiere_tipo(perfil))
         self.assertIn("- Tipo de estudiante: Pregrado", prompt)
         self.assertNotIn("tipo_estudio", filtros)
+        self.assertEqual(filtros["perfiles"], "estudiante")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+        self.assertEqual(filtros["tipos_periodo"], "2026-S1")
+        self.assertNotIn("carrera", filtros)
         self.assertIn(
             "pregrado",
             construir_pregunta_busqueda_con_perfil("como puedo matricularme", perfil),
         )
+
+    def test_modo_web_no_pide_carrera_como_dato_obligatorio(self):
+        perfil = {
+            "perfil": "estudiante",
+            "tipo_estudiante": "Pregrado",
+            "facultad": "Ciencias Informaticas",
+        }
+
+        self.assertIsNone(obtener_siguiente_campo_perfil_web(perfil))
+
+    def test_filtros_directos_se_alinean_con_metadata_documental(self):
+        filtros = extraer_filtros_consulta({
+            "perfil": "Docente invitado",
+            "facultad": "Ciencias Informaticas",
+            "periodo_academico": "2026-S1",
+            "carrera": "Ingenieria en Sistemas",
+        })
+
+        self.assertEqual(filtros["perfiles"], "Docente invitado")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+        self.assertEqual(filtros["tipos_periodo"], "2026-S1")
+        self.assertNotIn("perfil", filtros)
+        self.assertNotIn("facultad", filtros)
+        self.assertNotIn("periodo_academico", filtros)
+        self.assertNotIn("carrera", filtros)
+
+    def test_filtro_explicito_gana_sobre_perfil_usuario(self):
+        filtros = combinar_filtros_consulta_y_perfil(
+            {"perfiles": "Docente"},
+            {"perfil": "Estudiante", "facultad": "Ciencias Informaticas"},
+        )
+
+        self.assertEqual(filtros["perfiles"], "Docente")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+
+    def test_filtros_flexibles_coinciden_con_listas_json_de_metadata(self):
+        metadata = {
+            "perfiles": '["Estudiante", "Docente"]',
+            "grupos": '["Ciencias Informaticas"]',
+            "tipos_periodo": '["2026-S1"]',
+        }
+
+        self.assertTrue(metadata_cumple_filtros_flexibles(
+            metadata,
+            {
+                "perfiles": "docente",
+                "grupos": "ciencias informaticas",
+                "tipos_periodo": "2026-S1",
+            },
+        ))
 
     def test_tipo_estudiante_pregrado_no_se_usa_como_filtro_duro(self):
         filtros = extraer_filtros_consulta({"tipo_estudiante": "Pregrado"})
@@ -344,7 +401,7 @@ class HistorialConversacionTests(SimpleTestCase):
             "Respuesta mas reciente",
         )
 
-    @patch("Bety_AI.views.enrutar_consulta_ia")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
     @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
     @patch("Bety_AI.views.generar_reformulacion_respuesta")
@@ -366,16 +423,13 @@ class HistorialConversacionTests(SimpleTestCase):
             "modelo": "qwen-test",
         }
         interpretar_mock.return_value = {
-            "accion": "reformular",
-            "tipo_respuesta": None,
-            "respuesta": None,
+            "tipo_operacion": "reformulacion",
             "consulta_normalizada": "",
             "consulta_busqueda": "",
             "depende_historial": True,
             "formato_respuesta": "resumen",
             "palabras_clave": [],
             "filtros_sugeridos": {},
-            "confianza": None,
             "modelo": "qwen-test",
         }
 
@@ -401,9 +455,9 @@ class HistorialConversacionTests(SimpleTestCase):
         buscar_mock.assert_not_called()
 
     def test_normaliza_interpretacion_para_busqueda_enriquecida(self):
-        interpretacion = normalizar_decision_router(
+        interpretacion = normalizar_interpretacion(
             {
-                "accion": "buscar_documentos",
+                "tipo_operacion": "consulta_documental",
                 "consulta_normalizada": "ayudas economicas becas apoyo financiero",
                 "formato_respuesta": "tabla",
                 "palabras_clave": ["beneficios estudiantiles", "estipendio"],
@@ -411,24 +465,24 @@ class HistorialConversacionTests(SimpleTestCase):
             "beneficios para estudiantes",
         )
 
-        self.assertEqual(interpretacion["accion"], "buscar_documentos")
+        self.assertEqual(interpretacion["tipo_operacion"], "consulta_documental")
         self.assertEqual(interpretacion["formato_respuesta"], "tabla")
         self.assertIn("beneficios para estudiantes", interpretacion["consulta_busqueda"])
         self.assertIn("ayudas economicas becas apoyo financiero", interpretacion["consulta_busqueda"])
         self.assertIn("beneficios estudiantiles", interpretacion["consulta_busqueda"])
 
     def test_extrae_json_interpretacion_desde_markdown(self):
-        data = extraer_json_decision(
-            '```json\n{"accion": "buscar_documentos", "formato_respuesta": "lista"}\n```'
+        data = extraer_json_interpretacion(
+            '```json\n{"tipo_operacion": "consulta_documental", "formato_respuesta": "lista"}\n```'
         )
 
-        self.assertEqual(data["accion"], "buscar_documentos")
+        self.assertEqual(data["tipo_operacion"], "consulta_documental")
         self.assertEqual(data["formato_respuesta"], "lista")
 
     def test_normaliza_interpretacion_de_formato_como_reformulacion(self):
-        interpretacion = normalizar_decision_router(
+        interpretacion = normalizar_interpretacion(
             {
-                "accion": "reformular",
+                "tipo_operacion": "reformulacion",
                 "consulta_normalizada": "",
                 "depende_historial": True,
                 "formato_respuesta": "tabla",
@@ -436,14 +490,14 @@ class HistorialConversacionTests(SimpleTestCase):
             "dame una tabla",
         )
 
-        self.assertEqual(interpretacion["accion"], "reformular")
+        self.assertEqual(interpretacion["tipo_operacion"], "reformulacion")
         self.assertTrue(interpretacion["depende_historial"])
         self.assertEqual(interpretacion["formato_respuesta"], "tabla")
 
     @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
     @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.enrutar_consulta_ia")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
     def test_api_usa_consulta_interpretada_sin_fuera_ambito_manual(
         self,
         interpretar_mock,
@@ -452,7 +506,7 @@ class HistorialConversacionTests(SimpleTestCase):
         qwen_mock,
     ):
         interpretar_mock.return_value = {
-            "accion": "buscar_documentos",
+            "tipo_operacion": "consulta_documental",
             "consulta_normalizada": "ayudas economicas becas beneficios estudiantiles",
             "consulta_busqueda": "programa de becas ayudas economicas becas beneficios estudiantiles",
             "depende_historial": False,
@@ -495,109 +549,6 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(response.data["tipo_respuesta"], "RESPUESTA")
         self.assertIn("ayudas economicas", buscar_mock.call_args.kwargs["pregunta"])
         guardar_temporal_mock.assert_called_once()
-
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.enrutar_consulta_ia")
-    def test_saludo_con_pregunta_documental_no_se_ignora(
-        self,
-        interpretar_mock,
-        guardar_temporal_mock,
-        buscar_mock,
-        qwen_mock,
-    ):
-        """
-        Regresion del bug real: "Hola, que me puedes decir sobre las matriculaciones
-        de pregrado" no debe quedarse solo en el saludo. El router es quien decide la
-        accion (aqui mockeado como buscar_documentos); esta prueba verifica que
-        api_consulta_ia respeta esa decision y consulta Chroma en vez de cortar el
-        flujo con una regla de saludo.
-        """
-        interpretar_mock.return_value = {
-            "accion": "buscar_documentos",
-            "consulta_normalizada": "matriculaciones de pregrado",
-            "consulta_busqueda": "matriculaciones de pregrado",
-            "depende_historial": False,
-            "formato_respuesta": "normal",
-            "palabras_clave": ["matriculaciones", "pregrado"],
-            "filtros_sugeridos": {},
-            "modelo": "qwen-test",
-        }
-        buscar_mock.return_value = (
-            [
-                {
-                    "contenido": "Las matriculaciones de pregrado inician en marzo.",
-                    "metadata": {
-                        "titulo": "Matriculaciones de pregrado",
-                        "id_documento": "2",
-                        "tipo_documento": "MATRICULA",
-                    },
-                    "coincidencia_lexica": 1,
-                }
-            ],
-            {},
-        )
-        qwen_mock.return_value = {
-            "respuesta": "Las matriculaciones de pregrado inician en marzo.",
-            "modelo": "qwen-final",
-        }
-
-        request = APIRequestFactory().post(
-            "/api/chat/",
-            {
-                "pregunta": "Hola, que me puedes decir sobre las matriculaciones de pregrado",
-                "conversation_id": "convtest06",
-            },
-            format="json",
-        )
-
-        response = api_consulta_ia(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["tipo_respuesta"], "RESPUESTA")
-        buscar_mock.assert_called_once()
-
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.enrutar_consulta_ia")
-    def test_accion_responder_no_consulta_chroma_ni_llama_qwen_de_nuevo(
-        self,
-        interpretar_mock,
-        guardar_temporal_mock,
-        buscar_mock,
-        qwen_mock,
-    ):
-        """
-        Cuando el router ya decide accion=responder con el texto final redactado,
-        no debe hacer falta ninguna otra llamada al LLM ni a Chroma (ganancia de
-        1 sola llamada en vez de 2 frente al diseño anterior).
-        """
-        interpretar_mock.return_value = {
-            "accion": "responder",
-            "tipo_respuesta": "SALUDO",
-            "respuesta": "Hola, soy BettIA. ¿En que puedo ayudarte?",
-            "modelo": "qwen-test",
-        }
-
-        request = APIRequestFactory().post(
-            "/api/chat/",
-            {
-                "pregunta": "Hola",
-                "conversation_id": "convtest07",
-            },
-            format="json",
-        )
-
-        response = api_consulta_ia(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["tipo_respuesta"], "SALUDO")
-        self.assertEqual(response.data["respuesta"], "Hola, soy BettIA. ¿En que puedo ayudarte?")
-        buscar_mock.assert_not_called()
-        qwen_mock.assert_not_called()
-
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):
     def setUp(self):

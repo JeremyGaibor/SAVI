@@ -4,6 +4,24 @@ from ..services.chroma_service import buscar_fragmentos
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
 
+FILTROS_DOCUMENTALES_PERMITIDOS = [
+    "ambito",
+    "estado_vigencia",
+    "perfil",
+    "facultad",
+    "carrera",
+    "tipo_documento",
+    "id_documento",
+    "grupo",
+    "periodo",
+    "periodo_academico",
+    "tipo_periodo",
+    "perfiles",
+    "grupos",
+    "tipos_periodo",
+]
+
+
 def fragmentos_suficientes_para_responder(fragmentos):
     if not fragmentos:
         return False
@@ -21,21 +39,18 @@ def extraer_filtros_consulta(data):
     filtros_recibidos = data.get("filtros")
 
     if isinstance(filtros_recibidos, dict):
-        filtros.update(filtros_recibidos)
+        filtros.update(normalizar_filtros_documentales(filtros_recibidos))
 
-    campos_permitidos = [
-        "ambito",
-        "estado_vigencia",
-        "perfil",
-        "facultad",
-        "carrera",
-        "tipo_documento",
-        "id_documento",
-        "grupo",
-        "periodo",
-    ]
+    filtros.update(normalizar_filtros_documentales(data))
+    return filtros
 
-    for campo in campos_permitidos:
+
+def normalizar_filtros_documentales(data):
+    if not isinstance(data, dict):
+        return {}
+
+    filtros = {}
+    for campo in FILTROS_DOCUMENTALES_PERMITIDOS:
         valor = data.get(campo)
         if valor not in [None, ""]:
             filtros[campo] = valor
@@ -50,11 +65,28 @@ def extraer_filtros_consulta(data):
             continue
         if clave == "acceso":
             clave = "ambito"
+        clave = normalizar_clave_filtro_documental(clave)
+        if not clave:
+            continue
         if clave == "ambito" and isinstance(valor, str):
             valor = valor.upper()
         filtros_limpios[clave] = valor
 
     return filtros_limpios
+
+
+def normalizar_clave_filtro_documental(clave):
+    equivalencias = {
+        "perfil": "perfiles",
+        "facultad": "grupos",
+        "grupo": "grupos",
+        "periodo": "tipos_periodo",
+        "periodo_academico": "tipos_periodo",
+        "tipo_periodo": "tipos_periodo",
+    }
+    if clave == "carrera":
+        return ""
+    return equivalencias.get(clave, clave)
 
 
 def valor_filtro_general(valor):
@@ -65,7 +97,7 @@ def valor_filtro_general(valor):
 def normalizar_valor_filtro_perfil(valor):
     if valor_filtro_general(valor):
         return ""
-    return limpiar_texto_contexto(valor, 120).upper()
+    return limpiar_texto_contexto(valor, 120)
 
 
 def normalizar_tipo_estudio(valor):
@@ -104,12 +136,21 @@ def construir_filtros_desde_perfil(perfil):
     filtros = {}
     perfil_documental = normalizar_valor_filtro_perfil(perfil.get("perfil"))
     if perfil_documental:
-        filtros["perfil"] = perfil_documental
+        filtros["perfiles"] = perfil_documental
 
-    for campo in ["facultad", "carrera"]:
-        valor = normalizar_valor_filtro_perfil(perfil.get(campo))
-        if valor:
-            filtros[campo] = valor
+    grupo_documental = normalizar_valor_filtro_perfil(
+        perfil.get("grupo") or perfil.get("facultad")
+    )
+    if grupo_documental:
+        filtros["grupos"] = grupo_documental
+
+    periodo_documental = normalizar_valor_filtro_perfil(
+        perfil.get("tipo_periodo")
+        or perfil.get("periodo_academico")
+        or perfil.get("periodo")
+    )
+    if periodo_documental:
+        filtros["tipos_periodo"] = periodo_documental
 
     return filtros
 
@@ -289,7 +330,15 @@ def relajar_filtros_busqueda(filtros):
 
     filtros_base = dict(filtros)
     variantes = [filtros_base]
-    campos_relajables = ["tipo_estudio", "facultad", "carrera", "perfil"]
+    campos_relajables = [
+        "tipo_estudio",
+        "facultad",
+        "carrera",
+        "perfil",
+        "grupos",
+        "tipos_periodo",
+        "perfiles",
+    ]
 
     for campo in campos_relajables:
         if campo in filtros_base:
@@ -302,6 +351,8 @@ def relajar_filtros_busqueda(filtros):
         ["facultad", "carrera"],
         ["tipo_estudio", "facultad", "carrera"],
         ["facultad", "carrera", "perfil"],
+        ["grupos", "tipos_periodo"],
+        ["grupos", "tipos_periodo", "perfiles"],
     ]:
         relajado = dict(filtros_base)
         for campo in campos_a_quitar:

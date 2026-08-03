@@ -18,6 +18,7 @@ from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmento_pertenece_tema,
+    buscar_fragmentos_con_fallback,
     relajar_filtros_busqueda,
 )
 from .services.chroma_service import metadata_cumple_filtros_flexibles
@@ -368,6 +369,63 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertEqual(len(filtrados), 1)
         self.assertIn("pregrado", filtrados[0]["contenido"])
+
+    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    def test_fallback_no_relaja_tema_de_inasistencia(self, buscar_mock):
+        buscar_mock.side_effect = [
+            [
+                {
+                    "contenido": "La guia de ayudantes de catedra establece requisitos academicos.",
+                    "metadata": {
+                        "titulo": "Guia de ayudantes de catedra",
+                        "resumen_documento": "Seleccion de ayudantes de catedra.",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+            [
+                {
+                    "contenido": "El estudiante debe registrar la solicitud de justificacion de inasistencias.",
+                    "metadata": {
+                        "titulo": "Manual para justificar inasistencia",
+                        "resumen_documento": "Solicitud de justificacion de inasistencias.",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+        ]
+
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
+            "como puedo justificar mi inasistencia",
+            {"perfiles": "Estudiante"},
+            total_resultados=3,
+        )
+
+        self.assertEqual(len(fragmentos), 1)
+        self.assertIn("inasistencias", fragmentos[0]["contenido"])
+        self.assertEqual(filtros_aplicados, {})
+
+    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    def test_fallback_no_devuelve_otro_tema_si_no_hay_contexto_valido(self, buscar_mock):
+        buscar_mock.return_value = [
+            {
+                "contenido": "La guia de ayudantes de catedra establece requisitos academicos.",
+                "metadata": {
+                    "titulo": "Guia de ayudantes de catedra",
+                    "resumen_documento": "Seleccion de ayudantes de catedra.",
+                },
+                "coincidencia_lexica": 1,
+            }
+        ]
+
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
+            "como puedo justificar mi inasistencia",
+            {"perfiles": "Estudiante"},
+            total_resultados=3,
+        )
+
+        self.assertEqual(fragmentos, [])
+        self.assertEqual(filtros_aplicados, {})
 
 
 class ClasificacionConsultaTests(SimpleTestCase):

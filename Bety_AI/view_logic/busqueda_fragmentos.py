@@ -496,6 +496,7 @@ def fragmento_pertenece_tema(fragmento, tema):
 
 def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
     ultimo_error = None
+    tema = detectar_tema_consulta(pregunta)
 
     for filtros_actuales in relajar_filtros_busqueda(filtros):
         try:
@@ -508,10 +509,17 @@ def buscar_fragmentos_con_fallback(pregunta, filtros, total_resultados=3):
             ultimo_error = exc
             continue
 
+        if tema:
+            fragmentos = [
+                fragmento
+                for fragmento in fragmentos
+                if fragmento_pertenece_tema(fragmento, tema)
+            ]
+
         if fragmentos and fragmentos_suficientes_para_responder(fragmentos):
             return fragmentos, filtros_actuales
 
-        if fragmentos and not filtros_actuales:
+        if fragmentos and not filtros_actuales and not tema:
             return fragmentos, filtros_actuales
 
     if ultimo_error:

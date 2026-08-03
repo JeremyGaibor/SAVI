@@ -987,8 +987,10 @@ def api_consulta_ia(request):
     if _es_fuera_de_ambito(pregunta, interpretacion_consulta):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)
 
+    filtros_consulta = extraer_filtros_consulta(request.data)
+    filtros_sugeridos = interpretacion_consulta.get("filtros_sugeridos") or {}
     filtros = combinar_filtros_consulta_y_perfil(
-        extraer_filtros_consulta(request.data),
+        {**filtros_sugeridos, **filtros_consulta},
         perfil_usuario,
     )
     ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)

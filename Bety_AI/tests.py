@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from .views import api_consulta_ia, api_procesar_documento
 from .view_logic.busqueda_fragmentos import (
+    combinar_filtros_consulta_y_perfil,
     construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
@@ -14,6 +15,7 @@ from .view_logic.busqueda_fragmentos import (
     fragmento_pertenece_tema,
     relajar_filtros_busqueda,
 )
+from .services.chroma_service import metadata_cumple_filtros_flexibles
 from .view_logic.interpretacion_consulta import (
     extraer_json_interpretacion,
     normalizar_interpretacion,
@@ -110,6 +112,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
                 "tipo_estudio": "Pregrado",
                 "facultad": "Ciencias Informaticas",
                 "carrera": "Ingenieria en Sistemas",
+                "periodo_academico": "2026-S1",
             }
         })
 
@@ -119,10 +122,55 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertFalse(perfil_estudiante_requiere_tipo(perfil))
         self.assertIn("- Tipo de estudiante: Pregrado", prompt)
         self.assertNotIn("tipo_estudio", filtros)
+        self.assertEqual(filtros["perfiles"], "estudiante")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+        self.assertEqual(filtros["tipos_periodo"], "2026-S1")
+        self.assertNotIn("carrera", filtros)
         self.assertIn(
             "pregrado",
             construir_pregunta_busqueda_con_perfil("como puedo matricularme", perfil),
         )
+
+    def test_filtros_directos_se_alinean_con_metadata_documental(self):
+        filtros = extraer_filtros_consulta({
+            "perfil": "Docente invitado",
+            "facultad": "Ciencias Informaticas",
+            "periodo_academico": "2026-S1",
+            "carrera": "Ingenieria en Sistemas",
+        })
+
+        self.assertEqual(filtros["perfiles"], "Docente invitado")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+        self.assertEqual(filtros["tipos_periodo"], "2026-S1")
+        self.assertNotIn("perfil", filtros)
+        self.assertNotIn("facultad", filtros)
+        self.assertNotIn("periodo_academico", filtros)
+        self.assertNotIn("carrera", filtros)
+
+    def test_filtro_explicito_gana_sobre_perfil_usuario(self):
+        filtros = combinar_filtros_consulta_y_perfil(
+            {"perfiles": "Docente"},
+            {"perfil": "Estudiante", "facultad": "Ciencias Informaticas"},
+        )
+
+        self.assertEqual(filtros["perfiles"], "Docente")
+        self.assertEqual(filtros["grupos"], "Ciencias Informaticas")
+
+    def test_filtros_flexibles_coinciden_con_listas_json_de_metadata(self):
+        metadata = {
+            "perfiles": '["Estudiante", "Docente"]',
+            "grupos": '["Ciencias Informaticas"]',
+            "tipos_periodo": '["2026-S1"]',
+        }
+
+        self.assertTrue(metadata_cumple_filtros_flexibles(
+            metadata,
+            {
+                "perfiles": "docente",
+                "grupos": "ciencias informaticas",
+                "tipos_periodo": "2026-S1",
+            },
+        ))
 
     def test_tipo_estudiante_pregrado_no_se_usa_como_filtro_duro(self):
         filtros = extraer_filtros_consulta({"tipo_estudiante": "Pregrado"})

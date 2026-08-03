@@ -1,4 +1,5 @@
 from ..services.ollama_service import consultar_qwen
+from .busqueda_fragmentos import normalizar_filtros_documentales
 from .comun import extraer_json_desde_respuesta_ia
 from .contexto_usuario import limpiar_texto_contexto
 
@@ -44,29 +45,7 @@ def normalizar_formato_respuesta(valor):
 
 
 def normalizar_filtros_sugeridos(valor):
-    if not isinstance(valor, dict):
-        return {}
-
-    filtros = {}
-    campos_permitidos = [
-        "ambito",
-        "estado_vigencia",
-        "perfil",
-        "facultad",
-        "carrera",
-        "tipo_documento",
-        "id_documento",
-        "grupo",
-        "periodo",
-    ]
-
-    for campo in campos_permitidos:
-        texto = limpiar_texto_contexto(valor.get(campo), 120)
-        if not texto:
-            continue
-        filtros[campo] = texto if campo == "id_documento" else texto.upper()
-
-    return filtros
+    return normalizar_filtros_documentales(valor)
 
 
 def normalizar_interpretacion(data, pregunta):

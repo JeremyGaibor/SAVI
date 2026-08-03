@@ -134,6 +134,30 @@ CACHES = {
     }
 }
 
+# Handler a consola (stdout) para que docker logs capture los mensajes.
+# El logger "Bety_AI" queda en INFO para ver las transiciones de los jobs
+# asincronos de documentos; el resto de la app se queda en WARNING.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "Bety_AI": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

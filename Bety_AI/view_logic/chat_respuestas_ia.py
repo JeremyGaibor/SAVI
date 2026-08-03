@@ -21,9 +21,36 @@ def limpiar_respuesta_ia(respuesta):
     return respuesta.strip()
 
 
-def generar_respuesta_controlada(pregunta, tipo_respuesta, contexto_usuario=""):
+def instrucciones_por_tipo_respuesta(tipo_respuesta):
+    if tipo_respuesta == "IDENTIDAD":
+        return (
+            '- Inicia exactamente con: "Soy Bety, una asistente virtual para el SGA UTEQ."\n'
+            "- Luego explica brevemente que ayudas con documentos, matricula, aula virtual, "
+            "evaluacion y tramites academicos.\n"
+            "- No saludes como si fuera un saludo casual."
+        )
 
-    #Usa Qwen para responder consultas no documentales sin consultar ChromaDB.
+    if tipo_respuesta == "SALUDO":
+        return (
+            "- Saluda de forma amable.\n"
+            "- Orienta al usuario a preguntar por documentos o procesos del SGA UTEQ.\n"
+            "- No hagas preguntas defensivas sobre la intencion del usuario.\n"
+            "- No digas que la consulta esta fuera de alcance."
+        )
+
+    if tipo_respuesta == "FUERA_AMBITO":
+        return (
+            "- Indica que eso no esta en tu base de informacion.\n"
+            "- Explica que tu alcance son los documentos y procesos del SGA UTEQ.\n"
+            "- Invita al usuario a preguntar por un tema relacionado con el SGA UTEQ.\n"
+            "- No pidas perfil, facultad, carrera, nivel ni periodo."
+        )
+
+    return "- Responde segun el tipo solicitado sin inventar informacion institucional especifica."
+
+
+def generar_respuesta_controlada(pregunta, tipo_respuesta, contexto_usuario=""):
+    # Usa Qwen para responder consultas no documentales sin consultar ChromaDB.
     prompt = f"""
 Eres Bety, una asistente virtual institucional del SGA UTEQ.
 
@@ -35,17 +62,16 @@ PERFIL DEL USUARIO:
 
 Tipo de respuesta solicitada: {tipo_respuesta}
 
-Instrucciones:
+Instrucciones generales:
 - Responde en espanol claro, breve y natural.
 - No inventes informacion institucional especifica.
 - Si existe perfil del usuario, puedes usar su nombre, perfil, carrera, nivel o periodo academico para personalizar la respuesta.
-- Si el usuario pregunta por sus datos personales, responde únicamente con la información disponible en su perfil. No inventes, completes ni deduzcas datos que no estén presentes.
+- Si el usuario pregunta por sus datos personales, responde unicamente con la informacion disponible en su perfil. No inventes, completes ni deduzcas datos que no esten presentes.
 - Si no existe perfil, no pidas perfil, facultad, carrera, nivel o periodo en bloque; responde de forma general o invita a hacer una consulta sobre documentos del SGA UTEQ.
 - No menciones fuentes, IDs ni documentos internos.
-- Si el tipo es IDENTIDAD, inicia exactamente con: "Soy Bety, una asistente virtual para el SGA UTEQ." Luego explica brevemente que ayudas con documentos, matricula, aula virtual, evaluacion y tramites academicos.
-- Si el tipo es SALUDO, saluda de forma amable y orienta al usuario a preguntar por documentos o procesos del SGA UTEQ.
-- Si el tipo es FUERA_AMBITO, responde con humor ligero, indicando que eso no esta en tu base de informacion y que tu alcance son los documentos del SGA UTEQ.
-- Para FUERA_AMBITO puedes usar una idea parecida a: "¿Y tu para que deseas saber eso?", pero redactala con tus propias palabras.
+
+Instrucciones especificas para este tipo:
+{instrucciones_por_tipo_respuesta(tipo_respuesta)}
 """
 
     resultado_qwen = consultar_qwen(prompt)
@@ -87,7 +113,6 @@ Instrucciones obligatorias:
 
 def respuesta_servidor_ia_no_disponible():
     return (
-        "El servidor de IA no está disponible en este momento. "
-        "Verifique que AWS/Qwen u Ollama estén encendidos e intente nuevamente."
+        "El servidor de IA no esta disponible en este momento. "
+        "Verifique que AWS/Qwen u Ollama esten encendidos e intente nuevamente."
     )
-

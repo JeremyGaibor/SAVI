@@ -39,6 +39,7 @@ from .view_logic.chat_conversacion import (
     obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
+from .view_logic.chat_respuestas_ia import generar_respuesta_controlada
 from .view_logic.contexto_usuario import (
     construir_contexto_usuario_prompt,
     obtener_contexto_usuario_sga,
@@ -441,6 +442,35 @@ class ClasificacionConsultaTests(SimpleTestCase):
         interpretacion = {"tipo_operacion": "fuera_ambito"}
 
         self.assertFalse(pregunta_necesita_perfil_web(pregunta, interpretacion))
+
+
+class RespuestasControladasTests(SimpleTestCase):
+    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    def test_prompt_saludo_no_incluye_instrucciones_fuera_ambito(self, qwen_mock):
+        qwen_mock.return_value = {
+            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "modelo": "qwen-test",
+        }
+
+        generar_respuesta_controlada("holaaaaaa", "SALUDO")
+
+        prompt = qwen_mock.call_args.args[0]
+        self.assertIn("Tipo de respuesta solicitada: SALUDO", prompt)
+        self.assertIn("No digas que la consulta esta fuera de alcance.", prompt)
+        self.assertNotIn("para que quieres saber eso", prompt.lower())
+
+    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    def test_prompt_fuera_ambito_tiene_instrucciones_propias(self, qwen_mock):
+        qwen_mock.return_value = {
+            "respuesta": "Eso no esta en mi base de informacion.",
+            "modelo": "qwen-test",
+        }
+
+        generar_respuesta_controlada("cuentame un chiste", "FUERA_AMBITO")
+
+        prompt = qwen_mock.call_args.args[0]
+        self.assertIn("Tipo de respuesta solicitada: FUERA_AMBITO", prompt)
+        self.assertIn("eso no esta en tu base de informacion", prompt)
 
 
 @override_settings(CACHES={

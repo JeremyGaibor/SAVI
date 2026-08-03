@@ -18,6 +18,7 @@ from .view_logic.busqueda_fragmentos import (
     detectar_tema_consulta,
     extraer_filtros_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
+    fragmento_pertinente_consulta,
     fragmento_pertenece_tema,
     buscar_fragmentos_con_fallback,
     relajar_filtros_busqueda,
@@ -372,7 +373,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertIn("pregrado", filtrados[0]["contenido"])
 
     @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
-    def test_fallback_no_relaja_tema_de_inasistencia(self, buscar_mock):
+    def test_fallback_no_devuelve_fragmentos_sin_pertinencia_lexica(self, buscar_mock):
         buscar_mock.side_effect = [
             [
                 {
@@ -407,7 +408,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertEqual(filtros_aplicados, {})
 
     @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
-    def test_fallback_no_devuelve_otro_tema_si_no_hay_contexto_valido(self, buscar_mock):
+    def test_fallback_no_devuelve_fragmentos_sin_coincidencia_con_consulta(self, buscar_mock):
         buscar_mock.return_value = [
             {
                 "contenido": "La guia de ayudantes de catedra establece requisitos academicos.",
@@ -427,6 +428,19 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertEqual(fragmentos, [])
         self.assertEqual(filtros_aplicados, {})
+
+    def test_ayudantias_de_catedra_no_se_descarta_por_tema_mecanico(self):
+        fragmento = {
+            "contenido": "La guia institucional regula la seleccion de ayudantes de catedra de pregrado.",
+            "metadata": {
+                "titulo": "Guia ayudantes catedra pregrado profesional",
+                "resumen_documento": "Lineamientos para ayudantes de catedra.",
+            },
+        }
+
+        self.assertTrue(
+            fragmento_pertinente_consulta("sobre las ayudantias de catedra", fragmento)
+        )
 
 
 class ClasificacionConsultaTests(SimpleTestCase):

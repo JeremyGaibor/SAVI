@@ -9,47 +9,10 @@ def es_consulta_ambito_bety(pregunta):
     palabras_ambito = [
         "sga",
         "uteq",
-        "matricula",
-        "matriculacion",
-        "aula",
-        "aula virtual",
-        "evaluacion",
-        "evaluaciones",
-        "evaluar",
-        "calificar",
-        "calificacion",
-        "falta",
-        "faltas",
-        "heteroevaluacion",
-        "hetero",
-        "inasistencia",
-        "inasistencias",
-        "justificar",
-        "justificacion",
-        "profesor",
-        "profesores",
-        "docente",
-        "docentes",
-        "estudiante",
-        "estudiantes",
-        "aspirante",
-        "admision",
-        "inscripcion",
-        "requisitos",
-        "carnet",
         "documento",
         "pdf",
         "tramite",
         "tramites",
-        "academico",
-        "academicos",
-        "asignatura",
-        "materia",
-        "materias",
-        "facultad",
-        "carrera",
-        "nivelacion",
-        "grado",
     ]
 
     return any(palabra in texto for palabra in palabras_ambito)
@@ -97,55 +60,14 @@ def es_interaccion_social(pregunta):
     return any(re.search(patron, texto) for patron in patrones)
 
 
-def pregunta_necesita_perfil_web(pregunta):
-    texto = normalizar_texto(pregunta)
-
+def pregunta_necesita_perfil_web(pregunta, interpretacion_consulta=None):
     if es_interaccion_social(pregunta) or es_pregunta_identidad(pregunta):
         return False
 
-    indicadores_personales = [
-        "me ",
-        "mi ",
-        "mis ",
-        "yo ",
-        "puedo",
-        "debo",
-        "tengo que",
-        "me toca",
-        "segun mi",
-        "para mi",
-        "sga",
-        "uteq",
-        "matricula",
-        "matriculacion",
-        "matricularme",
-        "admision",
-        "inscribirme",
-        "inscripcion",
-        "requisitos",
-        "tramite",
-        "tramites",
-        "aula virtual",
-        "evaluacion",
-        "calificacion",
-        "falta",
-        "faltas",
-        "inasistencia",
-        "inasistencias",
-        "justificar",
-        "justificacion",
-        "materias",
-        "facultad",
-        "carrera",
-        "nivel",
-        "semestre",
-        "periodo",
-    ]
+    if not isinstance(interpretacion_consulta, dict):
+        return False
 
-    return (
-        es_consulta_ambito_bety(pregunta)
-        or any(indicador in f" {texto} " for indicador in indicadores_personales)
-    )
+    return interpretacion_consulta.get("tipo_operacion") == "consulta_documental"
 
 
 def es_pregunta_fuera_ambito(pregunta):

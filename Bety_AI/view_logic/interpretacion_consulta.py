@@ -1,5 +1,6 @@
 from ..services.ollama_service import consultar_qwen
 from .busqueda_fragmentos import normalizar_filtros_documentales
+from .chat_conversacion import es_solicitud_reformulacion
 from .comun import extraer_json_desde_respuesta_ia
 from .contexto_usuario import limpiar_texto_contexto
 
@@ -9,6 +10,8 @@ TIPOS_OPERACION = {
     "consulta_documental",
     "reformulacion",
     "historial",
+    "saludo",
+    "identidad",
     "fuera_ambito",
 }
 
@@ -63,11 +66,16 @@ def normalizar_interpretacion(data, pregunta):
     partes_busqueda.extend(palabras_clave)
     consulta_busqueda = " ".join(parte for parte in partes_busqueda if parte)
 
+    tipo_operacion = normalizar_tipo_operacion(data.get("tipo_operacion"))
+    es_reformulacion_pura = es_solicitud_reformulacion(pregunta_limpia)
+    if tipo_operacion == "reformulacion" and not es_reformulacion_pura:
+        tipo_operacion = "consulta_documental"
+
     return {
-        "tipo_operacion": normalizar_tipo_operacion(data.get("tipo_operacion")),
+        "tipo_operacion": tipo_operacion,
         "consulta_normalizada": consulta_normalizada,
         "consulta_busqueda": limpiar_texto_contexto(consulta_busqueda, 1000),
-        "depende_historial": bool(data.get("depende_historial", False)),
+        "depende_historial": bool(data.get("depende_historial", False)) and es_reformulacion_pura,
         "formato_respuesta": normalizar_formato_respuesta(data.get("formato_respuesta")),
         "palabras_clave": palabras_clave,
         "filtros_sugeridos": normalizar_filtros_sugeridos(data.get("filtros_sugeridos")),
@@ -96,7 +104,7 @@ PERFIL DEL USUARIO:
 
 Estructura obligatoria:
 {{
-  "tipo_operacion": "consulta_documental, reformulacion, historial o fuera_ambito",
+  "tipo_operacion": "consulta_documental, reformulacion, historial, saludo, identidad o fuera_ambito",
   "consulta_normalizada": "consulta clara y enriquecida para busqueda semantica, solo sobre el tema/proceso/documento consultado",
   "depende_historial": false,
   "formato_respuesta": "normal, tabla, lista, pasos o resumen",
@@ -105,6 +113,8 @@ Estructura obligatoria:
 }}
 
 Reglas:
+- Si el usuario solo saluda, se despide o agradece sin una consulta documental, usa tipo_operacion saludo.
+- Si pregunta quien eres, que eres, que haces, para que sirves o en que puedes ayudar, usa tipo_operacion identidad.
 - Si el usuario pide resumir, aclarar, hacer tabla, hacer lista o cambiar formato de una respuesta anterior, usa tipo_operacion reformulacion y depende_historial true.
 - Si la pregunta solo pide formato o estilo, por ejemplo "dame una tabla", "muestrame en lista", "hazlo paso a paso" o "resumelo", siempre usa tipo_operacion reformulacion y depende_historial true.
 - Si la pregunta incluye formato y tambien un tema documental claro, por ejemplo "dame una tabla sobre evaluacion del SGA", usa consulta_documental.

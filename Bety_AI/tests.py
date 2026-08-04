@@ -6,6 +6,7 @@ from unittest.mock import patch
 from .views import (
     _construir_prompt_documental,
     _describir_filtros_relajados,
+    _debe_reformular,
     api_consulta_ia,
     api_procesar_documento,
 )
@@ -17,7 +18,9 @@ from .view_logic.busqueda_fragmentos import (
     detectar_tema_consulta,
     extraer_filtros_consulta,
     filtrar_fragmentos_por_tipo_estudiante,
+    fragmento_pertinente_consulta,
     fragmento_pertenece_tema,
+    buscar_fragmentos_con_fallback,
     relajar_filtros_busqueda,
 )
 from .services.chroma_service import metadata_cumple_filtros_flexibles
@@ -27,7 +30,6 @@ from .view_logic.interpretacion_consulta import (
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_clasificacion import (
-    es_consulta_ambito_bety,
     es_pregunta_fuera_ambito,
     pregunta_necesita_perfil_web,
 )
@@ -38,6 +40,7 @@ from .view_logic.chat_conversacion import (
     obtener_ultima_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
+from .view_logic.chat_respuestas_ia import generar_respuesta_controlada
 from .view_logic.contexto_usuario import (
     construir_contexto_usuario_prompt,
     obtener_contexto_usuario_sga,
@@ -369,14 +372,119 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertEqual(len(filtrados), 1)
         self.assertIn("pregrado", filtrados[0]["contenido"])
 
+    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    def test_fallback_no_devuelve_fragmentos_sin_pertinencia_lexica(self, buscar_mock):
+        buscar_mock.side_effect = [
+            [
+                {
+                    "contenido": "La guia de ayudantes de catedra establece requisitos academicos.",
+                    "metadata": {
+                        "titulo": "Guia de ayudantes de catedra",
+                        "resumen_documento": "Seleccion de ayudantes de catedra.",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+            [
+                {
+                    "contenido": "El estudiante debe registrar la solicitud de justificacion de inasistencias.",
+                    "metadata": {
+                        "titulo": "Manual para justificar inasistencia",
+                        "resumen_documento": "Solicitud de justificacion de inasistencias.",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+        ]
+
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
+            "como puedo justificar mi inasistencia",
+            {"perfiles": "Estudiante"},
+            total_resultados=3,
+        )
+
+        self.assertEqual(len(fragmentos), 1)
+        self.assertIn("inasistencias", fragmentos[0]["contenido"])
+        self.assertEqual(filtros_aplicados, {})
+
+    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    def test_fallback_no_devuelve_fragmentos_sin_coincidencia_con_consulta(self, buscar_mock):
+        buscar_mock.return_value = [
+            {
+                "contenido": "La guia de ayudantes de catedra establece requisitos academicos.",
+                "metadata": {
+                    "titulo": "Guia de ayudantes de catedra",
+                    "resumen_documento": "Seleccion de ayudantes de catedra.",
+                },
+                "coincidencia_lexica": 1,
+            }
+        ]
+
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
+            "como puedo justificar mi inasistencia",
+            {"perfiles": "Estudiante"},
+            total_resultados=3,
+        )
+
+        self.assertEqual(fragmentos, [])
+        self.assertEqual(filtros_aplicados, {})
+
+    def test_ayudantias_de_catedra_no_se_descarta_por_tema_mecanico(self):
+        fragmento = {
+            "contenido": "La guia institucional regula la seleccion de ayudantes de catedra de pregrado.",
+            "metadata": {
+                "titulo": "Guia ayudantes catedra pregrado profesional",
+                "resumen_documento": "Lineamientos para ayudantes de catedra.",
+            },
+        }
+
+        self.assertTrue(
+            fragmento_pertinente_consulta("sobre las ayudantias de catedra", fragmento)
+        )
+
 
 class ClasificacionConsultaTests(SimpleTestCase):
-    def test_justificacion_inasistencia_es_consulta_sga(self):
+    def test_pide_perfil_web_si_la_ia_clasifica_como_documental(self):
         pregunta = "Como puedo justificar mi inasistencia"
+        interpretacion = {"tipo_operacion": "consulta_documental"}
 
-        self.assertTrue(es_consulta_ambito_bety(pregunta))
         self.assertFalse(es_pregunta_fuera_ambito(pregunta))
-        self.assertTrue(pregunta_necesita_perfil_web(pregunta))
+        self.assertTrue(pregunta_necesita_perfil_web(pregunta, interpretacion))
+
+    def test_no_pide_perfil_web_si_la_ia_clasifica_fuera_de_ambito(self):
+        pregunta = "ayudas economicas"
+        interpretacion = {"tipo_operacion": "fuera_ambito"}
+
+        self.assertFalse(pregunta_necesita_perfil_web(pregunta, interpretacion))
+
+
+class RespuestasControladasTests(SimpleTestCase):
+    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    def test_prompt_saludo_no_incluye_instrucciones_fuera_ambito(self, qwen_mock):
+        qwen_mock.return_value = {
+            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "modelo": "qwen-test",
+        }
+
+        generar_respuesta_controlada("holaaaaaa", "SALUDO")
+
+        prompt = qwen_mock.call_args.args[0]
+        self.assertIn("Tipo de respuesta solicitada: SALUDO", prompt)
+        self.assertIn("No digas que la consulta esta fuera de alcance.", prompt)
+        self.assertNotIn("para que quieres saber eso", prompt.lower())
+
+    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    def test_prompt_fuera_ambito_tiene_instrucciones_propias(self, qwen_mock):
+        qwen_mock.return_value = {
+            "respuesta": "Eso no esta en mi base de informacion.",
+            "modelo": "qwen-test",
+        }
+
+        generar_respuesta_controlada("cuentame un chiste", "FUERA_AMBITO")
+
+        prompt = qwen_mock.call_args.args[0]
+        self.assertIn("Tipo de respuesta solicitada: FUERA_AMBITO", prompt)
+        self.assertIn("eso no esta en tu base de informacion", prompt)
 
 
 @override_settings(CACHES={
@@ -530,6 +638,13 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(data["tipo_operacion"], "consulta_documental")
         self.assertEqual(data["formato_respuesta"], "lista")
 
+    def test_normaliza_interpretacion_de_saludo_e_identidad(self):
+        saludo = normalizar_interpretacion({"tipo_operacion": "saludo"}, "holaaaa")
+        identidad = normalizar_interpretacion({"tipo_operacion": "identidad"}, "quien eres")
+
+        self.assertEqual(saludo["tipo_operacion"], "saludo")
+        self.assertEqual(identidad["tipo_operacion"], "identidad")
+
     def test_normaliza_interpretacion_de_formato_como_reformulacion(self):
         interpretacion = normalizar_interpretacion(
             {
@@ -544,6 +659,153 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(interpretacion["tipo_operacion"], "reformulacion")
         self.assertTrue(interpretacion["depende_historial"])
         self.assertEqual(interpretacion["formato_respuesta"], "tabla")
+
+    def test_pregunta_con_tema_claro_no_se_normaliza_como_reformulacion(self):
+        interpretacion = normalizar_interpretacion(
+            {
+                "tipo_operacion": "reformulacion",
+                "consulta_normalizada": "reformatear respuesta anterior",
+                "depende_historial": True,
+                "formato_respuesta": "normal",
+            },
+            "como evalua el sga",
+        )
+
+        self.assertEqual(interpretacion["tipo_operacion"], "consulta_documental")
+        self.assertFalse(interpretacion["depende_historial"])
+
+    def test_views_no_reformula_si_la_pregunta_tiene_tema_nuevo(self):
+        self.assertFalse(
+            _debe_reformular(
+                "como evalua el sga",
+                {"tipo_operacion": "reformulacion", "depende_historial": True},
+            )
+        )
+        self.assertTrue(
+            _debe_reformular(
+                "dame una tabla",
+                {"tipo_operacion": "reformulacion", "depende_historial": True},
+            )
+        )
+
+    @patch("Bety_AI.views.consultar_qwen")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_pide_perfil_web_para_ayudas_economicas_sin_contexto(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        qwen_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "ayudas economicas",
+            "consulta_busqueda": "ayudas economicas",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "ayudas economicas",
+                "conversation_id": "convtest-ayudas-web",
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "SOLICITUD_CONTEXTO_WEB")
+        self.assertIn("eres estudiante", response.data["respuesta"])
+        interpretar_mock.assert_called_once()
+        qwen_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
+
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.generar_respuesta_controlada")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_saludo_lo_decide_interpretacion_ia(
+        self,
+        interpretar_mock,
+        respuesta_controlada_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "saludo",
+            "consulta_normalizada": "holaaaa",
+            "consulta_busqueda": "holaaaa",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        respuesta_controlada_mock.return_value = {
+            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "modelo": "qwen-control",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "holaaaa",
+                "conversation_id": "convtest-saludo-ia",
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "SALUDO")
+        interpretar_mock.assert_called_once()
+        respuesta_controlada_mock.assert_called_once()
+        buscar_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
+
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_historial_lo_decide_interpretacion_ia(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        conversation_id = "convtest-historial-ia"
+        agregar_historial_conversacion(conversation_id, "Pregunta inicial", "Respuesta inicial")
+        interpretar_mock.return_value = {
+            "tipo_operacion": "historial",
+            "consulta_normalizada": "primera pregunta",
+            "consulta_busqueda": "primera pregunta",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "cual fue mi primera pregunta?",
+                "conversation_id": conversation_id,
+            },
+            format="json",
+        )
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "HISTORIAL_CONVERSACION")
+        self.assertIn("Pregunta inicial", response.data["respuesta"])
+        interpretar_mock.assert_called_once()
+        buscar_mock.assert_not_called()
+        guardar_temporal_mock.assert_called_once()
 
     @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
@@ -590,9 +852,15 @@ class HistorialConversacionTests(SimpleTestCase):
             {
                 "pregunta": "programa de becas",
                 "conversation_id": "convtest05",
+                "usuario": {
+                    "perfil": "estudiante",
+                    "tipo_estudiante": "pregrado",
+                    "facultad": "Computacion",
+                },
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 

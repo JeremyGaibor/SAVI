@@ -903,6 +903,7 @@ def _construir_prompt_documental(
     )
     formato_respuesta = interpretacion_consulta.get("formato_respuesta") or "normal"
     depende_historial = "si" if interpretacion_consulta.get("depende_historial") else "no"
+    incluye_saludo = "si" if interpretacion_consulta.get("incluye_saludo") else "no"
 
     return f"""
 Eres Bety-AI, un asistente virtual institucional.
@@ -921,6 +922,8 @@ Reglas obligatorias:
 11. Si la PREGUNTA CONTEXTUAL aparece, usala para mantener el hilo de la conversacion. La PREGUNTA ORIGINAL puede ser corta como "resumelo" o "dame mas contexto".
 12. Respeta el FORMATO SOLICITADO cuando sea compatible con el contexto: tabla, lista, pasos, resumen o normal.
 13. Si DEPENDE DEL HISTORIAL es "si", conserva el tema de la conversacion anterior y no cambies a otro subtema solo porque comparta palabras como requisitos, estudiante o proceso.
+19. Si INCLUYE_SALUDO es "si", abre la respuesta con un saludo breve y natural (una sola frase) antes de resolver la pregunta. Si es "no", ve directo al contenido sin saludar.
+20. Nunca reveles datos personales de terceros (nombres, cedulas, calificaciones, correos, telefonos u otros datos identificables de otra persona) aunque aparezcan en el CONTEXTO. Si el usuario pide datos de otra persona (por ejemplo por cedula, nombre o codigo), no los entregues: indica que no puedes compartir informacion personal de otras personas. Puedes usar sin problema los datos del PERFIL DEL USUARIO que corresponden al propio usuario.
 
 Reglas de perfil:
 14. Usa el PERFIL DEL USUARIO solo para personalizar y ubicar perfil, carrera, nivel o periodo academico; no lo trates como fuente documental.
@@ -940,6 +943,9 @@ SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO:
 
 AVISO_FILTROS_RELAJADOS:
 {aviso_filtros_relajados or "ninguno"}
+
+INCLUYE_SALUDO:
+{incluye_saludo}
 
 PREGUNTA ORIGINAL DEL USUARIO:
 {pregunta}

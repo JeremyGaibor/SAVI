@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: {}
 
 jobs:
   build-and-deploy:
@@ -40,6 +41,12 @@ jobs:
           OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_FALLBACK_PROVIDER: ${{ secrets.LLM_FALLBACK_PROVIDER }}
+          BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          BEDROCK_CONNECT_TIMEOUT_SECONDS: ${{ secrets.BEDROCK_CONNECT_TIMEOUT_SECONDS }}
+          BEDROCK_READ_TIMEOUT_SECONDS: ${{ secrets.BEDROCK_READ_TIMEOUT_SECONDS }}
           CHROMA_HOST: ${{ secrets.CHROMA_HOST }}
           CHROMA_PORT: ${{ secrets.CHROMA_PORT }}
           CHROMA_COLLECTION: ${{ secrets.CHROMA_COLLECTION }}
@@ -59,6 +66,16 @@ jobs:
             echo "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
             echo "OLLAMA_MODEL=${OLLAMA_MODEL}"
             echo "OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS}"
+            echo ""
+            echo "# ollama | bedrock"
+            echo "LLM_PROVIDER=${LLM_PROVIDER}"
+            echo "# ollama | bedrock | vacio (sin fallback)"
+            echo "LLM_FALLBACK_PROVIDER=${LLM_FALLBACK_PROVIDER}"
+            echo "BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID}"
+            echo "AWS_REGION=${AWS_REGION}"
+            echo "BEDROCK_CONNECT_TIMEOUT_SECONDS=${BEDROCK_CONNECT_TIMEOUT_SECONDS}"
+            echo "BEDROCK_READ_TIMEOUT_SECONDS=${BEDROCK_READ_TIMEOUT_SECONDS}"
+            echo ""
             echo "CHROMA_HOST=${CHROMA_HOST}"
             echo "CHROMA_PORT=${CHROMA_PORT}"
             echo "CHROMA_COLLECTION=${CHROMA_COLLECTION}"

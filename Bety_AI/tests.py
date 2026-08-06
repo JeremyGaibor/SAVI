@@ -17,6 +17,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_con_perfil,
     detectar_tema_consulta,
     extraer_filtros_consulta,
+    filtrar_fragmentos_confiables,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmento_pertinente_consulta,
     fragmento_pertenece_tema,
@@ -1115,3 +1116,166 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         eliminar_documento_mock.assert_called_once_with("DOC-123")
         eliminar_version_mock.assert_not_called()
         self.assertEqual(guardar_mock.call_args.kwargs["titulo"], "Documento DOC-123")
+
+
+def _fragmento(doc_id, titulo, metadata_extra=None, contenido="contenido"):
+    metadata = {"id_documento": doc_id, "titulo": titulo}
+    if metadata_extra:
+        metadata.update(metadata_extra)
+    return {"contenido": contenido, "metadata": metadata, "coincidencia_lexica": 1.0, "distancia": 1.0}
+
+
+class FiltrarFragmentosConfiablesTests(SimpleTestCase):
+    def test_fragmento_limpio_sin_flags_pasa(self):
+        fragmentos = [_fragmento("13", "Manual limpio")]
+
+        resultado = filtrar_fragmentos_confiables(fragmentos)
+
+        self.assertEqual(resultado, fragmentos)
+
+    def test_fragmento_marcado_requiere_revision_humana_se_descarta(self):
+        limpio = _fragmento("13", "Manual limpio")
+        sucio = _fragmento("4", "Guia matriculacion pregrado", {"requiere_revision_humana": "true"})
+
+        resultado = filtrar_fragmentos_confiables([limpio, sucio])
+
+        self.assertEqual(resultado, [limpio])
+
+    def test_fragmento_marcado_por_advertencias_json_se_descarta(self):
+        limpio = _fragmento("13", "Manual limpio")
+        sucio = _fragmento(
+            "3",
+            "Guia ayudantes catedra posgrado",
+            {"advertencias": '["repeticion excesiva de frases"]'},
+        )
+
+        resultado = filtrar_fragmentos_confiables([limpio, sucio])
+
+        self.assertEqual(resultado, [limpio])
+
+    def test_requiere_revision_humana_true_capitalizado_se_descarta(self):
+        # Cubre la variante "True" (str(bool) de Python) ademas de "true" (JSON).
+        sucio = _fragmento("4", "doc", {"requiere_revision_humana": "True"})
+
+        resultado = filtrar_fragmentos_confiables([sucio])
+
+        self.assertEqual(resultado, [])
+
+    def test_todos_descartados_devuelve_lista_vacia(self):
+        sucio_1 = _fragmento("3", "doc3", {"requiere_revision_humana": "true"})
+        sucio_2 = _fragmento("4", "doc4", {"advertencias": '["texto repetido"]'})
+
+        resultado = filtrar_fragmentos_confiables([sucio_1, sucio_2])
+
+        self.assertEqual(resultado, [])
+
+    def test_metadata_ausente_no_lanza_excepcion(self):
+        fragmento_sin_metadata = {"contenido": "x", "coincidencia_lexica": 1.0}
+
+        resultado = filtrar_fragmentos_confiables([fragmento_sin_metadata])
+
+        self.assertEqual(resultado, [fragmento_sin_metadata])
+
+    def test_campos_ausentes_en_metadata_no_lanzan_excepcion(self):
+        # Caso real: doc 13 nunca tuvo estas claves en su metadata.
+        limpio = _fragmento("13", "Manual limpio")
+
+        resultado = filtrar_fragmentos_confiables([limpio])
+
+        self.assertEqual(resultado, [limpio])
+
+    def test_requiere_revision_humana_none_no_lanza_excepcion_y_pasa(self):
+        fragmento = _fragmento("13", "doc", {"requiere_revision_humana": None, "advertencias": None})
+
+        resultado = filtrar_fragmentos_confiables([fragmento])
+
+        self.assertEqual(resultado, [fragmento])
+
+    def test_advertencias_lista_vacia_no_descarta(self):
+        fragmento = _fragmento("13", "doc", {"advertencias": []})
+
+        resultado = filtrar_fragmentos_confiables([fragmento])
+
+        self.assertEqual(resultado, [fragmento])
+
+    def test_advertencias_string_json_vacio_no_descarta(self):
+        fragmento = _fragmento("13", "doc", {"advertencias": "[]"})
+
+        resultado = filtrar_fragmentos_confiables([fragmento])
+
+        self.assertEqual(resultado, [fragmento])
+
+    def test_requiere_revision_humana_bool_real_true_se_descarta(self):
+        fragmento = _fragmento("4", "doc", {"requiere_revision_humana": True})
+
+        resultado = filtrar_fragmentos_confiables([fragmento])
+
+        self.assertEqual(resultado, [])
+
+    def test_lista_vacia_de_entrada_devuelve_lista_vacia(self):
+        self.assertEqual(filtrar_fragmentos_confiables([]), [])
+
+
+@override_settings(CACHES={
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-conversacion-filtro-confiabilidad",
+    }
+})
+class ApiConsultaIaFiltroConfiabilidadTests(SimpleTestCase):
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.generar_respuesta_controlada")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_todos_los_fragmentos_no_confiables_responde_sin_informacion(
+        self,
+        interpretar_mock,
+        respuesta_controlada_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+    ):
+        interpretar_mock.return_value = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "justificar inasistencia",
+            "consulta_busqueda": "justificar inasistencia",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        buscar_mock.return_value = (
+            [
+                _fragmento(
+                    "4",
+                    "Guia matriculacion pregrado",
+                    {"requiere_revision_humana": "true"},
+                    contenido="contenido contaminado de matricula",
+                )
+            ],
+            {},
+        )
+        respuesta_controlada_mock.return_value = {
+            "respuesta": "No encontre informacion suficiente sobre eso.",
+            "modelo": "qwen-control",
+        }
+
+        request = APIRequestFactory().post(
+            "/api/ia/consulta/",
+            {
+                "pregunta": "Como justifico mi inasistencia?",
+                "conversation_id": "convtest-filtro-confiable",
+                "perfil": "Estudiante",
+                "tipo_estudiante": "Pregrado",
+                "carrera": "Software",
+                "facultad": "FCC",
+            },
+            format="json",
+        )
+        request.session = type("SessionStub", (dict,), {})()
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "FUERA_AMBITO")
+        respuesta_controlada_mock.assert_called_once()

@@ -1,3 +1,5 @@
+import json
+import logging
 import re
 
 from ..services.chroma_service import (
@@ -6,6 +8,8 @@ from ..services.chroma_service import (
     puntuar_coincidencia_lexica,
 )
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
+
+logger = logging.getLogger("Bety_AI.busqueda_fragmentos")
 
 
 FILTROS_DOCUMENTALES_PERMITIDOS = [
@@ -336,6 +340,83 @@ def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
         for fragmento in fragmentos
         if not fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante)
     ]
+
+
+def _valor_booleano_metadata(valor):
+    # ChromaDB solo admite metadata escalar: un bool real casi nunca llega,
+    # normalmente es el string "true"/"True" (o vacio/ausente si es False).
+    if isinstance(valor, bool):
+        return valor
+    if valor is None:
+        return False
+    return str(valor).strip().lower() in {"true", "1", "si", "sí", "yes"}
+
+
+def _tiene_advertencias_metadata(valor):
+    if valor is None:
+        return False
+    if isinstance(valor, (list, tuple, set, dict)):
+        return len(valor) > 0
+
+    texto = str(valor).strip()
+    if not texto or texto == "[]":
+        return False
+
+    try:
+        decodificado = json.loads(texto)
+    except (TypeError, ValueError):
+        # No es JSON valido pero el string no esta vacio: se trata como
+        # advertencia real en vez de arriesgarse a dejar pasar contenido
+        # marcado como sospechoso por un problema de formato.
+        return True
+
+    if isinstance(decodificado, (list, tuple, set, dict)):
+        return len(decodificado) > 0
+    return bool(decodificado)
+
+
+def _motivos_fragmento_no_confiable(metadata):
+    motivos = []
+    if _valor_booleano_metadata(metadata.get("requiere_revision_humana")):
+        motivos.append("requiere_revision_humana=true")
+    if _tiene_advertencias_metadata(metadata.get("advertencias")):
+        motivos.append("advertencias no vacias")
+    return motivos
+
+
+def filtrar_fragmentos_confiables(fragmentos):
+    """
+    Descarta fragmentos cuya metadata los marca como no confiables
+    (documentos de prueba/corruptos senalados por la fuente externa), para
+    que no contaminen el contexto documental de una respuesta legitima.
+    """
+    if not fragmentos:
+        return []
+
+    confiables = []
+    for fragmento in fragmentos:
+        metadata = fragmento.get("metadata") or {}
+        motivos = _motivos_fragmento_no_confiable(metadata)
+
+        if not motivos:
+            confiables.append(fragmento)
+            continue
+
+        logger.warning(
+            "Fragmento descartado por no confiable: doc_id=%s titulo=%s motivo=%s",
+            metadata.get("id_documento", "desconocido"),
+            metadata.get("titulo", "sin titulo"),
+            ", ".join(motivos),
+        )
+
+    if not confiables:
+        logger.warning(
+            "Filtro de confiabilidad descarto los %d fragmentos recuperados; no queda "
+            "contexto documental para responder (fallo del filtro, no del retrieval).",
+            len(fragmentos),
+        )
+
+    return confiables
 
 
 def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):

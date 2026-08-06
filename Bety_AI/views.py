@@ -73,6 +73,7 @@ from .view_logic.busqueda_fragmentos import (
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
+    filtrar_fragmentos_confiables,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
 )
@@ -1073,6 +1074,7 @@ def api_consulta_ia(request):
     fragmentos, filtros_aplicados = resultado_busqueda
 
     fragmentos = filtrar_fragmentos_por_tipo_estudiante(pregunta_busqueda, perfil_usuario, fragmentos)
+    fragmentos = filtrar_fragmentos_confiables(fragmentos)
 
     if not fragmentos or not fragmentos_suficientes_para_responder(fragmentos):
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "FUERA_AMBITO", contexto_usuario)

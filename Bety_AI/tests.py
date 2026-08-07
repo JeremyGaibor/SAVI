@@ -1,3 +1,6 @@
+import importlib
+import os
+
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
@@ -24,7 +27,11 @@ from .view_logic.busqueda_fragmentos import (
     buscar_fragmentos_con_fallback,
     relajar_filtros_busqueda,
 )
-from .services.chroma_service import metadata_cumple_filtros_flexibles
+from .services import chroma_service
+from .services.chroma_service import (
+    calcular_score_ranking,
+    metadata_cumple_filtros_flexibles,
+)
 from .view_logic.interpretacion_consulta import (
     extraer_json_interpretacion,
     normalizar_interpretacion,
@@ -1279,3 +1286,169 @@ class ApiConsultaIaFiltroConfiabilidadTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["tipo_respuesta"], "FUERA_AMBITO")
         respuesta_controlada_mock.assert_called_once()
+
+
+class _ColeccionChromaFalsa:
+    """Stub de la coleccion de chromadb.HttpClient para pruebas sin servidor real."""
+
+    def __init__(self, documentos, metadatas, distancias):
+        self._documentos = documentos
+        self._metadatas = metadatas
+        self._distancias = distancias
+
+    def query(self, **kwargs):
+        return {
+            "documents": [self._documentos],
+            "metadatas": [self._metadatas],
+            "distances": [self._distancias],
+        }
+
+
+class RankingFragmentosChromaTests(SimpleTestCase):
+    """
+    Casos sinteticos para el fix de ranking de 2026-08-07 (ver memoria
+    pending_ranking_lexico_no_escala). No se puede reproducir la colision con
+    el corpus real actual (solo 2 documentos), asi que estos fragmentos se
+    construyen a mano para simular el escenario del incidente de julio: dos
+    documentos con vocabulario generico compartido (aqui, palabras de perfil
+    filtradas hacia la busqueda), uno con titulo que gana por substring
+    literal sin ser el correcto, y la pregunta apuntando al otro.
+    """
+
+    def test_calcular_score_ranking_combina_distancia_y_lexica_con_tope(self):
+        # distancia manda; el ajuste por lexica nunca pasa de
+        # PESO_LEXICO * LEXICA_MAXIMA_CONSIDERADA (0.1 * 3.0 = 0.3 con los
+        # defaults), incluso si la coincidencia lexica cruda es mucho mayor.
+        self.assertAlmostEqual(calcular_score_ranking(1.0, 0.0), 1.0)
+        self.assertAlmostEqual(calcular_score_ranking(1.0, 3.0), 0.7)
+        self.assertAlmostEqual(calcular_score_ranking(1.0, 999.0), 0.7)
+        self.assertAlmostEqual(calcular_score_ranking(None, 1.0), 999999 - 0.1)
+
+    def test_defaults_documentados_son_0_1_y_3_0(self):
+        # Si esto falla, cambio el default sin querer: los valores
+        # calibrados el 2026-08-07 deben quedar explicitos aqui.
+        self.assertAlmostEqual(chroma_service.PESO_LEXICO, 0.1)
+        self.assertAlmostEqual(chroma_service.LEXICA_MAXIMA_CONSIDERADA, 3.0)
+
+    def test_son_configurables_por_variable_de_entorno(self):
+        try:
+            with patch.dict(
+                os.environ,
+                {
+                    "CHROMA_PESO_LEXICO": "0.25",
+                    "CHROMA_LEXICA_MAXIMA_CONSIDERADA": "5.0",
+                },
+            ):
+                # El reload debe ocurrir DENTRO del patch.dict, para que
+                # os.getenv() a nivel de modulo lea los valores parcheados.
+                importlib.reload(chroma_service)
+                self.assertAlmostEqual(chroma_service.PESO_LEXICO, 0.25)
+                self.assertAlmostEqual(chroma_service.LEXICA_MAXIMA_CONSIDERADA, 5.0)
+        finally:
+            # El segundo reload debe ocurrir FUERA del patch.dict (env ya
+            # restaurado), si no el modulo se queda con los valores
+            # parcheados y contamina el resto de los tests de este archivo.
+            importlib.reload(chroma_service)
+
+        self.assertAlmostEqual(chroma_service.PESO_LEXICO, 0.1)
+        self.assertAlmostEqual(chroma_service.LEXICA_MAXIMA_CONSIDERADA, 3.0)
+
+    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    def test_colision_lexica_incidental_ya_no_gana_a_mejor_distancia_semantica(
+        self, obtener_coleccion_mock
+    ):
+        """
+        Reproduce el incidente de 2026-07-24: la pregunta arrastra palabras
+        genericas de perfil ("estudiante", "pregrado", "periodo academico").
+        El documento correcto (17, justificacion de inasistencias) no
+        comparte esas palabras en su titulo -- solo tiene contenido
+        relevante. El documento senuelo (20, guia de matriculacion) las
+        tiene todas en el titulo (peso x3) pero su contenido no tiene nada
+        que ver con la pregunta.
+
+        Con el sort viejo (lexicografico: -lexica primero, distancia solo en
+        empate exacto) el senuelo gana pese a tener peor distancia semantica
+        -- eso es lo que fallo en produccion. Con el score combinado, la
+        ventaja de distancia del documento correcto (0.90 vs 1.30, gap 0.40)
+        supera el tope maximo que la coincidencia lexica puede corregir
+        (0.3), y gana el documento correcto.
+        """
+        pregunta = (
+            "Justificar inasistencia del estudiante de pregrado en el "
+            "periodo academico"
+        )
+
+        titulo_correcto = "Manual de Justificacion de Inasistencias"
+        contenido_correcto = (
+            "Este documento describe el procedimiento para justificar una "
+            "inasistencia. El estudiante debe presentar la solicitud "
+            "dentro de las 72 horas siguientes."
+        )
+        titulo_senuelo = (
+            "Guia de Matriculacion para Estudiantes de Pregrado - Periodo "
+            "Academico 2026"
+        )
+        contenido_senuelo = (
+            "Verifique la oferta academica, seleccione las asignaturas "
+            "correspondientes y descargue el comprobante de matricula "
+            "antes de la fecha limite del periodo academico."
+        )
+
+        obtener_coleccion_mock.return_value = _ColeccionChromaFalsa(
+            documentos=[contenido_senuelo, contenido_correcto],
+            metadatas=[
+                {"id_documento": "20", "titulo": titulo_senuelo},
+                {"id_documento": "17", "titulo": titulo_correcto},
+            ],
+            # distancias: correcto (17) semanticamente mas cercano (0.90)
+            # que el senuelo (20, 1.30) -- gap de 0.40, del mismo orden que
+            # el gap "tema distinto" observado en produccion.
+            distancias=[1.30, 0.90],
+        )
+
+        fragmentos = chroma_service.buscar_fragmentos(pregunta, total_resultados=2)
+
+        lexica_por_id = {f["metadata"]["id_documento"]: f["coincidencia_lexica"] for f in fragmentos}
+        # Prueba de que el escenario es real: bajo el criterio viejo
+        # (mayor coincidencia_lexica gana) el senuelo hubiera ganado.
+        self.assertGreater(lexica_por_id["20"], lexica_por_id["17"])
+
+        self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "17")
+
+    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    def test_empate_cerrado_de_distancia_lo_sigue_desempatando_lexica_fuerte(
+        self, obtener_coleccion_mock
+    ):
+        """
+        Contraparte del caso anterior: cuando la distancia semantica esta
+        practicamente empatada (gap de 0.02, del mismo orden que el gap
+        entre fragmentos del mismo documento observado en produccion) y un
+        documento tiene una coincidencia lexica fuerte y genuina (match de
+        titulo + contenido, no incidental), ese documento debe seguir
+        ganando -- la red de seguridad lexica no debe romperse por el fix.
+        """
+        pregunta = "Manual para restablecer la contrasena del correo institucional"
+
+        titulo_correcto = "Manual para Restablecer la Contrasena del Correo Institucional"
+        contenido_correcto = (
+            "Este manual explica como restablecer la contrasena del correo "
+            "institucional desde el SGA."
+        )
+        titulo_debil = "Guia General del SGA"
+        contenido_debil = "Puedes contactar por correo a soporte tecnico si tienes dudas."
+
+        obtener_coleccion_mock.return_value = _ColeccionChromaFalsa(
+            documentos=[contenido_correcto, contenido_debil],
+            metadatas=[
+                {"id_documento": "1", "titulo": titulo_correcto},
+                {"id_documento": "9", "titulo": titulo_debil},
+            ],
+            distancias=[0.95, 0.97],
+        )
+
+        fragmentos = chroma_service.buscar_fragmentos(pregunta, total_resultados=2)
+
+        lexica_por_id = {f["metadata"]["id_documento"]: f["coincidencia_lexica"] for f in fragmentos}
+        self.assertGreater(lexica_por_id["1"], lexica_por_id["9"])
+
+        self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "1")

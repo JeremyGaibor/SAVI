@@ -302,9 +302,9 @@ def menciona_posgrado(texto):
     return contiene_palabra(texto, "posgrado") or contiene_palabra(texto, "postgrado")
 
 
-def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
+def _texto_nivel_fragmento(fragmento):
     metadata = fragmento.get("metadata") or {}
-    texto = normalizar_texto(
+    return normalizar_texto(
         " ".join(
             [
                 metadata.get("titulo", ""),
@@ -315,6 +315,22 @@ def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
         )
     )
 
+
+def _nivel_mencionado_fragmento(texto):
+    pregrado = menciona_pregrado(texto)
+    posgrado = menciona_posgrado(texto)
+    if pregrado and posgrado:
+        return "ambos"
+    if pregrado:
+        return "pregrado"
+    if posgrado:
+        return "posgrado"
+    return "ninguno"
+
+
+def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
+    texto = _texto_nivel_fragmento(fragmento)
+
     if tipo_estudiante == "pregrado":
         return menciona_posgrado(texto) and not menciona_pregrado(texto)
     if tipo_estudiante == "posgrado":
@@ -323,23 +339,62 @@ def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
     return False
 
 
+def _doc_ids_fragmentos(fragmentos):
+    return [
+        (fragmento.get("metadata") or {}).get("id_documento", "desconocido")
+        for fragmento in fragmentos
+    ]
+
+
 def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
-    if not fragmentos or not consulta_usa_tipo_estudiante(pregunta):
+    if not fragmentos:
+        return fragmentos
+
+    doc_ids_antes = _doc_ids_fragmentos(fragmentos)
+
+    if not consulta_usa_tipo_estudiante(pregunta):
         return fragmentos
 
     texto_pregunta = normalizar_texto(pregunta)
     if menciona_pregrado(texto_pregunta) and menciona_posgrado(texto_pregunta):
+        logger.info(
+            "Filtro de tipo_estudiante omitido (pregunta menciona ambos niveles): "
+            "doc_ids=%s",
+            doc_ids_antes,
+        )
         return fragmentos
 
     tipo_estudiante = tipo_estudiante_perfil(perfil)
     if not tipo_estudiante:
+        logger.info(
+            "Filtro de tipo_estudiante omitido (perfil sin tipo_estudiante): doc_ids=%s",
+            doc_ids_antes,
+        )
         return fragmentos
 
-    return [
-        fragmento
-        for fragmento in fragmentos
-        if not fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante)
-    ]
+    conservados = []
+    for fragmento in fragmentos:
+        if fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
+            metadata = fragmento.get("metadata") or {}
+            logger.info(
+                "Fragmento descartado por tipo_estudiante: doc_id=%s titulo=%s "
+                "perfil=%s nivel_detectado_en_fragmento=%s",
+                metadata.get("id_documento", "desconocido"),
+                metadata.get("titulo", "sin titulo"),
+                tipo_estudiante,
+                _nivel_mencionado_fragmento(_texto_nivel_fragmento(fragmento)),
+            )
+            continue
+        conservados.append(fragmento)
+
+    logger.info(
+        "Filtro de tipo_estudiante (perfil=%s): doc_ids antes=%s -> doc_ids despues=%s",
+        tipo_estudiante,
+        doc_ids_antes,
+        _doc_ids_fragmentos(conservados),
+    )
+
+    return conservados
 
 
 def _valor_booleano_metadata(valor):

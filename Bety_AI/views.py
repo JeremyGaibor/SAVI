@@ -1,4 +1,5 @@
 import json
+import logging
 
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -81,6 +82,8 @@ from .view_logic.interpretacion_consulta import (
     interpretar_consulta_ia,
     interpretacion_fallback,
 )
+
+logger = logging.getLogger("Bety_AI.views")
 
 ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
 ERROR_SOLO_PDF = "Solo se permiten archivos PDF."
@@ -884,6 +887,18 @@ Fragmento:
 {contenido}
 """
 
+    if logger.isEnabledFor(logging.INFO):
+        resumen = "; ".join(
+            "#{indice} doc_id={doc_id} titulo={titulo!r} contenido={snippet!r}".format(
+                indice=indice,
+                doc_id=fragmento["metadata"].get("id_documento", "desconocido"),
+                titulo=fragmento["metadata"].get("titulo", "sin titulo"),
+                snippet=fragmento["contenido"][:150],
+            )
+            for indice, fragmento in enumerate(fragmentos, start=1)
+        )
+        logger.info("Fragmentos que entran al contexto documental del prompt: %s", resumen)
+
     return contexto
 
 
@@ -1064,6 +1079,14 @@ def api_consulta_ia(request):
     ultima_pregunta = obtener_ultima_pregunta_conversacion(conversation_id)
     pregunta_busqueda = _construir_pregunta_busqueda(
         pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario
+    )
+    logger.info(
+        "pregunta_busqueda=%r consulta_normalizada=%r consulta_busqueda=%r "
+        "depende_historial=%s",
+        pregunta_busqueda,
+        interpretacion_consulta.get("consulta_normalizada"),
+        interpretacion_consulta.get("consulta_busqueda"),
+        interpretacion_consulta.get("depende_historial"),
     )
 
     resultado_busqueda = _buscar_fragmentos_para_pregunta(

@@ -1,12 +1,14 @@
 import importlib
 import os
 
+import requests
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
 from unittest.mock import patch
 
 from .views import (
+    _obtener_usuario_sga_por_sessionid,
     _construir_prompt_documental,
     _describir_filtros_relajados,
     _debe_reformular,
@@ -104,6 +106,48 @@ class FragmentacionDocumentoTests(SimpleTestCase):
 
 
 class ContextoUsuarioSgaTests(SimpleTestCase):
+    @override_settings(
+        SGA_CHATBOT_API_URL="http://127.0.0.1:8002/api/chatbot/sesion/",
+        SGA_CHATBOT_TOKEN="BETY-SGA-CHATBOT-2026",
+    )
+    @patch("Bety_AI.views.requests.post")
+    def test_cliente_sga_consulta_con_sessionid_y_token_fijo(self, post_mock):
+        post_mock.return_value.json.return_value = {
+            "ok": True,
+            "token": "abc123",
+            "usuario": {
+                "usuario": "estudiante",
+                "perfil": "estudiante",
+                "nombre": "Maria",
+                "facultad": "Ciencias Informaticas",
+                "tipo_estudiante": "Pregrado",
+                "materias": ["Programacion"],
+            },
+        }
+
+        perfil, error = _obtener_usuario_sga_por_sessionid("abc123")
+
+        self.assertEqual(error, "")
+        self.assertEqual(perfil["nombre"], "Maria")
+        self.assertEqual(perfil["materias"], "Programacion")
+        post_mock.assert_called_once_with(
+            "http://127.0.0.1:8002/api/chatbot/sesion/",
+            json={
+                "sessionid": "abc123",
+                "token": "BETY-SGA-CHATBOT-2026",
+            },
+            timeout=6,
+        )
+
+    @patch("Bety_AI.views.requests.post")
+    def test_cliente_sga_error_controlado_si_api_falla(self, post_mock):
+        post_mock.side_effect = requests.exceptions.ConnectionError("conexion fallida")
+
+        perfil, error = _obtener_usuario_sga_por_sessionid("abc123")
+
+        self.assertIsNone(perfil)
+        self.assertIn("No se pudo validar tu sesion", error)
+
     def test_estudiante_sga_sin_tipo_requiere_pregrado_o_posgrado(self):
         perfil = obtener_contexto_usuario_sga({
             "usuario": "estudiante",

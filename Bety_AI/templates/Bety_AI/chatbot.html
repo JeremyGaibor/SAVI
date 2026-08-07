@@ -776,6 +776,9 @@
     </div>
 </section>
 
+{{ contexto_sga|json_script:"bety-sga-context" }}
+{{ error_contexto_sga|json_script:"bety-sga-error" }}
+
 <script>
     document.addEventListener(
         'DOMContentLoaded',
@@ -828,8 +831,24 @@
                 ? csrfInput.value
                 : '';
 
+            const contextoSgaInicial = leerJsonScript(
+                'bety-sga-context',
+                null
+            );
+
+            const errorContextoSga = leerJsonScript(
+                'bety-sga-error',
+                ''
+            );
+
             let enviando = false;
-            let contextoSga = null;
+            let contextoSga = (
+                contextoSgaInicial &&
+                typeof contextoSgaInicial === 'object' &&
+                !Array.isArray(contextoSgaInicial)
+            )
+                ? contextoSgaInicial
+                : null;
             let vozActiva = localStorage.getItem(
                 'bety_voice_enabled'
             ) === 'true';
@@ -853,6 +872,21 @@
                 'speechSynthesis' in window &&
                 'SpeechSynthesisUtterance' in window
             );
+
+            function leerJsonScript(id, valorPorDefecto) {
+                const elemento = document.getElementById(id);
+
+                if (!elemento) {
+                    return valorPorDefecto;
+                }
+
+                try {
+                    return JSON.parse(elemento.textContent);
+                } catch (error) {
+                    console.error(error);
+                    return valorPorDefecto;
+                }
+            }
 
             const origenesPermitidosContexto = [
                 'http://127.0.0.1:8002',
@@ -1755,6 +1789,15 @@
             );
 
             greeting.textContent = obtenerSaludo();
+
+            if (errorContextoSga) {
+                pasarAModoChat();
+                agregarMensaje(
+                    errorContextoSga,
+                    'bot',
+                    'error'
+                );
+            }
 
             actualizarBotonVoz();
             ajustarInput();

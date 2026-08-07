@@ -13,7 +13,9 @@ from .views import (
     api_consulta_ia,
     api_procesar_documento,
 )
+from .view_logic import busqueda_fragmentos as busqueda_fragmentos_module
 from .view_logic.busqueda_fragmentos import (
+    calcular_penalizacion_nivel_contrario,
     combinar_filtros_consulta_y_perfil,
     construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
@@ -24,6 +26,7 @@ from .view_logic.busqueda_fragmentos import (
     filtrar_fragmentos_por_tipo_estudiante,
     fragmento_pertinente_consulta,
     fragmento_pertenece_tema,
+    nivel_academico_fragmento,
     buscar_fragmentos_con_fallback,
     relajar_filtros_busqueda,
 )
@@ -353,7 +356,10 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         self.assertEqual(pregunta, "como ingreso al aula virtual")
 
-    def test_ayudante_de_catedra_respeta_pregrado_del_perfil(self):
+    def test_ayudante_de_catedra_con_empate_prioriza_nivel_del_perfil_sin_excluir(self):
+        # Antes de 2026-08-07 esto excluia el fragmento del nivel contrario.
+        # Ahora, con score_ranking empatado, el del nivel del perfil gana el
+        # orden pero el otro sigue disponible.
         pregunta = construir_pregunta_busqueda_con_perfil(
             "cuanto gano como ayudante de catedra",
             {"perfil": "estudiante", "tipo_estudiante": "Pregrado"},
@@ -361,24 +367,59 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         fragmentos = [
             {
                 "contenido": "El ayudante de catedra de posgrado recibe USD 520.",
-                "metadata": {"titulo": "Ayudantes de posgrado"},
+                "metadata": {"id_documento": "2", "titulo": "Ayudantes de posgrado"},
                 "coincidencia_lexica": 1,
+                "score_ranking": 0.9,
             },
             {
                 "contenido": "El ayudante de catedra de pregrado recibe el estipendio establecido.",
-                "metadata": {"titulo": "Ayudantes de pregrado"},
+                "metadata": {"id_documento": "5", "titulo": "Ayudantes de pregrado"},
                 "coincidencia_lexica": 1,
+                "score_ranking": 0.9,
             },
         ]
 
-        filtrados = filtrar_fragmentos_por_tipo_estudiante(
+        resultado = filtrar_fragmentos_por_tipo_estudiante(
             pregunta,
             {"perfil": "estudiante", "tipo_estudiante": "Pregrado"},
             fragmentos,
         )
 
-        self.assertEqual(len(filtrados), 1)
-        self.assertIn("pregrado", filtrados[0]["contenido"])
+        self.assertEqual(len(resultado), 2)
+        self.assertIn("pregrado", resultado[0]["contenido"])
+        self.assertIn("posgrado", resultado[1]["contenido"])
+        self.assertAlmostEqual(
+            resultado[1]["score_ranking"],
+            0.9 + busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO,
+        )
+
+    def test_consulta_posgrado_explicita_con_perfil_pregrado_recupera_el_documento(self):
+        # Reproduce el incidente real del 2026-08-07: pregunta explicita por
+        # posgrado con perfil pregrado. Antes del fix, filtrar_fragmentos_por_
+        # tipo_estudiante descartaba el fragmento por completo.
+        pregunta = "Cuales son los requisitos para ser ayudante de catedra de posgrado?"
+        fragmentos = [
+            {
+                "contenido": (
+                    "Ayudante de catedra de Posgrado. Requisitos: promedio minimo "
+                    "9.0/10, carta de recomendacion, 15 horas semanales. Dirigido a "
+                    "estudiantes de posgrado."
+                ),
+                "metadata": {"id_documento": "2", "titulo": "Documento 2"},
+                "coincidencia_lexica": 1.0,
+                "score_ranking": 0.9,
+            },
+        ]
+
+        resultado = filtrar_fragmentos_por_tipo_estudiante(
+            pregunta,
+            {"perfil": "estudiante", "tipo_estudiante": "Pregrado"},
+            fragmentos,
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["metadata"]["id_documento"], "2")
+        self.assertGreater(resultado[0]["score_ranking"], 0.9)
 
     @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
     def test_fallback_no_devuelve_fragmentos_sin_pertinencia_lexica(self, buscar_mock):
@@ -1452,3 +1493,63 @@ class RankingFragmentosChromaTests(SimpleTestCase):
         self.assertGreater(lexica_por_id["1"], lexica_por_id["9"])
 
         self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "1")
+
+
+class PenalizacionNivelContrarioTests(SimpleTestCase):
+    """
+    Fix del 2026-08-07 (ver memoria pending_filtro_tipo_estudiante_bloquea_
+    nivel_explicito): fragmento_contrario_a_tipo_estudiante dejo de excluir
+    fragmentos del nivel academico contrario al perfil y paso a penalizar
+    score_ranking. perfil/perfiles/grupos (rol real) NO cambiaron -- siguen
+    siendo filtros duros en chroma_service.py, esto es solo sobre nivel
+    academico (pregrado/posgrado), que nunca fue un permiso de acceso real.
+    """
+
+    def test_nivel_academico_fragmento_detecta_pregrado_posgrado_ambos_ninguno(self):
+        self.assertEqual(
+            nivel_academico_fragmento({"contenido": "informacion de pregrado", "metadata": {}}),
+            "pregrado",
+        )
+        self.assertEqual(
+            nivel_academico_fragmento({"contenido": "informacion de posgrado", "metadata": {}}),
+            "posgrado",
+        )
+        self.assertEqual(
+            nivel_academico_fragmento({"contenido": "pregrado y posgrado", "metadata": {}}),
+            "ambos",
+        )
+        self.assertEqual(
+            nivel_academico_fragmento({"contenido": "informacion general sin nivel", "metadata": {}}),
+            "ninguno",
+        )
+
+    def test_calcular_penalizacion_nivel_contrario_solo_penaliza_nivel_opuesto(self):
+        fragmento_posgrado = {"contenido": "informacion de posgrado", "metadata": {}}
+        fragmento_pregrado = {"contenido": "informacion de pregrado", "metadata": {}}
+        fragmento_general = {"contenido": "informacion general sin nivel", "metadata": {}}
+
+        self.assertEqual(
+            calcular_penalizacion_nivel_contrario(fragmento_posgrado, "pregrado"),
+            busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO,
+        )
+        self.assertEqual(
+            calcular_penalizacion_nivel_contrario(fragmento_pregrado, "posgrado"),
+            busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO,
+        )
+        # Nivel del mismo lado, sin nivel, o sin tipo_estudiante: sin penalizacion.
+        self.assertEqual(calcular_penalizacion_nivel_contrario(fragmento_pregrado, "pregrado"), 0.0)
+        self.assertEqual(calcular_penalizacion_nivel_contrario(fragmento_general, "pregrado"), 0.0)
+        self.assertEqual(calcular_penalizacion_nivel_contrario(fragmento_posgrado, ""), 0.0)
+
+    def test_default_es_0_25(self):
+        self.assertAlmostEqual(busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO, 0.25)
+
+    def test_configurable_por_variable_de_entorno(self):
+        try:
+            with patch.dict(os.environ, {"PENALIZACION_NIVEL_CONTRARIO": "0.5"}):
+                importlib.reload(busqueda_fragmentos_module)
+                self.assertAlmostEqual(busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO, 0.5)
+        finally:
+            importlib.reload(busqueda_fragmentos_module)
+
+        self.assertAlmostEqual(busqueda_fragmentos_module.PENALIZACION_NIVEL_CONTRARIO, 0.25)

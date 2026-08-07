@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 
 from ..services.chroma_service import (
@@ -10,6 +11,17 @@ from ..services.chroma_service import (
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
 logger = logging.getLogger("Bety_AI.busqueda_fragmentos")
+
+# El perfil (rol/nivel academico) no es un permiso de acceso -- es una senal
+# de relevancia. Un fragmento del nivel contrario al del perfil se penaliza
+# en el ranking en vez de excluirse, para que un usuario de pregrado que
+# pregunta explicitamente por posgrado (o viceversa) siga pudiendo recibirlo.
+# perfil/perfiles/grupos (rol real: estudiante/docente/administrativo) siguen
+# siendo filtros duros en chroma_service.py -- esos si son permisos.
+# Calibrado 2026-08-07 en la misma escala que PESO_LEXICO/LEXICA_MAXIMA_CONSIDERADA
+# (chroma_service.py): debe bastar para desempatar entre documentos igual de
+# relevantes, sin tapar una diferencia de relevancia grande.
+PENALIZACION_NIVEL_CONTRARIO = float(os.getenv("PENALIZACION_NIVEL_CONTRARIO", "0.25"))
 
 
 FILTROS_DOCUMENTALES_PERMITIDOS = [
@@ -316,7 +328,13 @@ def _texto_nivel_fragmento(fragmento):
     )
 
 
-def _nivel_mencionado_fragmento(texto):
+def nivel_academico_fragmento(fragmento):
+    """
+    Nivel academico que menciona el fragmento ("pregrado", "posgrado",
+    "ambos" o "ninguno"), no el nivel al que tiene acceso -- esto es una
+    senal de relevancia para el ranking, no un permiso.
+    """
+    texto = _texto_nivel_fragmento(fragmento)
     pregrado = menciona_pregrado(texto)
     posgrado = menciona_posgrado(texto)
     if pregrado and posgrado:
@@ -328,15 +346,17 @@ def _nivel_mencionado_fragmento(texto):
     return "ninguno"
 
 
-def fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
-    texto = _texto_nivel_fragmento(fragmento)
+def calcular_penalizacion_nivel_contrario(fragmento, tipo_estudiante):
+    if not tipo_estudiante:
+        return 0.0
 
-    if tipo_estudiante == "pregrado":
-        return menciona_posgrado(texto) and not menciona_pregrado(texto)
-    if tipo_estudiante == "posgrado":
-        return menciona_pregrado(texto) and not menciona_posgrado(texto)
+    nivel = nivel_academico_fragmento(fragmento)
+    if tipo_estudiante == "pregrado" and nivel == "posgrado":
+        return PENALIZACION_NIVEL_CONTRARIO
+    if tipo_estudiante == "posgrado" and nivel == "pregrado":
+        return PENALIZACION_NIVEL_CONTRARIO
 
-    return False
+    return 0.0
 
 
 def _doc_ids_fragmentos(fragmentos):
@@ -347,6 +367,13 @@ def _doc_ids_fragmentos(fragmentos):
 
 
 def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
+    """
+    Ya no excluye fragmentos del nivel academico contrario al perfil --
+    los penaliza en score_ranking y reordena. El perfil prioriza, no
+    bloquea: un usuario de pregrado que pregunta explicitamente por
+    posgrado (o viceversa) sigue recibiendo ese fragmento, solo que
+    detras de uno del mismo nivel si compiten por relevancia similar.
+    """
     if not fragmentos:
         return fragmentos
 
@@ -358,8 +385,8 @@ def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
     texto_pregunta = normalizar_texto(pregunta)
     if menciona_pregrado(texto_pregunta) and menciona_posgrado(texto_pregunta):
         logger.info(
-            "Filtro de tipo_estudiante omitido (pregunta menciona ambos niveles): "
-            "doc_ids=%s",
+            "Penalizacion de tipo_estudiante omitida (pregunta menciona ambos "
+            "niveles): doc_ids=%s",
             doc_ids_antes,
         )
         return fragmentos
@@ -367,34 +394,42 @@ def filtrar_fragmentos_por_tipo_estudiante(pregunta, perfil, fragmentos):
     tipo_estudiante = tipo_estudiante_perfil(perfil)
     if not tipo_estudiante:
         logger.info(
-            "Filtro de tipo_estudiante omitido (perfil sin tipo_estudiante): doc_ids=%s",
+            "Penalizacion de tipo_estudiante omitida (perfil sin tipo_estudiante): "
+            "doc_ids=%s",
             doc_ids_antes,
         )
         return fragmentos
 
-    conservados = []
     for fragmento in fragmentos:
-        if fragmento_contrario_a_tipo_estudiante(fragmento, tipo_estudiante):
-            metadata = fragmento.get("metadata") or {}
-            logger.info(
-                "Fragmento descartado por tipo_estudiante: doc_id=%s titulo=%s "
-                "perfil=%s nivel_detectado_en_fragmento=%s",
-                metadata.get("id_documento", "desconocido"),
-                metadata.get("titulo", "sin titulo"),
-                tipo_estudiante,
-                _nivel_mencionado_fragmento(_texto_nivel_fragmento(fragmento)),
-            )
+        penalizacion = calcular_penalizacion_nivel_contrario(fragmento, tipo_estudiante)
+        if not penalizacion:
             continue
-        conservados.append(fragmento)
+
+        metadata = fragmento.get("metadata") or {}
+        logger.info(
+            "Fragmento penalizado por tipo_estudiante (ya no descartado): doc_id=%s "
+            "titulo=%s perfil=%s nivel_detectado_en_fragmento=%s penalizacion=%s "
+            "score_ranking_antes=%s",
+            metadata.get("id_documento", "desconocido"),
+            metadata.get("titulo", "sin titulo"),
+            tipo_estudiante,
+            nivel_academico_fragmento(fragmento),
+            penalizacion,
+            fragmento.get("score_ranking"),
+        )
+        fragmento["score_ranking"] = fragmento.get("score_ranking", 0.0) + penalizacion
+
+    fragmentos_ordenados = sorted(fragmentos, key=lambda f: f.get("score_ranking", 0.0))
 
     logger.info(
-        "Filtro de tipo_estudiante (perfil=%s): doc_ids antes=%s -> doc_ids despues=%s",
+        "Ranking tras penalizacion de tipo_estudiante (perfil=%s): doc_ids antes=%s -> "
+        "doc_ids despues=%s",
         tipo_estudiante,
         doc_ids_antes,
-        _doc_ids_fragmentos(conservados),
+        _doc_ids_fragmentos(fragmentos_ordenados),
     )
 
-    return conservados
+    return fragmentos_ordenados
 
 
 def _valor_booleano_metadata(valor):

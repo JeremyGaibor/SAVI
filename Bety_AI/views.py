@@ -77,6 +77,7 @@ from .view_logic.busqueda_fragmentos import (
     filtrar_fragmentos_confiables,
     filtrar_fragmentos_por_tipo_estudiante,
     fragmentos_suficientes_para_responder,
+    nivel_academico_fragmento,
 )
 from .view_logic.interpretacion_consulta import (
     interpretar_consulta_ia,
@@ -866,12 +867,21 @@ def _valor_metadata_documental(metadata, clave_nueva, clave_legacy=""):
     return metadata.get(clave_nueva) or metadata.get(clave_legacy) or ""
 
 
+_ETIQUETAS_NIVEL_ACADEMICO = {
+    "pregrado": "Pregrado",
+    "posgrado": "Posgrado",
+    "ambos": "Pregrado y posgrado",
+    "ninguno": "General (no especifica nivel)",
+}
+
+
 def _construir_contexto_documental(fragmentos):
     contexto = ""
 
     for indice, fragmento in enumerate(fragmentos, start=1):
         metadata = fragmento["metadata"]
         contenido = fragmento["contenido"]
+        nivel_academico = _ETIQUETAS_NIVEL_ACADEMICO[nivel_academico_fragmento(fragmento)]
 
         contexto += f"""
 [FUENTE {indice}]
@@ -883,6 +893,7 @@ Año: {metadata.get("anio_documento", "")}
 Periodo: {_valor_metadata_documental(metadata, "tipos_periodo", "periodo")}
 Perfil: {_valor_metadata_documental(metadata, "perfiles", "perfil")}
 Grupo: {_valor_metadata_documental(metadata, "grupos", "grupo")}
+Nivel académico detectado: {nivel_academico}
 Fragmento:
 {contenido}
 """

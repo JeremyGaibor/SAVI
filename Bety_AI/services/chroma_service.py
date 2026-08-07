@@ -1,5 +1,6 @@
 import chromadb
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -8,12 +9,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger("Bety_AI.chroma_service")
+
 # Estos valores salen de Bety-AI/.env. En desarrollo Chroma corre en Docker
 # y se expone normalmente como localhost:8001.
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "bety_ai_documentos")
 FILTROS_LISTA_METADATA = {"perfiles", "grupos", "tipos_periodo"}
+
+# Controlan cuanto puede la coincidencia lexica (substring literal) corregir
+# el ranking por distancia semantica al combinarse en un score final. Ver
+# buscar_fragmentos(). Calibrados el 2026-08-07 con un corpus real de solo
+# 2 documentos: se esperan ajustes por variable de entorno (no por commit)
+# a medida que el corpus crezca y haya mas datos de colisiones reales.
+PESO_LEXICO = float(os.getenv("CHROMA_PESO_LEXICO", "0.1"))
+LEXICA_MAXIMA_CONSIDERADA = float(os.getenv("CHROMA_LEXICA_MAXIMA_CONSIDERADA", "3.0"))
 
 STOPWORDS = {
     "sobre", "para", "como", "cual", "cuales", "donde", "cuando", "quien",
@@ -83,6 +94,21 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
         + coincidencias_periodo
         + coincidencias_ambito
     ) / max(len(tokens), 1)
+
+
+def calcular_score_ranking(distancia, coincidencia_lexica):
+    """
+    Combina distancia semantica y coincidencia lexica en un unico score
+    (menor es mejor). La distancia manda; la coincidencia lexica solo puede
+    corregirla hasta un tope (PESO_LEXICO * LEXICA_MAXIMA_CONSIDERADA), para
+    que una coincidencia lexica incidental (p. ej. una palabra generica que
+    matchea el titulo de otro documento) no le gane a una ventaja semantica
+    clara. Ver pending_ranking_lexico_no_escala en memoria para el contexto
+    del incidente que motivo este cambio.
+    """
+    distancia = distancia if distancia is not None else 999999
+    ajuste = min(coincidencia_lexica, LEXICA_MAXIMA_CONSIDERADA) * PESO_LEXICO
+    return distancia - ajuste
 
 
 def obtener_coleccion():
@@ -353,11 +379,29 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
             "coincidencia_lexica": puntuar_coincidencia_lexica(pregunta, texto, metadata),
         })
 
-    fragmentos.sort(
-        key=lambda item: (
-            -item["coincidencia_lexica"],
-            item["distancia"] if item["distancia"] is not None else 999999,
+    for fragmento in fragmentos:
+        fragmento["score_ranking"] = calcular_score_ranking(
+            fragmento["distancia"], fragmento["coincidencia_lexica"]
         )
-    )
 
-    return fragmentos[:total_resultados]
+    fragmentos.sort(key=lambda item: item["score_ranking"])
+
+    resultado = fragmentos[:total_resultados]
+
+    if logger.isEnabledFor(logging.INFO):
+        top_3 = resultado[:3]
+        resumen = "; ".join(
+            "#{pos} doc_id={doc_id} titulo={titulo!r} distancia={distancia} "
+            "coincidencia_lexica={lexica} score={score}".format(
+                pos=indice + 1,
+                doc_id=item["metadata"].get("id_documento", "desconocido"),
+                titulo=item["metadata"].get("titulo", "sin titulo"),
+                distancia=item["distancia"],
+                lexica=item["coincidencia_lexica"],
+                score=item["score_ranking"],
+            )
+            for indice, item in enumerate(top_3)
+        )
+        logger.info("Ranking de fragmentos para pregunta=%r -> %s", pregunta, resumen)
+
+    return resultado

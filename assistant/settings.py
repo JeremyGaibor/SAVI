@@ -169,3 +169,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SGA_CHATBOT_API_URL = os.getenv(
+    "SGA_CHATBOT_API_URL",
+    "http://127.0.0.1:8002/api/chatbot/sesion/",
+)
+SGA_CHATBOT_TOKEN = os.getenv("SGA_CHATBOT_TOKEN", "BETY-SGA-CHATBOT-2026")

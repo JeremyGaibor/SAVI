@@ -1,6 +1,8 @@
 import json
 import logging
 
+import requests
+from django.conf import settings
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -96,8 +98,73 @@ ACCIONES_GUARDAR_FRAGMENTO_ADMIN = {
 
 @require_GET
 @xframe_options_exempt
-def chatbot(request):
-    return render(request, "Bety_AI/chatbot.html")
+def chatbot(request, sessionid=None):
+    contexto = {
+        "sessionid_sga": sessionid or "",
+        "contexto_sga": None,
+        "error_contexto_sga": "",
+    }
+
+    if sessionid:
+        perfil_sga, error_sga = _obtener_usuario_sga_por_sessionid(sessionid)
+        contexto["contexto_sga"] = perfil_sga
+        contexto["error_contexto_sga"] = error_sga
+
+        if perfil_sga:
+            request.session["bety_sga_sessionid"] = sessionid
+            request.session["bety_sga_usuario"] = perfil_sga
+        else:
+            request.session.pop("bety_sga_sessionid", None)
+            request.session.pop("bety_sga_usuario", None)
+
+    return render(request, "Bety_AI/chatbot.html", contexto)
+
+
+def _obtener_usuario_sga_por_sessionid(sessionid):
+    api_url = getattr(settings, "SGA_CHATBOT_API_URL", "")
+    if not api_url:
+        return None, "No esta configurada la URL del API del SGA."
+
+    try:
+        respuesta = requests.post(
+            api_url,
+            json={
+                "sessionid": sessionid,
+                "token": getattr(settings, "SGA_CHATBOT_TOKEN", ""),
+            },
+            timeout=6,
+        )
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+    except requests.exceptions.RequestException as exc:
+        logger.warning("No se pudo consultar la sesion SGA: %s", exc)
+        return None, (
+            "No se pudo validar tu sesion del SGA en este momento. "
+            "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
+        )
+    except ValueError as exc:
+        logger.warning("El API SGA devolvio una respuesta no JSON: %s", exc)
+        return None, (
+            "El SGA devolvio una respuesta no valida. "
+            "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
+        )
+
+    if not datos.get("ok") or not isinstance(datos.get("usuario"), dict):
+        logger.warning("El API SGA no devolvio usuario valido: %s", datos)
+        return None, (
+            "No se pudo obtener tu perfil desde el SGA. "
+            "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
+        )
+
+    perfil_sga = obtener_contexto_usuario_sga({"usuario": datos["usuario"]})
+    if not perfil_sga:
+        logger.warning("El perfil SGA recibido no contiene campos utilizables: %s", datos)
+        return None, (
+            "El SGA no envio datos de perfil utilizables. "
+            "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
+        )
+
+    return perfil_sga, ""
 
 
 def _guardar_fragmento_admin(request, accion):
@@ -1031,6 +1098,11 @@ def api_consulta_ia(request):
 
     conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
     perfil_sga = obtener_contexto_usuario_sga(request.data)
+    if not perfil_sga:
+        perfil_sga = request.session.get("bety_sga_usuario", {})
+        if not isinstance(perfil_sga, dict):
+            perfil_sga = {}
+
     resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
 
     resultado_perfil = _resolver_perfil_o_respuesta_pendiente(

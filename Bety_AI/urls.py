@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [  
     path("chatbot/", views.chatbot, name="chatbot"),
+    path("chatbot/<str:sessionid>/", views.chatbot, name="chatbot_sga"),
     path("chroma_dump.html", views.ver_chroma_dump, name="ver_chroma_dump"),
     path("api/legibilidad/", views.api_legibilidad, name="api_legibilidad"),
 

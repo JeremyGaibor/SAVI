@@ -51,6 +51,8 @@ jobs:
           CHROMA_PORT: ${{ secrets.CHROMA_PORT }}
           CHROMA_COLLECTION: ${{ secrets.CHROMA_COLLECTION }}
           DOCUMENT_FRAGMENTATION_MODE: ${{ secrets.DOCUMENT_FRAGMENTATION_MODE }}
+          SGA_CHATBOT_API_URL: ${{ secrets.SGA_CHATBOT_API_URL }}
+          SGA_CHATBOT_TOKEN: ${{ secrets.SGA_CHATBOT_TOKEN }}
 
         run: |
           set -e
@@ -82,6 +84,8 @@ jobs:
             echo ""
             echo "# Modes: pages - caracteres1200"
             echo "DOCUMENT_FRAGMENTATION_MODE=${DOCUMENT_FRAGMENTATION_MODE}"
+            echo "SGA_CHATBOT_API_URL=${SGA_CHATBOT_API_URL}"
+            echo "SGA_CHATBOT_TOKEN=${SGA_CHATBOT_TOKEN}"
           } > .env
 
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \

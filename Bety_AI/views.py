@@ -57,6 +57,7 @@ from .view_logic.chat_conversacion import (
     es_solicitud_reformulacion,
     obtener_ultima_pregunta_conversacion,
     obtener_ultima_respuesta_conversacion,
+    obtener_ultimo_tipo_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
@@ -623,7 +624,7 @@ TIPOS_RESPUESTA_SIN_HISTORIAL_QA = {"SOLICITUD_CONTEXTO_SGA", "SOLICITUD_CONTEXT
 
 def _responder_directo(request, conversation_id, pregunta, tipo_respuesta, respuesta):
     if tipo_respuesta not in TIPOS_RESPUESTA_SIN_HISTORIAL_QA:
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -670,7 +671,7 @@ def _responder_con_ia_controlada(request, conversation_id, pregunta, tipo_respue
         return _responder_ia_no_disponible(request, pregunta, exc)
 
     respuesta = resultado_controlado["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta, tipo_respuesta)
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -775,11 +776,22 @@ def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, context
         return interpretacion_fallback(pregunta)
 
 
-def _debe_reformular(pregunta, interpretacion_consulta):
-    return (
+# Tipos de respuesta que no tienen contenido real que reformular: si la
+# ultima respuesta de la conversacion cayo en uno de estos, un pedido de
+# "explicalo mejor"/"paso a paso" debe redisparar la busqueda documental
+# en vez de reformular el mismo "no se" (ver pending_reformulacion_repite_fallback_vacio).
+TIPOS_RESPUESTA_SIN_INFO_REFORMULABLE = {"FUERA_AMBITO"}
+
+
+def _debe_reformular(pregunta, interpretacion_consulta, conversation_id):
+    if not (
         interpretacion_consulta.get("tipo_operacion") == "reformulacion"
         and es_solicitud_reformulacion(pregunta)
-    )
+    ):
+        return False
+
+    ultimo_tipo_respuesta = obtener_ultimo_tipo_respuesta_conversacion(conversation_id)
+    return ultimo_tipo_respuesta not in TIPOS_RESPUESTA_SIN_INFO_REFORMULABLE
 
 
 def _responder_reformulacion(request, conversation_id, pregunta):
@@ -795,7 +807,7 @@ def _responder_reformulacion(request, conversation_id, pregunta):
         return _responder_ia_no_disponible(request, pregunta, exc, conversation_id=conversation_id)
 
     respuesta = resultado_reformulacion["respuesta"]
-    agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+    agregar_historial_conversacion(conversation_id, pregunta, respuesta, "REFORMULACION")
     guardar_interaccion_temporal(
         request=request,
         pregunta=pregunta,
@@ -1061,7 +1073,7 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
     try:
         resultado_qwen = consultar_qwen(prompt)
         respuesta = limpiar_respuesta_ia(resultado_qwen["respuesta"])
-        agregar_historial_conversacion(conversation_id, pregunta, respuesta)
+        agregar_historial_conversacion(conversation_id, pregunta, respuesta, "RESPUESTA")
         historial = guardar_interaccion_temporal(
             request=request,
             pregunta=pregunta,
@@ -1135,7 +1147,7 @@ def api_consulta_ia(request):
     if tipo_operacion == "saludo":
         return _responder_con_ia_controlada(request, conversation_id, pregunta, "SALUDO", contexto_usuario)
 
-    if _debe_reformular(pregunta, interpretacion_consulta):
+    if _debe_reformular(pregunta, interpretacion_consulta, conversation_id):
         return _responder_reformulacion(request, conversation_id, pregunta)
 
     if _es_fuera_de_ambito(pregunta, interpretacion_consulta):

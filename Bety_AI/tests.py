@@ -10,6 +10,7 @@ from unittest.mock import patch
 from .views import (
     _obtener_usuario_sga_por_sessionid,
     _construir_prompt_documental,
+    _construir_pregunta_busqueda,
     _describir_filtros_relajados,
     _debe_reformular,
     api_consulta_ia,
@@ -857,6 +858,111 @@ class HistorialConversacionTests(SimpleTestCase):
                 {"tipo_operacion": "reformulacion", "depende_historial": True},
                 conversation_id,
             )
+        )
+
+    def test_construir_pregunta_busqueda_no_duplica_pregunta_con_depende_historial(self):
+        # Caso real de produccion: "explicame mejor" tras un FUERA_AMBITO sobre
+        # horario de biblioteca, con el router anclando consulta_normalizada al
+        # tema de un turno anterior (ayudante de catedra). pregunta_interpretada
+        # (via consulta_busqueda) ya arranca con la pregunta limpia, asi que
+        # _construir_pregunta_busqueda no debe volver a concatenarla aparte.
+        pregunta = "explicame mejor"
+        ultima_pregunta = "Cual es el horario de la biblioteca?"
+        interpretacion_consulta = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "requisitos para ser ayudante de catedra",
+            "consulta_busqueda": (
+                "explicame mejor requisitos para ser ayudante de catedra "
+                "ayudante de catedra requisitos pregrado grado"
+            ),
+            "depende_historial": True,
+        }
+
+        pregunta_busqueda = _construir_pregunta_busqueda(
+            pregunta, ultima_pregunta, interpretacion_consulta, {}
+        )
+
+        self.assertEqual(pregunta_busqueda.count(pregunta), 1)
+        self.assertEqual(
+            pregunta_busqueda,
+            "Cual es el horario de la biblioteca? explicame mejor requisitos "
+            "para ser ayudante de catedra ayudante de catedra requisitos "
+            "pregrado grado",
+        )
+
+    def test_construir_pregunta_busqueda_no_pierde_pregunta_si_interpretada_no_la_incluye(self):
+        # Caso adversarial: consulta_busqueda NO contiene la pregunta original
+        # (ej. si el router devolviera solo un tema sin ecoar el mensaje). Al
+        # sacar el "pregunta" suelto del join para no duplicar, no debe
+        # perderse -- _construir_pregunta_busqueda tiene que agregarlo de
+        # vuelta porque pregunta_interpretada no lo trae.
+        pregunta = "explicame mejor"
+        ultima_pregunta = "Cual es el horario de la biblioteca?"
+        interpretacion_consulta = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "requisitos para ser ayudante de catedra",
+            "consulta_busqueda": "requisitos para ser ayudante de catedra",
+            "depende_historial": True,
+        }
+
+        pregunta_busqueda = _construir_pregunta_busqueda(
+            pregunta, ultima_pregunta, interpretacion_consulta, {}
+        )
+
+        self.assertEqual(pregunta_busqueda.count(pregunta), 1)
+        self.assertIn(pregunta, pregunta_busqueda)
+        self.assertEqual(
+            pregunta_busqueda,
+            "Cual es el horario de la biblioteca? explicame mejor requisitos "
+            "para ser ayudante de catedra",
+        )
+
+    def test_construir_pregunta_busqueda_no_da_falso_positivo_con_pregunta_corta(self):
+        # "mas" es substring de "ademas" (y de otras palabras), pero eso no
+        # significa que pregunta_interpretada ya incluya la pregunta -- un
+        # chequeo con "in" daria falso positivo y perderia "mas" del todo.
+        # Con startswith (prefijo, la garantia real de normalizar_interpretacion)
+        # esto no pasa: "mas" se agrega igual porque pregunta_interpretada no
+        # arranca con ella.
+        pregunta = "mas"
+        ultima_pregunta = "Cual es el horario de la biblioteca?"
+        interpretacion_consulta = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "informacion ademas de requisitos",
+            "consulta_busqueda": "informacion ademas de requisitos para ser ayudante de catedra",
+            "depende_historial": True,
+        }
+
+        pregunta_busqueda = _construir_pregunta_busqueda(
+            pregunta, ultima_pregunta, interpretacion_consulta, {}
+        )
+
+        self.assertEqual(
+            pregunta_busqueda,
+            "Cual es el horario de la biblioteca? mas informacion ademas de "
+            "requisitos para ser ayudante de catedra",
+        )
+
+    def test_construir_pregunta_busqueda_depende_historial_sin_ultima_pregunta(self):
+        # depende_historial=True pero sin turno anterior (conversacion nueva o
+        # historial vacio): no debe romper ni duplicar, cae al mismo camino
+        # que cuando no depende del historial.
+        pregunta = "explicame mejor"
+        interpretacion_consulta = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "requisitos para ser ayudante de catedra",
+            "consulta_busqueda": "explicame mejor requisitos para ser ayudante de catedra",
+            "depende_historial": True,
+        }
+
+        pregunta_busqueda = _construir_pregunta_busqueda(
+            pregunta, "", interpretacion_consulta, {}
+        )
+
+        self.assertEqual(pregunta_busqueda.count(pregunta), 1)
+        self.assertEqual(
+            pregunta_busqueda,
+            "explicame mejor requisitos para ser ayudante de catedra",
         )
 
     def test_obtiene_ultimo_tipo_respuesta_de_conversacion(self):

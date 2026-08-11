@@ -51,6 +51,7 @@ from .view_logic.chat_conversacion import (
     es_solicitud_reformulacion,
     formatear_historial_conversacion,
     obtener_ultima_respuesta_conversacion,
+    obtener_ultimo_tipo_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
 from .view_logic.chat_respuestas_ia import generar_respuesta_controlada
@@ -705,6 +706,80 @@ class HistorialConversacionTests(SimpleTestCase):
         reformular_mock.assert_called_once()
         guardar_temporal_mock.assert_called_once()
         buscar_mock.assert_not_called()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion(conversation_id),
+            "REFORMULACION",
+        )
+
+    @patch("Bety_AI.views.consultar_qwen")
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.generar_reformulacion_respuesta")
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_api_redispara_busqueda_si_reformulacion_sigue_a_fuera_ambito(
+        self,
+        interpretar_mock,
+        reformular_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+        qwen_mock,
+    ):
+        conversation_id = "convtest-reformula-tras-fuera-ambito"
+        agregar_historial_conversacion(
+            conversation_id,
+            "Que me puedes decir sobre los ayudantes de catedra",
+            "No hay informacion suficiente sobre eso.",
+            "FUERA_AMBITO",
+        )
+        interpretar_mock.return_value = {
+            "tipo_operacion": "reformulacion",
+            "consulta_normalizada": "",
+            "consulta_busqueda": "",
+            "depende_historial": True,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        buscar_mock.return_value = (
+            [
+                {
+                    "contenido": "Los ayudantes de catedra deben cumplir estos requisitos.",
+                    "metadata": {
+                        "titulo": "Guia ayudantes de catedra",
+                        "id_documento": "9",
+                        "tipo_documento": "GUIA",
+                    },
+                    "coincidencia_lexica": 1,
+                }
+            ],
+            {},
+        )
+        qwen_mock.return_value = {
+            "respuesta": "Los ayudantes de catedra deben cumplir estos requisitos.",
+            "modelo": "qwen-final",
+        }
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "explicame mejor",
+                "conversation_id": conversation_id,
+            },
+            format="json",
+        )
+        request.session = type("SessionStub", (dict,), {})()
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "RESPUESTA")
+        buscar_mock.assert_called_once()
+        reformular_mock.assert_not_called()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion(conversation_id),
+            "RESPUESTA",
+        )
 
     def test_normaliza_interpretacion_para_busqueda_enriquecida(self):
         interpretacion = normalizar_interpretacion(
@@ -768,16 +843,46 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertFalse(interpretacion["depende_historial"])
 
     def test_views_no_reformula_si_la_pregunta_tiene_tema_nuevo(self):
+        conversation_id = "convtest-debe-reformular-tema-nuevo"
         self.assertFalse(
             _debe_reformular(
                 "como evalua el sga",
                 {"tipo_operacion": "reformulacion", "depende_historial": True},
+                conversation_id,
             )
         )
         self.assertTrue(
             _debe_reformular(
                 "dame una tabla",
                 {"tipo_operacion": "reformulacion", "depende_historial": True},
+                conversation_id,
+            )
+        )
+
+    def test_obtiene_ultimo_tipo_respuesta_de_conversacion(self):
+        conversation_id = "convtest-tipo-respuesta"
+        agregar_historial_conversacion(conversation_id, "Pregunta 1", "Respuesta 1", "RESPUESTA")
+        agregar_historial_conversacion(conversation_id, "Pregunta 2", "Respuesta 2", "FUERA_AMBITO")
+
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion(conversation_id),
+            "FUERA_AMBITO",
+        )
+
+    def test_debe_reformular_no_intercepta_si_ultima_respuesta_fue_fuera_ambito(self):
+        conversation_id = "convtest-debe-reformular-fuera-ambito"
+        agregar_historial_conversacion(
+            conversation_id,
+            "Que me puedes decir sobre los ayudantes de catedra",
+            "No hay informacion suficiente sobre eso.",
+            "FUERA_AMBITO",
+        )
+
+        self.assertFalse(
+            _debe_reformular(
+                "explicame mejor",
+                {"tipo_operacion": "reformulacion", "depende_historial": True},
+                conversation_id,
             )
         )
 
@@ -860,6 +965,10 @@ class HistorialConversacionTests(SimpleTestCase):
         respuesta_controlada_mock.assert_called_once()
         buscar_mock.assert_not_called()
         guardar_temporal_mock.assert_called_once()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion("convtest-saludo-ia"),
+            "SALUDO",
+        )
 
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
     @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
@@ -899,6 +1008,10 @@ class HistorialConversacionTests(SimpleTestCase):
         interpretar_mock.assert_called_once()
         buscar_mock.assert_not_called()
         guardar_temporal_mock.assert_called_once()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion(conversation_id),
+            "HISTORIAL_CONVERSACION",
+        )
 
     @patch("Bety_AI.views.consultar_qwen")
     @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
@@ -961,6 +1074,10 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertEqual(response.data["tipo_respuesta"], "RESPUESTA")
         self.assertIn("ayudas economicas", buscar_mock.call_args.kwargs["pregunta"])
         guardar_temporal_mock.assert_called_once()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion("convtest05"),
+            "RESPUESTA",
+        )
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):
     def setUp(self):
@@ -1371,6 +1488,10 @@ class ApiConsultaIaFiltroConfiabilidadTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["tipo_respuesta"], "FUERA_AMBITO")
         respuesta_controlada_mock.assert_called_once()
+        self.assertEqual(
+            obtener_ultimo_tipo_respuesta_conversacion("convtest-filtro-confiable"),
+            "FUERA_AMBITO",
+        )
 
 
 class _ColeccionChromaFalsa:

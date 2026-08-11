@@ -195,6 +195,22 @@ def obtener_ultima_respuesta_conversacion(conversation_id):
     return ""
 
 
+def obtener_ultimo_tipo_respuesta_conversacion(conversation_id):
+    if not conversation_id:
+        return None
+
+    estado = obtener_estado_conversacion(conversation_id)
+    historial_qa = estado.get("historial_qa")
+    if not isinstance(historial_qa, list):
+        return None
+
+    for item in reversed(historial_qa):
+        if item.get("respuesta"):
+            return item.get("tipo_respuesta")
+
+    return None
+
+
 def obtener_ultima_pregunta_conversacion(conversation_id):
     if not conversation_id:
         return ""

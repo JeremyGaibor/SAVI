@@ -40,6 +40,7 @@ from .services.chroma_service import (
 )
 from .view_logic.interpretacion_consulta import (
     extraer_json_interpretacion,
+    interpretacion_fallback,
     normalizar_interpretacion,
 )
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
@@ -798,6 +799,55 @@ class HistorialConversacionTests(SimpleTestCase):
         self.assertIn("beneficios para estudiantes", interpretacion["consulta_busqueda"])
         self.assertIn("ayudas economicas becas apoyo financiero", interpretacion["consulta_busqueda"])
         self.assertIn("beneficios estudiantiles", interpretacion["consulta_busqueda"])
+
+    def test_normaliza_interpretacion_no_duplica_pregunta_sin_consulta_normalizada(self):
+        # Bug real: cuando el router no devuelve consulta_normalizada, caia al
+        # fallback de pregunta_limpia y se volvia a concatenar aparte -- la
+        # pregunta completa quedaba duplicada dentro de consulta_busqueda.
+        pregunta = "cual es el horario de la biblioteca"
+        interpretacion = normalizar_interpretacion(
+            {"tipo_operacion": "consulta_documental"},
+            pregunta,
+        )
+
+        self.assertEqual(interpretacion["consulta_busqueda"].count(pregunta), 1)
+        self.assertEqual(interpretacion["consulta_busqueda"], pregunta)
+        # El campo consulta_normalizada en si mantiene el fallback (lo usan
+        # otros consumidores, ej. _construir_pregunta_busqueda como ultimo
+        # recurso si consulta_busqueda faltara).
+        self.assertEqual(interpretacion["consulta_normalizada"], pregunta)
+
+    def test_interpretacion_fallback_no_duplica_pregunta(self):
+        # interpretacion_fallback (usado cuando el router LLM falla) siempre
+        # setea consulta_normalizada=pregunta explicitamente -- es el caso que
+        # disparaba la duplicacion el 100% de las veces.
+        pregunta = "cual es el horario de la biblioteca"
+        interpretacion = interpretacion_fallback(pregunta)
+
+        self.assertEqual(interpretacion["consulta_busqueda"].count(pregunta), 1)
+        self.assertEqual(interpretacion["consulta_busqueda"], pregunta)
+
+    def test_normaliza_interpretacion_mantiene_consulta_normalizada_distinta(self):
+        # Caso real del incidente: el router SI devolvio una consulta_normalizada
+        # genuinamente distinta de la pregunta (no un eco). Debe seguir
+        # apareciendo una sola vez, sin regresion.
+        pregunta = "explicame mejor"
+        interpretacion = normalizar_interpretacion(
+            {
+                "tipo_operacion": "consulta_documental",
+                "consulta_normalizada": "requisitos para ser ayudante de catedra",
+                "palabras_clave": ["ayudante de catedra", "requisitos", "pregrado", "grado"],
+            },
+            pregunta,
+        )
+
+        self.assertEqual(interpretacion["consulta_busqueda"].count(pregunta), 1)
+        self.assertEqual(interpretacion["consulta_busqueda"].count("requisitos para ser ayudante de catedra"), 1)
+        self.assertEqual(
+            interpretacion["consulta_busqueda"],
+            "explicame mejor requisitos para ser ayudante de catedra "
+            "ayudante de catedra requisitos pregrado grado",
+        )
 
     def test_extrae_json_interpretacion_desde_markdown(self):
         data = extraer_json_interpretacion(

@@ -64,13 +64,19 @@ def normalizar_interpretacion(data, pregunta):
         data = {}
 
     pregunta_limpia = limpiar_texto_contexto(pregunta, 500)
-    consulta_normalizada = limpiar_texto_contexto(
-        data.get("consulta_normalizada") or pregunta_limpia,
-        600,
-    )
+    consulta_normalizada_bruta = limpiar_texto_contexto(data.get("consulta_normalizada"), 600)
+    consulta_normalizada = consulta_normalizada_bruta or pregunta_limpia
     palabras_clave = normalizar_lista_texto(data.get("palabras_clave"))
 
-    partes_busqueda = [pregunta_limpia, consulta_normalizada]
+    # pregunta_limpia va primero siempre. consulta_normalizada solo se agrega
+    # aparte si el router devolvio algo distinto de la pregunta -- si vino
+    # vacia y cayo al fallback (arriba), ya esta cubierta por pregunta_limpia
+    # y agregarla de nuevo duplicaria el texto completo de la pregunta dentro
+    # de consulta_busqueda (bug real: pasaba el 100% de las veces que el
+    # router no devolvia consulta_normalizada, incluida interpretacion_fallback).
+    partes_busqueda = [pregunta_limpia]
+    if consulta_normalizada_bruta and consulta_normalizada_bruta != pregunta_limpia:
+        partes_busqueda.append(consulta_normalizada_bruta)
     partes_busqueda.extend(palabras_clave)
     consulta_busqueda = " ".join(parte for parte in partes_busqueda if parte)
 

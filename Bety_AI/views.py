@@ -45,6 +45,7 @@ from .view_logic.contexto_usuario import (
     obtener_contexto_usuario_sga,
     construir_contexto_usuario_prompt,
     perfil_estudiante_requiere_tipo,
+    limpiar_texto_contexto,
 )
 from .view_logic.chat_conversacion import (
     normalizar_conversation_id,
@@ -840,9 +841,16 @@ def _es_fuera_de_ambito(pregunta, interpretacion_consulta):
 
 
 def _construir_pregunta_busqueda(pregunta, ultima_pregunta, interpretacion_consulta, perfil_usuario):
-    # consulta_busqueda ya incluye pregunta + consulta_normalizada + palabras_clave
-    # (ver normalizar_interpretacion en interpretacion_consulta.py), asi que no hace
-    # falta volver a concatenar consulta_normalizada aparte.
+    # consulta_busqueda normalmente ya incluye pregunta + consulta_normalizada +
+    # palabras_clave (ver normalizar_interpretacion en interpretacion_consulta.py),
+    # asi que no hace falta volver a concatenar pregunta aparte -- pero no lo
+    # asumimos a ciegas: si pregunta_interpretada no arranca con ella, la
+    # agregamos, para no perderla nunca. Usamos startswith (no "in") porque la
+    # garantia real es que pregunta_limpia es siempre el primer componente de
+    # consulta_busqueda -- un "in" (substring en cualquier posicion) daria
+    # falso positivo con preguntas cortas que aparecen dentro de otra palabra
+    # (ej. "mas" dentro de "ademas").
+    pregunta_limpia = limpiar_texto_contexto(pregunta)
     pregunta_interpretada = (
         interpretacion_consulta.get("consulta_busqueda")
         or interpretacion_consulta.get("consulta_normalizada")
@@ -850,11 +858,11 @@ def _construir_pregunta_busqueda(pregunta, ultima_pregunta, interpretacion_consu
     )
 
     if interpretacion_consulta.get("depende_historial") and ultima_pregunta:
-        pregunta_busqueda = " ".join(
-            parte
-            for parte in [ultima_pregunta, pregunta, pregunta_interpretada]
-            if parte
-        )
+        partes = [ultima_pregunta]
+        if pregunta_limpia and not pregunta_interpretada.startswith(pregunta_limpia):
+            partes.append(pregunta)
+        partes.append(pregunta_interpretada)
+        pregunta_busqueda = " ".join(parte for parte in partes if parte)
     else:
         pregunta_busqueda = construir_pregunta_busqueda_contextual(pregunta_interpretada, ultima_pregunta)
 

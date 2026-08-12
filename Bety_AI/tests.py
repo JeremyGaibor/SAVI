@@ -1816,6 +1816,83 @@ class RankingFragmentosChromaTests(SimpleTestCase):
         self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "1")
 
 
+class PuntuarCoincidenciaLexicaCamposMuertosTests(SimpleTestCase):
+    """
+    Fix del 2026-08-12 (ver memoria pending_score_lexico_campos_ya_filtrados):
+    puntuar_coincidencia_lexica dejo de puntuar metadata.perfil y
+    metadata.ambito. Verificado que ambos campos nunca actuan como filtro de
+    acceso en el flujo normal -- perfil (singular) porque el filtro real usa
+    la clave "perfiles", no "perfil", y ambito porque construir_filtros_desde_
+    perfil nunca lo setea. tipo_documento/perfiles/grupos/tipos_periodo se
+    dejaron intactos a proposito: tipo_documento es señal de texto libre real
+    y los otros tres solo filtran quedo condicionado al perfil del usuario.
+    """
+
+    def test_score_no_cambia_cuando_perfil_y_ambito_estan_vacios(self):
+        pregunta = "requisitos para ser ayudante de catedra"
+        texto = "El ayudante de catedra debe cumplir requisitos academicos."
+        metadata = {"titulo": "Guia ayudante de catedra"}
+
+        self.assertGreater(
+            chroma_service.puntuar_coincidencia_lexica(pregunta, texto, metadata),
+            0,
+        )
+        self.assertAlmostEqual(
+            chroma_service.puntuar_coincidencia_lexica(pregunta, texto, metadata),
+            chroma_service.puntuar_coincidencia_lexica(
+                pregunta,
+                texto,
+                {**metadata, "perfil": "", "ambito": ""},
+            ),
+        )
+
+    def test_score_baja_cuando_perfil_o_ambito_estaban_poblados(self):
+        # metadata.perfil ya no se lee, asi que compararlo contra la misma
+        # funcion con esos campos vacios (como en el test anterior) no puede
+        # detectar una regresion: la funcion actual los ignora por diseño.
+        # Para probar que el ruido realmente se fue, replicamos aqui la
+        # formula vieja (con perfil/ambito sumando) y confirmamos que el
+        # score actual queda por debajo de lo que esa formula habria dado.
+        pregunta = "requisitos ayudante catedra estudiante"
+        texto = "El ayudante de catedra debe cumplir requisitos academicos."
+        metadata = {
+            "titulo": "Guia ayudante de catedra",
+            "perfil": "estudiante",
+            "ambito": "estudiante academico",
+        }
+
+        tokens = chroma_service.extraer_tokens_busqueda(pregunta)
+        perfil_normalizado = chroma_service.normalizar_texto(metadata["perfil"])
+        ambito_normalizado = chroma_service.normalizar_texto(metadata["ambito"])
+        coincidencias_perfil = sum(1 for token in tokens if token in perfil_normalizado)
+        coincidencias_ambito = sum(1 for token in tokens if token in ambito_normalizado)
+        # perfil pesaba x2, ambito x1 en la formula vieja (chroma_service.py:72-95).
+        score_formula_vieja_con_ruido = chroma_service.puntuar_coincidencia_lexica(
+            pregunta, texto, metadata
+        ) + (coincidencias_perfil * 2 + coincidencias_ambito) / max(len(tokens), 1)
+
+        score_actual = chroma_service.puntuar_coincidencia_lexica(pregunta, texto, metadata)
+
+        self.assertGreater(coincidencias_perfil + coincidencias_ambito, 0)
+        self.assertLess(score_actual, score_formula_vieja_con_ruido)
+
+    def test_tipo_documento_perfiles_grupos_tipos_periodo_siguen_puntuando(self):
+        pregunta = "reglamento estudiante software segundo periodo"
+        texto = "Texto sin relacion literal con la pregunta."
+        metadata = {
+            "titulo": "Documento",
+            "tipo_documento": "reglamento",
+            "perfiles": "estudiante",
+            "grupos": "software",
+            "tipos_periodo": "segundo periodo",
+        }
+
+        self.assertGreater(
+            chroma_service.puntuar_coincidencia_lexica(pregunta, texto, metadata),
+            0,
+        )
+
+
 class PenalizacionNivelContrarioTests(SimpleTestCase):
     """
     Fix del 2026-08-07 (ver memoria pending_filtro_tipo_estudiante_bloquea_

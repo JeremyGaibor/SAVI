@@ -69,30 +69,24 @@ def puntuar_coincidencia_lexica(pregunta, texto, metadata):
     contenido = normalizar_texto(texto)
     titulo = normalizar_texto(metadata.get("titulo", ""))
     tipo_documento = normalizar_texto(metadata.get("tipo_documento", ""))
-    perfil = normalizar_texto(metadata.get("perfil", ""))
     perfiles = normalizar_texto(metadata.get("perfiles", ""))
     grupos = normalizar_texto(metadata.get("grupos", ""))
     tipos_periodo = normalizar_texto(metadata.get("tipos_periodo", ""))
-    ambito = normalizar_texto(metadata.get("ambito", ""))
 
     coincidencias_contenido = sum(1 for token in tokens if token in contenido)
     coincidencias_titulo = sum(1 for token in tokens if token in titulo)
     coincidencias_tipo = sum(1 for token in tokens if token in tipo_documento)
-    coincidencias_perfil = sum(1 for token in tokens if token in perfil)
     coincidencias_perfiles = sum(1 for token in tokens if token in perfiles)
     coincidencias_grupos = sum(1 for token in tokens if token in grupos)
     coincidencias_periodo = sum(1 for token in tokens if token in tipos_periodo)
-    coincidencias_ambito = sum(1 for token in tokens if token in ambito)
 
     return (
         coincidencias_contenido
         + (coincidencias_titulo * 3)
         + (coincidencias_tipo * 2)
-        + (coincidencias_perfil * 2)
         + (coincidencias_perfiles * 2)
         + coincidencias_grupos
         + coincidencias_periodo
-        + coincidencias_ambito
     ) / max(len(tokens), 1)
 
 

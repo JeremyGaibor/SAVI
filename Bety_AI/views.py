@@ -1224,9 +1224,6 @@ def api_consulta_ia(request):
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def api_analizar_documento(request):
-    """
-    Extrae texto, mide legibilidad e interpreta el documento antes de guardarlo.
-    """
     archivo, respuesta_error = _obtener_archivo_pdf_o_respuesta_error(request)
     if respuesta_error:
         return respuesta_error

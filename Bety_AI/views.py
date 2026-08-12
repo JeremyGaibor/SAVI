@@ -1248,10 +1248,6 @@ def api_analizar_documento(request):
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def api_extraer_texto_documento(request):
-    """
-    Recibe un PDF, extrae texto y metricas, consulta Qwen para generar el
-    analisis de IA y devuelve todo en un JSON listo para previsualizar.
-    """
     archivo, respuesta_error = _obtener_archivo_pdf_o_respuesta_error(request)
     if respuesta_error:
         return respuesta_error

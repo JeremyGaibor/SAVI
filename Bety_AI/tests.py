@@ -116,7 +116,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     @patch("Bety_AI.views.requests.post")
     def test_cliente_sga_consulta_con_sessionid_y_token_fijo(self, post_mock):
         post_mock.return_value.json.return_value = {
-            "ok": True,
+            "result": "ok",
             "token": "abc123",
             "usuario": {
                 "usuario": "estudiante",
@@ -128,9 +128,10 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
             },
         }
 
-        perfil, error = _obtener_usuario_sga_por_sessionid("abc123")
+        perfil, error, token_sga = _obtener_usuario_sga_por_sessionid("abc123")
 
         self.assertEqual(error, "")
+        self.assertEqual(token_sga, "abc123")
         self.assertEqual(perfil["nombre"], "Maria")
         self.assertEqual(perfil["materias"], "Programacion")
         post_mock.assert_called_once_with(
@@ -146,9 +147,10 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     def test_cliente_sga_error_controlado_si_api_falla(self, post_mock):
         post_mock.side_effect = requests.exceptions.ConnectionError("conexion fallida")
 
-        perfil, error = _obtener_usuario_sga_por_sessionid("abc123")
+        perfil, error, token_sga = _obtener_usuario_sga_por_sessionid("abc123")
 
         self.assertIsNone(perfil)
+        self.assertEqual(token_sga, "")
         self.assertIn("No se pudo validar tu sesion", error)
 
     def test_estudiante_sga_sin_tipo_requiere_pregrado_o_posgrado(self):

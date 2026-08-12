@@ -108,16 +108,18 @@ def chatbot(request, sessionid=None):
     }
 
     if sessionid:
-        perfil_sga, error_sga = _obtener_usuario_sga_por_sessionid(sessionid)
+        perfil_sga, error_sga, token_sga = _obtener_usuario_sga_por_sessionid(sessionid)
         contexto["contexto_sga"] = perfil_sga
         contexto["error_contexto_sga"] = error_sga
 
         if perfil_sga:
             request.session["bety_sga_sessionid"] = sessionid
             request.session["bety_sga_usuario"] = perfil_sga
+            request.session["bety_sga_token"] = token_sga
         else:
             request.session.pop("bety_sga_sessionid", None)
             request.session.pop("bety_sga_usuario", None)
+            request.session.pop("bety_sga_token", None)
 
     return render(request, "Bety_AI/chatbot.html", contexto)
 
@@ -125,7 +127,7 @@ def chatbot(request, sessionid=None):
 def _obtener_usuario_sga_por_sessionid(sessionid):
     api_url = getattr(settings, "SGA_CHATBOT_API_URL", "")
     if not api_url:
-        return None, "No esta configurada la URL del API del SGA."
+        return None, "No esta configurada la URL del API del SGA.", ""
 
     try:
         respuesta = requests.post(
@@ -143,20 +145,20 @@ def _obtener_usuario_sga_por_sessionid(sessionid):
         return None, (
             "No se pudo validar tu sesion del SGA en este momento. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        )
+        ), ""
     except ValueError as exc:
         logger.warning("El API SGA devolvio una respuesta no JSON: %s", exc)
         return None, (
             "El SGA devolvio una respuesta no valida. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        )
+        ), ""
 
-    if not datos.get("ok") or not isinstance(datos.get("usuario"), dict):
+    if datos.get("result") != "ok" or not isinstance(datos.get("usuario"), dict):
         logger.warning("El API SGA no devolvio usuario valido: %s", datos)
         return None, (
             "No se pudo obtener tu perfil desde el SGA. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        )
+        ), ""
 
     perfil_sga = obtener_contexto_usuario_sga({"usuario": datos["usuario"]})
     if not perfil_sga:
@@ -164,9 +166,9 @@ def _obtener_usuario_sga_por_sessionid(sessionid):
         return None, (
             "El SGA no envio datos de perfil utilizables. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        )
+        ), ""
 
-    return perfil_sga, ""
+    return perfil_sga, "", limpiar_texto_contexto(datos.get("token"), 500)
 
 
 def _guardar_fragmento_admin(request, accion):

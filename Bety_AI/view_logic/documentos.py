@@ -147,7 +147,7 @@ def generar_feedback_documento(resultado_texto):
     muestra_texto = texto_extraido[:6000]
 
     prompt = f"""
-Eres Bety-AI y analizas PDFs institucionales antes de que se guarden en una base documental.
+Eres BettIA y analizas PDFs institucionales antes de que se guarden en una base documental.
 
 Datos tecnicos del PDF:
 - Paginas: {resultado_texto.get("total_paginas", 0)}
@@ -288,7 +288,7 @@ def generar_interpretacion_documento(resultado_texto, nombre_archivo):
     muestra_texto = texto_extraido[:9000]
 
     prompt = f"""
-Eres Bety-AI y ayudas a clasificar documentos institucionales de la UTEQ antes de guardarlos.
+Eres BettIA y ayudas a clasificar documentos institucionales de la UTEQ antes de guardarlos.
 
 Analiza el texto extraido del PDF y devuelve solo JSON valido, sin markdown ni explicaciones.
 

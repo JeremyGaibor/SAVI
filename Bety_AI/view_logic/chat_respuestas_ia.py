@@ -77,7 +77,7 @@ def limpiar_respuesta_ia(respuesta):
 def instrucciones_por_tipo_respuesta(tipo_respuesta):
     if tipo_respuesta == "IDENTIDAD":
         return (
-            '- Inicia exactamente con: "Soy Bety, una asistente virtual para el SGA UTEQ."\n'
+            '- Inicia exactamente con: "Soy BettIA, una asistente virtual para el SGA UTEQ."\n'
             "- Luego explica brevemente que ayudas con documentos, matricula, aula virtual, "
             "evaluacion y tramites academicos.\n"
             "- No saludes como si fuera un saludo casual."
@@ -105,7 +105,7 @@ def instrucciones_por_tipo_respuesta(tipo_respuesta):
 def generar_respuesta_controlada(pregunta, tipo_respuesta, contexto_usuario=""):
     # Usa Qwen para responder consultas no documentales sin consultar ChromaDB.
     prompt = f"""
-Eres Bety, una asistente virtual institucional del SGA UTEQ.
+Eres BettIA, una asistente virtual institucional del SGA UTEQ.
 
 El usuario escribio:
 {pregunta}
@@ -137,7 +137,7 @@ Instrucciones especificas para este tipo:
 
 def generar_reformulacion_respuesta(respuesta_anterior, instruccion_usuario):
     prompt = f"""
-Eres Bety, una asistente virtual institucional del SGA UTEQ.
+Eres BettIA, una asistente virtual institucional del SGA UTEQ.
 
 El usuario pidio esta reformulacion:
 {instruccion_usuario}

@@ -98,6 +98,7 @@ class FragmentacionDocumentoTests(SimpleTestCase):
         self.assertEqual(fragmentos[0]["pagina_inicio"], 3)
         self.assertEqual(fragmentos[0]["pagina_fin"], 3)
         self.assertIn("Texto de la tercera pagina.", fragmentos[0]["contenido"])
+        self.assertTrue(fragmentos[0]["contenido"].startswith("[Página 3]"))
 
     def test_fallback_por_caracteres_si_no_hay_paginas(self):
         fragmentos, modo = dividir_documento_en_fragmentos(
@@ -565,7 +566,7 @@ class RespuestasControladasTests(SimpleTestCase):
     @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
     def test_prompt_saludo_no_incluye_instrucciones_fuera_ambito(self, qwen_mock):
         qwen_mock.return_value = {
-            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "respuesta": "Hola, soy BettIA. En que puedo ayudarte con el SGA UTEQ?",
             "modelo": "qwen-test",
         }
 
@@ -729,7 +730,7 @@ class RespuestaInventarioDocumentosTests(SimpleTestCase):
 class HistorialConversacionTests(SimpleTestCase):
     def test_responde_primer_mensaje_desde_historial(self):
         conversation_id = "convtest01"
-        agregar_historial_conversacion(conversation_id, "Hola", "Hola, soy Bety.")
+        agregar_historial_conversacion(conversation_id, "Hola", "Hola, soy BettIA.")
         agregar_historial_conversacion(
             conversation_id,
             "Ayudame con el proceso de matriculacion",
@@ -1290,7 +1291,7 @@ class HistorialConversacionTests(SimpleTestCase):
             "modelo": "qwen-test",
         }
         respuesta_controlada_mock.return_value = {
-            "respuesta": "Hola, soy Bety. En que puedo ayudarte con el SGA UTEQ?",
+            "respuesta": "Hola, soy BettIA. En que puedo ayudarte con el SGA UTEQ?",
             "modelo": "qwen-control",
         }
         request = APIRequestFactory().post(

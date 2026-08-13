@@ -1308,7 +1308,7 @@
                 }
 
                 messages.appendChild(mensaje);
-                messages.scrollTop = messages.scrollHeight;
+                desplazarSiCorresponde();
 
                 return mensaje;
             }
@@ -1380,13 +1380,11 @@
                 const partes = String(texto || '').match(/\S+\s*/g) || [texto];
 
                 for (const parte of partes) {
-                    const pegado = estaCercaDelFondo();
-
                     elemento.appendChild(
                         document.createTextNode(parte)
                     );
 
-                    desplazarSiPegado(pegado);
+                    desplazarSiCorresponde();
 
                     await esperar(
                         parte.length > 12 ? 70 : 45
@@ -1417,7 +1415,7 @@
                 ) {
                     mensaje.classList.remove('typing');
                     mensaje.innerHTML = formatearMarkdownBasico(contenido);
-                    messages.scrollTop = messages.scrollHeight;
+                    desplazarSiCorresponde();
                     return mensaje;
                 }
 
@@ -1425,13 +1423,11 @@
 
                 for (const token of tokens) {
                     if (token.tipo === 'salto') {
-                        const pegado = estaCercaDelFondo();
-
                         mensaje.appendChild(
                             document.createElement('br')
                         );
 
-                        desplazarSiPegado(pegado);
+                        desplazarSiCorresponde();
                         continue;
                     }
 
@@ -1453,11 +1449,9 @@
                     );
                 }
 
-                const pegadoAlFinal = estaCercaDelFondo();
-
                 mensaje.classList.remove('typing');
                 mensaje.innerHTML = formatearMarkdownBasico(contenido);
-                desplazarSiPegado(pegadoAlFinal);
+                desplazarSiCorresponde();
 
                 return mensaje;
             }
@@ -1545,27 +1539,56 @@
                     }
                 );
 
-                const pegado = estaCercaDelFondo();
-
                 messages.appendChild(contenedor);
-                desplazarSiPegado(pegado);
+                desplazarSiCorresponde();
             }
 
-            const TOLERANCIA_SCROLL_FONDO = 80;
+            const TOLERANCIA_FONDO_EXACTO = 4;
 
-            function estaCercaDelFondo() {
+            let usuarioSubio = false;
+            let ultimoScrollTop = messages.scrollTop;
+            let ignorarProximoEventoScroll = false;
+
+            function estaEnElFondo() {
                 return (
                     messages.scrollHeight -
                     messages.scrollTop -
                     messages.clientHeight
-                ) <= TOLERANCIA_SCROLL_FONDO;
+                ) <= TOLERANCIA_FONDO_EXACTO;
             }
 
-            function desplazarSiPegado(estabaPegado) {
-                if (estabaPegado) {
-                    messages.scrollTop = messages.scrollHeight;
+            function desplazarAlFondo() {
+                ignorarProximoEventoScroll = true;
+                messages.scrollTop = messages.scrollHeight;
+                ultimoScrollTop = messages.scrollTop;
+            }
+
+            function desplazarSiCorresponde() {
+                if (!usuarioSubio) {
+                    desplazarAlFondo();
                 }
             }
+
+            messages.addEventListener(
+                'scroll',
+                function () {
+                    if (ignorarProximoEventoScroll) {
+                        ignorarProximoEventoScroll = false;
+                        ultimoScrollTop = messages.scrollTop;
+                        return;
+                    }
+
+                    const scrollTopActual = messages.scrollTop;
+
+                    if (scrollTopActual < ultimoScrollTop - 1) {
+                        usuarioSubio = true;
+                    } else if (estaEnElFondo()) {
+                        usuarioSubio = false;
+                    }
+
+                    ultimoScrollTop = scrollTopActual;
+                }
+            );
 
             function cambiarEstado(estado) {
                 enviando = estado;
@@ -1639,6 +1662,8 @@
 
                 pasarAModoChat();
 
+                usuarioSubio = false;
+
                 agregarMensaje(
                     pregunta,
                     'user'
@@ -1671,12 +1696,10 @@
                             indiceCarga + 1
                         ) % mensajesCarga.length;
 
-                        const pegado = estaCercaDelFondo();
-
                         mensajeCargando.textContent =
                             mensajesCarga[indiceCarga];
 
-                        desplazarSiPegado(pegado);
+                        desplazarSiCorresponde();
                     },
                     1400
                 );

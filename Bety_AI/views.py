@@ -1002,6 +1002,33 @@ Fragmento:
     return contexto
 
 
+def _construir_fuentes_respuesta(fragmentos):
+    fuentes = []
+
+    for fragmento in fragmentos:
+        metadata = fragmento["metadata"]
+        titulo = metadata.get("titulo", "")
+        nombre_archivo = metadata.get("nombre_archivo", "")
+        pagina_inicio = metadata.get("pagina_inicio")
+        pagina_fin = metadata.get("pagina_fin")
+
+        fuente = {}
+        if titulo:
+            fuente["titulo"] = titulo
+        if nombre_archivo:
+            fuente["nombre_archivo"] = nombre_archivo
+        if pagina_inicio is not None:
+            fuente["pagina"] = (
+                f"{pagina_inicio}-{pagina_fin}"
+                if pagina_fin is not None and pagina_fin != pagina_inicio
+                else str(pagina_inicio)
+            )
+
+        fuentes.append(fuente)
+
+    return fuentes
+
+
 def _construir_prompt_documental(
     pregunta,
     pregunta_busqueda,
@@ -1102,6 +1129,7 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
             "respuesta": respuesta,
             "modelo": resultado_qwen["modelo"],
             "fragmentos_usados": len(fragmentos),
+            "fuentes": _construir_fuentes_respuesta(fragmentos),
             "mensajes_historial_temporal": len(historial),
         },
         status=status.HTTP_200_OK,

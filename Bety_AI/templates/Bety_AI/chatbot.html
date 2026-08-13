@@ -99,8 +99,8 @@
             right: 10px;
             bottom: 10px;
 
-            width: 380px;
-            height: 520px;
+            width: 494px;
+            height: 676px;
 
             max-width: calc(100vw - 20px);
             max-height: calc(100vh - 20px);
@@ -1380,11 +1380,13 @@
                 const partes = String(texto || '').match(/\S+\s*/g) || [texto];
 
                 for (const parte of partes) {
+                    const pegado = estaCercaDelFondo();
+
                     elemento.appendChild(
                         document.createTextNode(parte)
                     );
 
-                    messages.scrollTop = messages.scrollHeight;
+                    desplazarSiPegado(pegado);
 
                     await esperar(
                         parte.length > 12 ? 70 : 45
@@ -1423,11 +1425,13 @@
 
                 for (const token of tokens) {
                     if (token.tipo === 'salto') {
+                        const pegado = estaCercaDelFondo();
+
                         mensaje.appendChild(
                             document.createElement('br')
                         );
 
-                        messages.scrollTop = messages.scrollHeight;
+                        desplazarSiPegado(pegado);
                         continue;
                     }
 
@@ -1449,9 +1453,11 @@
                     );
                 }
 
+                const pegadoAlFinal = estaCercaDelFondo();
+
                 mensaje.classList.remove('typing');
                 mensaje.innerHTML = formatearMarkdownBasico(contenido);
-                messages.scrollTop = messages.scrollHeight;
+                desplazarSiPegado(pegadoAlFinal);
 
                 return mensaje;
             }
@@ -1539,8 +1545,26 @@
                     }
                 );
 
+                const pegado = estaCercaDelFondo();
+
                 messages.appendChild(contenedor);
-                messages.scrollTop = messages.scrollHeight;
+                desplazarSiPegado(pegado);
+            }
+
+            const TOLERANCIA_SCROLL_FONDO = 80;
+
+            function estaCercaDelFondo() {
+                return (
+                    messages.scrollHeight -
+                    messages.scrollTop -
+                    messages.clientHeight
+                ) <= TOLERANCIA_SCROLL_FONDO;
+            }
+
+            function desplazarSiPegado(estabaPegado) {
+                if (estabaPegado) {
+                    messages.scrollTop = messages.scrollHeight;
+                }
             }
 
             function cambiarEstado(estado) {
@@ -1647,10 +1671,12 @@
                             indiceCarga + 1
                         ) % mensajesCarga.length;
 
+                        const pegado = estaCercaDelFondo();
+
                         mensajeCargando.textContent =
                             mensajesCarga[indiceCarga];
 
-                        messages.scrollTop = messages.scrollHeight;
+                        desplazarSiPegado(pegado);
                     },
                     1400
                 );

@@ -44,6 +44,29 @@ def es_pregunta_identidad(pregunta):
     return any(re.search(patron, texto) for patron in patrones)
 
 
+def es_pregunta_inventario_documentos(pregunta):
+    """
+    Detecta preguntas sobre el INVENTARIO de documentos (que hay en la
+    coleccion), no sobre su CONTENIDO. El retrieval por similitud de Chroma
+    no puede responder esto -- solo trae fragmentos relacionados con una
+    consulta, nunca una lista completa -- y pasarla por consulta_documental
+    hace que el LLM complete una lista de documentos inventados (confirmado
+    en produccion, ver pending_alucinacion_inventario_documentos en
+    memoria).
+    """
+    texto = normalizar_texto(pregunta)
+
+    patrones = [
+        r"\bque documentos (tienes|tiene|manejas|maneja|hay|existen|cargaste|tiene cargados|tienes cargados)\b",
+        r"\btodos los documentos que (tienes|tiene|manejas|maneja|hay)\b",
+        r"\bcuales son los documentos\b",
+        r"\blista(do)? de (los )?documentos\b",
+        r"\binventario de documentos\b",
+    ]
+
+    return any(re.search(patron, texto) for patron in patrones)
+
+
 def es_interaccion_social(pregunta):
     texto = normalizar_texto(pregunta)
 

@@ -64,6 +64,7 @@ from .view_logic.chat_conversacion import (
 from .view_logic.chat_perfil_web import limpiar_pendiente_perfil_web
 from .view_logic.chat_clasificacion import (
     es_pregunta_fuera_ambito,
+    es_pregunta_inventario_documentos,
     pregunta_necesita_perfil_web,
 )
 from .view_logic.chat_respuestas_ia import (
@@ -271,6 +272,37 @@ def _agrupar_fragmentos_por_documento(fragmentos):
         documentos[id_documento]["fragmentos"] += 1
 
     return documentos
+
+
+def _construir_respuesta_inventario_documentos():
+    """
+    Responde "que documentos tienes" con el inventario real de Chroma
+    (metadata via collection.get(), no similarity search), en vez de dejar
+    que el LLM complete una lista a partir de 2-3 fragmentos sueltos. El
+    texto se arma aca mismo, no lo genera el modelo.
+
+    Devuelve None si no se pudo leer Chroma, para que el llamador deje caer
+    la pregunta al flujo normal en vez de mostrar un error.
+    """
+    try:
+        fragmentos = listar_fragmentos_chroma()
+    except Exception:
+        return None
+
+    documentos = _agrupar_fragmentos_por_documento(fragmentos)
+    titulos = sorted(
+        {
+            doc["titulo"]
+            for doc in documentos.values()
+            if doc.get("titulo") and doc["titulo"] != "Documento sin titulo"
+        }
+    )
+
+    if not titulos:
+        return "Por ahora no tengo documentos cargados en el sistema."
+
+    lineas = "\n".join(f"- {titulo}" for titulo in titulos)
+    return f"Estos son los documentos que tengo disponibles:\n{lineas}"
 
 
 def ver_chroma_dump(request):
@@ -1161,6 +1193,13 @@ def api_consulta_ia(request):
     if isinstance(resultado_perfil, Response):
         return resultado_perfil
     perfil_usuario, pregunta, pregunta_original_web, perfil_en_recoleccion = resultado_perfil
+
+    if es_pregunta_inventario_documentos(pregunta):
+        respuesta_inventario = _construir_respuesta_inventario_documentos()
+        if respuesta_inventario is not None:
+            return _responder_directo(
+                request, conversation_id, pregunta, "INVENTARIO_DOCUMENTOS", respuesta_inventario
+            )
 
     contexto_usuario = construir_contexto_usuario_prompt(perfil_usuario)
     historial_conversacion = formatear_historial_conversacion(conversation_id)

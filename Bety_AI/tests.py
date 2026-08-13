@@ -56,7 +56,10 @@ from .view_logic.chat_conversacion import (
     obtener_ultimo_tipo_respuesta_conversacion,
     responder_pregunta_sobre_historial,
 )
-from .view_logic.chat_respuestas_ia import generar_respuesta_controlada
+from .view_logic.chat_respuestas_ia import (
+    generar_respuesta_controlada,
+    limpiar_respuesta_ia,
+)
 from .view_logic.contexto_usuario import (
     construir_contexto_usuario_prompt,
     obtener_contexto_usuario_sga,
@@ -583,6 +586,67 @@ class RespuestasControladasTests(SimpleTestCase):
         prompt = qwen_mock.call_args.args[0]
         self.assertIn("Tipo de respuesta solicitada: FUERA_AMBITO", prompt)
         self.assertIn("eso no esta en tu base de informacion", prompt)
+
+
+class LimpiarRespuestaIaMetadataInternaTests(SimpleTestCase):
+    def test_limpia_etiquetas_internas_del_bloque_fuente(self):
+        respuesta = (
+            "Los documentos disponibles son:\n\n"
+            "1. Documento: Modelo Evaluativo SGA\n"
+            "   - ID documento: 5\n"
+            "   - Vigencia: VIGENTE\n"
+            "   - Periodo: [\"Todos\"]\n"
+            "   - Nivel académico detectado: General (no especifica nivel)\n"
+        )
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("ID documento", limpia)
+        self.assertNotIn("Vigencia:", limpia)
+        self.assertNotIn("Periodo:", limpia)
+        self.assertNotIn("Nivel académico detectado", limpia)
+        self.assertIn("Los documentos disponibles son:", limpia)
+        self.assertIn("Documento: Modelo Evaluativo SGA", limpia)
+        self.assertNotIn("\n\n\n", limpia)
+
+    def test_limpia_marcador_fuente_y_fragmento_vacio(self):
+        respuesta = (
+            "[FUENTE 1]\n"
+            "Fragmento:\n"
+            "Este es el contenido real que si debe verse.\n"
+        )
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("[FUENTE", limpia)
+        self.assertNotIn("Fragmento:", limpia)
+        self.assertIn("Este es el contenido real que si debe verse.", limpia)
+
+    def test_no_deja_vinetas_huerfanas(self):
+        respuesta = "Respuesta breve.\n-\n1.\n"
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("-\n", limpia)
+        self.assertEqual(limpia, "Respuesta breve.")
+
+    def test_no_altera_respuesta_normal(self):
+        respuesta = (
+            "Para justificar una inasistencia debes:\n"
+            "1. Ingresar al SGA con tu usuario institucional.\n"
+            "2. Completar el formulario de justificacion.\n"
+            "3. Adjuntar el respaldo correspondiente."
+        )
+
+        self.assertEqual(limpiar_respuesta_ia(respuesta), respuesta)
+
+    def test_no_borra_prosa_que_menciona_las_palabras(self):
+        respuesta = (
+            "La vigencia de este documento es de dos años. "
+            "El tipo de tramite depende del periodo academico en curso."
+        )
+
+        self.assertEqual(limpiar_respuesta_ia(respuesta), respuesta)
 
 
 @override_settings(CACHES={

@@ -2,6 +2,58 @@ import re
 
 from ..services.ollama_service import consultar_qwen
 
+# Etiquetas internas que _construir_contexto_documental (views.py) usa para
+# armar el bloque [FUENTE N] que recibe el LLM. La regla 6 del prompt
+# documental le prohibe reproducirlas, pero el modelo a veces las copia
+# igual (confirmado en produccion, ver pending_alucinacion_inventario_
+# documentos en memoria) -- este es el backstop deterministico. Se excluye
+# "Documento" a proposito: el titulo del documento no es informacion
+# interna sensible como el resto.
+_ETIQUETAS_METADATA_INTERNA = (
+    "ID documento",
+    "Tipo",
+    "Vigencia",
+    "Año",
+    "Periodo",
+    "Perfil",
+    "Grupo",
+    "Nivel académico detectado",
+)
+
+_MARCADOR_LISTA = r"(?:[-*•]|\d+[.)])"
+
+# Anclado a inicio de linea (con viñeta/numeracion opcional) y al texto
+# exacto de la etiqueta seguido de ":" -- no borra prosa que solo mencione
+# estas palabras (ej. "la vigencia del documento es de dos años").
+_PATRON_LINEA_METADATA_INTERNA = re.compile(
+    r"(?im)^[ \t]*(?:" + _MARCADOR_LISTA + r"[ \t]*)?(?:"
+    + "|".join(re.escape(etiqueta) for etiqueta in _ETIQUETAS_METADATA_INTERNA)
+    + r")[ \t]*:[ \t]*.*$\n?"
+)
+
+_PATRON_MARCADOR_FUENTE_INTERNO = re.compile(
+    r"(?im)^[ \t]*\[FUENTE[ \t]*\d+\][ \t]*$\n?"
+)
+
+# "Fragmento:" solo se borra si queda sola en su linea (asi la usa
+# _construir_contexto_documental, como encabezado antes del contenido) --
+# si el modelo la usa seguida de texto en la misma linea, no es el leak.
+_PATRON_FRAGMENTO_VACIO = re.compile(
+    r"(?im)^[ \t]*(?:" + _MARCADOR_LISTA + r"[ \t]*)?Fragmento[ \t]*:[ \t]*$\n?"
+)
+
+_PATRON_VINETA_HUERFANA = re.compile(
+    r"(?m)^[ \t]*" + _MARCADOR_LISTA + r"[ \t]*$\n?"
+)
+
+
+def _limpiar_metadata_interna_filtrada(respuesta):
+    respuesta = _PATRON_MARCADOR_FUENTE_INTERNO.sub("", respuesta)
+    respuesta = _PATRON_FRAGMENTO_VACIO.sub("", respuesta)
+    respuesta = _PATRON_LINEA_METADATA_INTERNA.sub("", respuesta)
+    respuesta = _PATRON_VINETA_HUERFANA.sub("", respuesta)
+    return re.sub(r"\n{3,}", "\n\n", respuesta)
+
 
 def limpiar_respuesta_ia(respuesta):
     """
@@ -18,6 +70,7 @@ def limpiar_respuesta_ia(respuesta):
         "",
         respuesta,
     )
+    respuesta = _limpiar_metadata_interna_filtrada(respuesta)
     return respuesta.strip()
 
 

@@ -93,7 +93,7 @@ def formatear_historial_conversacion(conversation_id):
         return ""
 
     bloques = [
-        f"Usuario: {item.get('pregunta', '')}\nBety: {item.get('respuesta', '')}"
+        f"Usuario: {item.get('pregunta', '')}\nBettIA: {item.get('respuesta', '')}"
         for item in historial_qa[-MAX_HISTORIAL_PROMPT:]
         if item.get("pregunta") and item.get("respuesta")
     ]

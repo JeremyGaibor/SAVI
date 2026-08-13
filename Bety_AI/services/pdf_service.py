@@ -354,7 +354,7 @@ def dividir_paginas_en_fragmentos(paginas_texto):
 
         pagina = int(item.get("pagina") or len(fragmentos) + 1)
         fragmentos.append({
-            "contenido": f"[PÃ¡gina {pagina}]\n{texto}",
+            "contenido": f"[Página {pagina}]\n{texto}",
             "pagina_inicio": pagina,
             "pagina_fin": pagina,
         })

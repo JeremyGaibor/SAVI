@@ -11,6 +11,7 @@ from .views import (
     _obtener_usuario_sga_por_sessionid,
     _construir_prompt_documental,
     _construir_pregunta_busqueda,
+    _construir_respuesta_inventario_documentos,
     _describir_filtros_relajados,
     _debe_reformular,
     api_consulta_ia,
@@ -46,6 +47,7 @@ from .view_logic.interpretacion_consulta import (
 from .view_logic.chat_perfil_web import obtener_siguiente_campo_perfil_web
 from .view_logic.chat_clasificacion import (
     es_pregunta_fuera_ambito,
+    es_pregunta_inventario_documentos,
     pregunta_necesita_perfil_web,
 )
 from .view_logic.chat_conversacion import (
@@ -649,6 +651,75 @@ class LimpiarRespuestaIaMetadataInternaTests(SimpleTestCase):
         self.assertEqual(limpiar_respuesta_ia(respuesta), respuesta)
 
 
+class InventarioDocumentosClasificacionTests(SimpleTestCase):
+    def test_detecta_variantes_confirmadas_en_produccion(self):
+        self.assertTrue(es_pregunta_inventario_documentos("Holaa, que documentos tienes?"))
+        self.assertTrue(es_pregunta_inventario_documentos("Dime todos los documentos que tienes"))
+
+    def test_detecta_sinonimos_razonables(self):
+        self.assertTrue(es_pregunta_inventario_documentos("que documentos manejas"))
+        self.assertTrue(es_pregunta_inventario_documentos("cuales son los documentos que tienes cargados"))
+        self.assertTrue(es_pregunta_inventario_documentos("dame la lista de documentos"))
+
+    def test_no_confunde_pregunta_documental_normal(self):
+        self.assertFalse(es_pregunta_inventario_documentos("como justifico mi inasistencia"))
+        self.assertFalse(
+            es_pregunta_inventario_documentos("que dice el manual de convivencia sobre asistencia")
+        )
+        self.assertFalse(es_pregunta_inventario_documentos("que documento necesito para matricularme"))
+
+
+class RespuestaInventarioDocumentosTests(SimpleTestCase):
+    @patch("Bety_AI.views.listar_fragmentos_chroma")
+    def test_lista_titulos_reales_deduplicados_y_ordenados(self, listar_mock):
+        listar_mock.return_value = [
+            {
+                "id": "doc_5_frag_1",
+                "contenido": "...",
+                "metadata": {"id_documento": "5", "titulo": "Modelo Evaluativo SGA"},
+            },
+            {
+                "id": "doc_5_frag_2",
+                "contenido": "...",
+                "metadata": {"id_documento": "5", "titulo": "Modelo Evaluativo SGA"},
+            },
+            {
+                "id": "doc_7_frag_1",
+                "contenido": "...",
+                "metadata": {"id_documento": "7", "titulo": "Solicitud de Carnet Estudiantil"},
+            },
+            {
+                "id": "doc_9_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "9",
+                    "titulo": "Manual para justificacion de inasistencia",
+                },
+            },
+        ]
+
+        respuesta = _construir_respuesta_inventario_documentos()
+
+        self.assertEqual(
+            respuesta,
+            "Estos son los documentos que tengo disponibles:\n"
+            "- Manual para justificacion de inasistencia\n"
+            "- Modelo Evaluativo SGA\n"
+            "- Solicitud de Carnet Estudiantil",
+        )
+
+    @patch("Bety_AI.views.listar_fragmentos_chroma", return_value=[])
+    def test_responde_sin_documentos_cargados(self, listar_mock):
+        self.assertEqual(
+            _construir_respuesta_inventario_documentos(),
+            "Por ahora no tengo documentos cargados en el sistema.",
+        )
+
+    @patch("Bety_AI.views.listar_fragmentos_chroma", side_effect=Exception("chroma caido"))
+    def test_devuelve_none_si_chroma_falla(self, listar_mock):
+        self.assertIsNone(_construir_respuesta_inventario_documentos())
+
+
 @override_settings(CACHES={
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -848,6 +919,58 @@ class HistorialConversacionTests(SimpleTestCase):
             obtener_ultimo_tipo_respuesta_conversacion(conversation_id),
             "RESPUESTA",
         )
+
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.listar_fragmentos_chroma")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    def test_api_responde_inventario_sin_pasar_por_el_router(
+        self,
+        guardar_temporal_mock,
+        listar_mock,
+        buscar_mock,
+        interpretar_mock,
+    ):
+        listar_mock.return_value = [
+            {
+                "id": "doc_5_frag_1",
+                "contenido": "...",
+                "metadata": {"id_documento": "5", "titulo": "Modelo Evaluativo SGA"},
+            },
+            {
+                "id": "doc_7_frag_1",
+                "contenido": "...",
+                "metadata": {"id_documento": "7", "titulo": "Solicitud de Carnet Estudiantil"},
+            },
+            {
+                "id": "doc_9_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "9",
+                    "titulo": "Manual para justificacion de inasistencia",
+                },
+            },
+        ]
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "Holaa, que documentos tienes?",
+                "conversation_id": "convtest-inventario",
+            },
+            format="json",
+        )
+        request.session = type("SessionStub", (dict,), {})()
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "INVENTARIO_DOCUMENTOS")
+        self.assertIn("Modelo Evaluativo SGA", response.data["respuesta"])
+        self.assertIn("Solicitud de Carnet Estudiantil", response.data["respuesta"])
+        self.assertIn("Manual para justificacion de inasistencia", response.data["respuesta"])
+        interpretar_mock.assert_not_called()
+        buscar_mock.assert_not_called()
 
     def test_normaliza_interpretacion_para_busqueda_enriquecida(self):
         interpretacion = normalizar_interpretacion(

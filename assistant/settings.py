@@ -167,8 +167,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SGA_CHATBOT_API_URL = os.getenv(
-    "SGA_CHATBOT_API_URL",
-    "http://127.0.0.1:8002/api/chatbot/sesion/",
-)
-SGA_CHATBOT_TOKEN = os.getenv("SGA_CHATBOT_TOKEN", "BETY-SGA-CHATBOT-2026")
+SGA_API_TOKEN_URL = os.getenv("SGA_API_TOKEN_URL", "")
+SGA_API_USUARIO_SESION_URL = os.getenv("SGA_API_USUARIO_SESION_URL", "")
+SGA_API_TOKEN_FIJO = os.getenv("SGA_API_TOKEN_FIJO", "")
+SGA_API_USUARIO = os.getenv("SGA_API_USUARIO", "")
+SGA_API_PASSWORD = os.getenv("SGA_API_PASSWORD", "")

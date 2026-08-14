@@ -1,8 +1,10 @@
 import json
 import logging
+import os
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -93,6 +95,8 @@ logger = logging.getLogger("Bety_AI.views")
 
 ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
 ERROR_SOLO_PDF = "Solo se permiten archivos PDF."
+SGA_API_TOKEN_CACHE_KEY = "bety:sga:api_token"
+SGA_API_TOKEN_TTL_SEGUNDOS = 55 * 60
 ACCIONES_GUARDAR_FRAGMENTO_ADMIN = {
     "crear": (crear_fragmento_chroma, "crear", "creado"),
     "actualizar": (actualizar_fragmento_chroma, "actualizar", "actualizado"),
@@ -109,14 +113,14 @@ def chatbot(request, sessionid=None):
     }
 
     if sessionid:
-        perfil_sga, error_sga, token_sga = _obtener_usuario_sga_por_sessionid(sessionid)
+        perfil_sga, error_sga, _token_sga = _obtener_usuario_sga_por_sessionid(sessionid)
         contexto["contexto_sga"] = perfil_sga
         contexto["error_contexto_sga"] = error_sga
 
         if perfil_sga:
             request.session["bety_sga_sessionid"] = sessionid
             request.session["bety_sga_usuario"] = perfil_sga
-            request.session["bety_sga_token"] = token_sga
+            request.session.pop("bety_sga_token", None)
         else:
             request.session.pop("bety_sga_sessionid", None)
             request.session.pop("bety_sga_usuario", None)
@@ -125,34 +129,138 @@ def chatbot(request, sessionid=None):
     return render(request, "Bety_AI/chatbot.html", contexto)
 
 
-def _obtener_usuario_sga_por_sessionid(sessionid):
-    api_url = getattr(settings, "SGA_CHATBOT_API_URL", "")
-    if not api_url:
-        return None, "No esta configurada la URL del API del SGA.", ""
+def _config_sga(nombre):
+    return getattr(settings, nombre, None) or os.getenv(nombre, "")
+
+
+def _obtener_token_api_sga(forzar_refresco=False):
+    if not forzar_refresco:
+        try:
+            token_cache = cache.get(SGA_API_TOKEN_CACHE_KEY)
+        except Exception as exc:
+            logger.warning("No se pudo leer token SGA desde cache: %s", exc)
+            token_cache = ""
+        if token_cache:
+            return token_cache, ""
+
+    api_url = _config_sga("SGA_API_TOKEN_URL")
+    token_fijo = _config_sga("SGA_API_TOKEN_FIJO")
+    usuario = _config_sga("SGA_API_USUARIO")
+    password = _config_sga("SGA_API_PASSWORD")
+
+    if not all([api_url, token_fijo, usuario, password]):
+        return "", "No esta configurado el acceso al API de token del SGA."
 
     try:
         respuesta = requests.post(
             api_url,
             json={
-                "sessionid": sessionid,
-                "token": getattr(settings, "SGA_CHATBOT_TOKEN", ""),
+                "token": token_fijo,
+                "usuario": usuario,
+                "password": password,
             },
             timeout=6,
         )
         respuesta.raise_for_status()
         datos = respuesta.json()
     except requests.exceptions.RequestException as exc:
+        logger.warning("No se pudo obtener token del API SGA: %s", exc)
+        return "", "No se pudo validar el acceso al SGA en este momento."
+    except ValueError as exc:
+        logger.warning("El API de token SGA devolvio una respuesta no JSON: %s", exc)
+        return "", "El SGA devolvio una respuesta no valida."
+
+    token = limpiar_texto_contexto(datos.get("token"), 500)
+    if datos.get("result") != "ok" or not token:
+        logger.warning("El API de token SGA no devolvio token valido: %s", datos)
+        return "", "No se pudo validar el acceso al SGA."
+
+    try:
+        cache.set(SGA_API_TOKEN_CACHE_KEY, token, SGA_API_TOKEN_TTL_SEGUNDOS)
+    except Exception as exc:
+        logger.warning("No se pudo guardar token SGA en cache: %s", exc)
+    return token, ""
+
+
+def _respuesta_sga_indica_token_invalido(respuesta=None, datos=None):
+    if respuesta is not None and respuesta.status_code in {401, 403}:
+        return True
+
+    if not isinstance(datos, dict):
+        return False
+
+    texto_respuesta = " ".join(
+        str(datos.get(campo, ""))
+        for campo in ["error", "mensaje", "message", "detail", "detalle"]
+    ).lower()
+    return "token" in texto_respuesta and (
+        "expir" in texto_respuesta
+        or "invalid" in texto_respuesta
+        or "inval" in texto_respuesta
+        or "unauthor" in texto_respuesta
+        or "no autorizado" in texto_respuesta
+    )
+
+
+def _consultar_usuario_sga(sessionid, token_sga):
+    api_url = _config_sga("SGA_API_USUARIO_SESION_URL")
+    if not api_url:
+        return None, "No esta configurada la URL del API de usuario-sesion del SGA.", False
+
+    try:
+        respuesta = requests.post(
+            api_url,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token_sga}",
+            },
+            json={"sessionid": sessionid},
+            timeout=6,
+        )
+        try:
+            datos = respuesta.json()
+        except ValueError:
+            datos = None
+
+        if _respuesta_sga_indica_token_invalido(respuesta, datos):
+            return None, "El token del SGA expiro o no es valido.", True
+
+        respuesta.raise_for_status()
+    except requests.exceptions.RequestException as exc:
         logger.warning("No se pudo consultar la sesion SGA: %s", exc)
         return None, (
             "No se pudo validar tu sesion del SGA en este momento. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        ), ""
-    except ValueError as exc:
-        logger.warning("El API SGA devolvio una respuesta no JSON: %s", exc)
+        ), False
+
+    if datos is None:
+        logger.warning("El API usuario-sesion SGA devolvio una respuesta no JSON")
         return None, (
             "El SGA devolvio una respuesta no valida. "
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
-        ), ""
+        ), False
+
+    return datos, "", False
+
+
+def _obtener_usuario_sga_por_sessionid(sessionid):
+    token_sga, error_token = _obtener_token_api_sga()
+    if not token_sga:
+        return None, error_token, ""
+
+    datos, error_usuario, token_invalido = _consultar_usuario_sga(sessionid, token_sga)
+    if token_invalido:
+        try:
+            cache.delete(SGA_API_TOKEN_CACHE_KEY)
+        except Exception as exc:
+            logger.warning("No se pudo borrar token SGA de cache: %s", exc)
+        token_sga, error_token = _obtener_token_api_sga(forzar_refresco=True)
+        if not token_sga:
+            return None, error_token, ""
+        datos, error_usuario, _token_invalido = _consultar_usuario_sga(sessionid, token_sga)
+
+    if error_usuario:
+        return None, error_usuario, ""
 
     if datos.get("result") != "ok" or not isinstance(datos.get("usuario"), dict):
         logger.warning("El API SGA no devolvio usuario valido: %s", datos)
@@ -169,7 +277,7 @@ def _obtener_usuario_sga_por_sessionid(sessionid):
             "Puedes usar el chat, pero las respuestas no tendran tus datos academicos."
         ), ""
 
-    return perfil_sga, "", limpiar_texto_contexto(datos.get("token"), 500)
+    return perfil_sga, "", ""
 
 
 def _guardar_fragmento_admin(request, accion):
@@ -1197,11 +1305,11 @@ def api_consulta_ia(request):
         )
 
     conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
-    perfil_sga = obtener_contexto_usuario_sga(request.data)
+    perfil_sga = request.session.get("bety_sga_usuario", {})
+    if not isinstance(perfil_sga, dict):
+        perfil_sga = {}
     if not perfil_sga:
-        perfil_sga = request.session.get("bety_sga_usuario", {})
-        if not isinstance(perfil_sga, dict):
-            perfil_sga = {}
+        perfil_sga = obtener_contexto_usuario_sga(request.data)
 
     resultado_recoleccion = guardar_respuesta_campo_conversacion(conversation_id, pregunta)
 

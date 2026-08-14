@@ -23,12 +23,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-ev3^o*m=0*pa2x+1n^q^e!o7+k$!p)j(r=8ju=!2f7@or#jf1@'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+def env_bool(nombre, defecto=False):
+    valor = os.getenv(nombre)
+    if valor is None:
+        return defecto
+    return valor.strip().lower() in {"1", "true", "yes", "si", "on"}
 
-ALLOWED_HOSTS = [
-    "16.58.71.138",
-]
+
+def env_list(nombre, defecto=None):
+    valor = os.getenv(nombre, "")
+    if not valor.strip():
+        return defecto or []
+    return [item.strip() for item in valor.split(",") if item.strip()]
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = env_bool("DEBUG", True)
+
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["16.58.71.138"])
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", ["https://16.58.71.138"])
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", not DEBUG)
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 
 # Application definition

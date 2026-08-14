@@ -41,6 +41,11 @@ jobs:
           OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
+          DEBUG: "False"
+          ALLOWED_HOSTS: "16.58.71.138"
+          CSRF_TRUSTED_ORIGINS: "https://16.58.71.138"
+          SESSION_COOKIE_SECURE: "True"
+          CSRF_COOKIE_SECURE: "True"
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
           LLM_FALLBACK_PROVIDER: ${{ secrets.LLM_FALLBACK_PROVIDER }}
           BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
@@ -71,6 +76,11 @@ jobs:
             echo "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
             echo "OLLAMA_MODEL=${OLLAMA_MODEL}"
             echo "OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS}"
+            echo "DEBUG=${DEBUG}"
+            echo "ALLOWED_HOSTS=${ALLOWED_HOSTS}"
+            echo "CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}"
+            echo "SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE}"
+            echo "CSRF_COOKIE_SECURE=${CSRF_COOKIE_SECURE}"
             echo ""
             echo "# ollama | bedrock"
             echo "LLM_PROVIDER=${LLM_PROVIDER}"

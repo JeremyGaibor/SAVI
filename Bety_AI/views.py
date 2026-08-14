@@ -253,6 +253,24 @@ def _listar_fragmentos_admin(error_previo):
         return [], error_previo or f"No se pudo leer ChromaDB: {exc}"
 
 
+def _formatear_lista_metadata(valor):
+    """
+    Los campos tipo lista llegan de Chroma como un string con forma de
+    array JSON (ej. '["Todos"]'), no como lista real. Los volvemos texto
+    legible sin corchetes ni comillas. Si no hay valor o no se puede
+    parsear como lista, la celda queda vacia en vez de romper.
+    """
+    if not valor:
+        return ""
+    try:
+        elementos = json.loads(valor)
+    except (TypeError, ValueError):
+        return ""
+    if not isinstance(elementos, list):
+        return ""
+    return ", ".join(str(elemento) for elemento in elementos)
+
+
 def _agrupar_fragmentos_por_documento(fragmentos):
     documentos = {}
     for fragmento in fragmentos:
@@ -263,9 +281,9 @@ def _agrupar_fragmentos_por_documento(fragmentos):
             "id_documento": id_documento,
             "titulo": metadata.get("titulo", "Documento sin titulo"),
             "tipo_documento": metadata.get("tipo_documento", ""),
-            "perfil": metadata.get("perfil", ""),
-            "periodo": metadata.get("periodo", ""),
-            "carrera": metadata.get("carrera", ""),
+            "perfil": _formatear_lista_metadata(metadata.get("perfiles")),
+            "periodo": _formatear_lista_metadata(metadata.get("tipos_periodo")),
+            "carrera": _formatear_lista_metadata(metadata.get("grupos")),
             "estado_vigencia": metadata.get("estado_vigencia", ""),
             "fragmentos": 0,
         })

@@ -63,6 +63,7 @@ Campos opcionales:
 - `uuid_version_anterior`: UUID de la version que debe eliminarse de Chroma antes de indexar la nueva.
 - `estado_vigencia`
 - `anio_documento`
+- `tipo_documento`
 - `resumen_documento`
 - `temas_detectados`
 - `nombre_archivo`
@@ -74,6 +75,7 @@ Campos permitidos dentro de `metadata`:
 - `numero_version`
 - `numero_version_anterior`
 - `archivo_path`
+- `tipo_documento`
 - `perfiles`
 - `grupos`
 - `tipos_periodo`
@@ -99,7 +101,6 @@ El guardado ignora campos tecnicos de legibilidad y campos simples o no confirma
 - `fuente`
 - `temas_detectados`
 - `ambito`
-- `tipo_documento`
 - `perfiles_acceso`
 - `id_perfil_externo`
 - `grupos_acceso`

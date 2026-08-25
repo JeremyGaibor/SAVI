@@ -1580,6 +1580,7 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertEqual(metadata_base["uuid_documento"], "uuid-doc")
         self.assertEqual(metadata_base["uuid_version"], "uuid-ver")
         self.assertEqual(metadata_base["anio_documento"], "2026")
+        self.assertEqual(metadata_base["tipo_documento"], "MANUAL")
         self.assertEqual(metadata_base["nombre_archivo"], "manual.pdf")
         self.assertEqual(metadata_base["perfiles"], '["Estudiante", "Docente"]')
         self.assertEqual(metadata_base["grupos"], '["Computacion"]')
@@ -1596,7 +1597,6 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
             "periodo",
             "carrera",
             "tipo_estudio",
-            "tipo_documento",
             "ambito",
             "perfiles_acceso",
             "id_perfil_externo",

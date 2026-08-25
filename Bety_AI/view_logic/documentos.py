@@ -79,6 +79,7 @@ METADATA_DOCUMENTAL_PERMITIDA = [
     "archivo_path",
     "estado_vigencia",
     "anio_documento",
+    "tipo_documento",
     "perfiles",
     "grupos",
     "tipos_periodo",

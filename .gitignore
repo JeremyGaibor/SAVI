@@ -23,3 +23,7 @@ staticfiles/
 
 # Chroma / Docker local
 chroma_data/
+
+# Scripts locales de prueba
+scripts/stress_test_ia.py
+docs/pruebas_estres_ia.md

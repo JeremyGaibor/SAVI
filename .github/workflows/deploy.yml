@@ -42,8 +42,8 @@ jobs:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
           DEBUG: "False"
-          ALLOWED_HOSTS: "16.58.71.138"
-          CSRF_TRUSTED_ORIGINS: "https://16.58.71.138"
+          ALLOWED_HOSTS: "16.58.71.138,bettyaiuteq.duckdns.org"
+          CSRF_TRUSTED_ORIGINS: "https://16.58.71.138,https://bettyaiuteq.duckdns.org"
           SESSION_COOKIE_SECURE: "True"
           CSRF_COOKIE_SECURE: "True"
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}

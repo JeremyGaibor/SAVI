@@ -40,10 +40,15 @@ def env_list(nombre, defecto=None):
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool("DEBUG", True)
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["16.58.71.138", "127.0.0.1", "localhost"])
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["16.58.71.138", "bettyaiuteq.duckdns.org", "127.0.0.1", "localhost"])
 CSRF_TRUSTED_ORIGINS = env_list(
     "CSRF_TRUSTED_ORIGINS",
-    ["https://16.58.71.138", "http://127.0.0.1:8000", "http://localhost:8000"],
+    [
+        "https://16.58.71.138",
+        "https://bettyaiuteq.duckdns.org",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
 )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

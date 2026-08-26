@@ -18,6 +18,7 @@ staticfiles/
 # Variables de entorno
 .env
 
+-
 # PyCharm
 .idea/
 

@@ -75,6 +75,7 @@ Campos permitidos dentro de `metadata`:
 - `numero_version`
 - `numero_version_anterior`
 - `archivo_path`
+- `documento_url`: enlace que debe abrirse cuando el chatbot muestra la fuente del documento.
 - `tipo_documento`
 - `perfiles`
 - `grupos`
@@ -185,7 +186,40 @@ Respuesta principal:
 - `uuid_version_anterior_eliminada`: UUID de la version anterior eliminada cuando aplica.
 - `requiere_ocr`: `true` cuando no hay texto suficiente para indexar.
 
-## 3. Quitar vigencia en ChromaDB
+## 3. Actualizar link del documento
+
+Agrega o reemplaza el link final del documento en todos los fragmentos de una version ya guardada en ChromaDB. Se usa cuando el sistema documental todavia no tenia el enlace en el momento de llamar a `guardar-chroma`.
+
+```http
+POST /api/integracion/documentos/actualizar-link/
+Content-Type: application/json
+```
+
+Campos requeridos:
+
+- `uuid_version`: UUID de la version exacta que se debe actualizar.
+- `documento_url`: URL `http(s)` o ruta relativa que debe abrirse al hacer clic en la fuente del chatbot.
+
+Ejemplo:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/integracion/documentos/actualizar-link/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uuid_version": "uuid-version-actual",
+    "documento_url": "https://sistema-documental.uteq.edu.ec/documentos/123/versiones/45"
+  }'
+```
+
+Respuesta principal:
+
+- `estado_procesamiento`: `LINK_ACTUALIZADO`, `NO_ENCONTRADO` o `ERROR`.
+- `fragmentos_actualizados`: cantidad de fragmentos de esa version actualizados.
+- `documento_url`: link guardado en la metadata.
+
+Cuando el chatbot devuelve fuentes, la respuesta incluye el campo `url` pero el frontend muestra el nombre del documento como texto clickeable, no la URL.
+
+## 4. Quitar vigencia en ChromaDB
 
 Elimina de la base vectorial los fragmentos de una version que ya no esta vigente. No analiza PDF, no extrae texto y no registra una version nueva.
 

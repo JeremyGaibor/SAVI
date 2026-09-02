@@ -56,6 +56,7 @@ from .view_logic.chat_conversacion import (
     guardar_respuesta_campo_conversacion,
     iniciar_recoleccion_perfil_conversacion,
     formatear_historial_conversacion,
+    formatear_historial_conversacion_solo_preguntas,
     agregar_historial_conversacion,
     es_solicitud_reformulacion,
     obtener_ultima_pregunta_conversacion,
@@ -1402,11 +1403,15 @@ def api_consulta_ia(request):
 
     contexto = _construir_contexto_documental(fragmentos)
     aviso_filtros_relajados = _describir_filtros_relajados(filtros, filtros_aplicados)
+    # Solo preguntas, no las respuestas completas -- el router (arriba, en
+    # _interpretar_consulta_con_fallback) sigue usando el historial completo.
+    # Ver formatear_historial_conversacion_solo_preguntas.
+    historial_solo_preguntas = formatear_historial_conversacion_solo_preguntas(conversation_id)
     prompt = _construir_prompt_documental(
         pregunta,
         pregunta_busqueda,
         contexto_usuario,
-        historial_conversacion,
+        historial_solo_preguntas,
         contexto,
         interpretacion_consulta,
         _perfil_desambiguo_documento(filtros_aplicados),

@@ -54,6 +54,7 @@ from .view_logic.chat_conversacion import (
     agregar_historial_conversacion,
     es_solicitud_reformulacion,
     formatear_historial_conversacion,
+    formatear_historial_conversacion_solo_preguntas,
     obtener_ultima_respuesta_conversacion,
     obtener_ultimo_tipo_respuesta_conversacion,
     responder_pregunta_sobre_historial,
@@ -769,6 +770,53 @@ class HistorialConversacionTests(SimpleTestCase):
             'Tu primer mensaje en esta conversacion fue: "Pregunta 1".',
         )
 
+    def test_historial_solo_preguntas_no_incluye_respuestas_anteriores(self):
+        conversation_id = "convtest-solo-preguntas-01"
+        agregar_historial_conversacion(
+            conversation_id,
+            "documentos para ayuda economica por bajos recursos",
+            "Lista completa de requisitos de bajos recursos.",
+        )
+        agregar_historial_conversacion(
+            conversation_id,
+            "y por excelencia academica",
+            "Lista completa de requisitos de bajos recursos.",
+        )
+
+        historial_completo = formatear_historial_conversacion(conversation_id)
+        historial_solo_preguntas = formatear_historial_conversacion_solo_preguntas(conversation_id)
+
+        # El historial completo (para el router) sigue teniendo las respuestas.
+        self.assertIn("BettIA:", historial_completo)
+        self.assertIn("Lista completa de requisitos de bajos recursos.", historial_completo)
+
+        # El historial reducido (para el prompt documental) no las tiene.
+        self.assertNotIn("BettIA:", historial_solo_preguntas)
+        self.assertNotIn("Lista completa de requisitos de bajos recursos.", historial_solo_preguntas)
+
+        # Pero conserva las preguntas, en orden.
+        indice_pregunta_1 = historial_solo_preguntas.find("documentos para ayuda economica por bajos recursos")
+        indice_pregunta_2 = historial_solo_preguntas.find("y por excelencia academica")
+        self.assertNotEqual(indice_pregunta_1, -1)
+        self.assertNotEqual(indice_pregunta_2, -1)
+        self.assertLess(indice_pregunta_1, indice_pregunta_2)
+
+    def test_historial_solo_preguntas_usa_ultimos_turnos_sin_perder_primer_mensaje(self):
+        conversation_id = "convtest-solo-preguntas-02"
+        for indice in range(1, 7):
+            agregar_historial_conversacion(
+                conversation_id,
+                f"Pregunta {indice}",
+                f"Respuesta {indice}",
+            )
+
+        historial_solo_preguntas = formatear_historial_conversacion_solo_preguntas(conversation_id)
+
+        self.assertNotIn("Pregunta 1\n", historial_solo_preguntas)
+        self.assertNotIn("Pregunta 1", historial_solo_preguntas)
+        self.assertIn("Pregunta 6", historial_solo_preguntas)
+        self.assertNotIn("Respuesta 6", historial_solo_preguntas)
+
     def test_detecta_solicitud_de_reformulacion(self):
         self.assertTrue(es_solicitud_reformulacion("mas resumido"))
         self.assertTrue(es_solicitud_reformulacion("explicalo mejor"))
@@ -1424,6 +1472,74 @@ class HistorialConversacionTests(SimpleTestCase):
             obtener_ultimo_tipo_respuesta_conversacion("convtest05"),
             "RESPUESTA",
         )
+
+    @patch("Bety_AI.views.consultar_qwen")
+    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
+    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("Bety_AI.views.interpretar_consulta_ia")
+    def test_prompt_documental_no_lleva_respuestas_anteriores_pero_router_si(
+        self,
+        interpretar_mock,
+        guardar_temporal_mock,
+        buscar_mock,
+        qwen_mock,
+    ):
+        conversation_id = "convtest-historial-solo-preguntas"
+        agregar_historial_conversacion(
+            conversation_id,
+            "documentos para ayuda economica por bajos recursos",
+            "Lista completa de requisitos de bajos recursos.",
+        )
+
+        interpretar_mock.return_value = {
+            "tipo_operacion": "consulta_documental",
+            "consulta_normalizada": "ayuda economica por excelencia academica",
+            "consulta_busqueda": "y por excelencia academica ayuda economica por excelencia academica",
+            "depende_historial": False,
+            "formato_respuesta": "normal",
+            "palabras_clave": [],
+            "filtros_sugeridos": {},
+            "modelo": "qwen-test",
+        }
+        buscar_mock.return_value = (
+            [_fragmento("2", "Ayudas economicas", contenido="Requisitos de excelencia academica.")],
+            {},
+        )
+        qwen_mock.return_value = {
+            "respuesta": "Requisitos de excelencia academica.",
+            "modelo": "qwen-final",
+        }
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "y por excelencia academica",
+                "conversation_id": conversation_id,
+                "usuario": {
+                    "perfil": "estudiante",
+                    "tipo_estudiante": "pregrado",
+                    "facultad": "Computacion",
+                },
+            },
+            format="json",
+        )
+        request.session = type("SessionStub", (dict,), {})()
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+
+        # El router sigue recibiendo el historial completo, con las respuestas.
+        historial_recibido_por_router = interpretar_mock.call_args.args[1]
+        self.assertIn("BettIA:", historial_recibido_por_router)
+        self.assertIn("Lista completa de requisitos de bajos recursos.", historial_recibido_por_router)
+
+        # El prompt documental (lo que arma la respuesta final) no lleva la
+        # respuesta anterior completa -- solo el hilo de preguntas.
+        prompt_documental = qwen_mock.call_args.args[0]
+        self.assertNotIn("BettIA:", prompt_documental)
+        self.assertNotIn("Lista completa de requisitos de bajos recursos.", prompt_documental)
+        self.assertIn("documentos para ayuda economica por bajos recursos", prompt_documental)
 
 class ProcesarDocumentoChromaTests(SimpleTestCase):
     def setUp(self):

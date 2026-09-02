@@ -101,6 +101,35 @@ def formatear_historial_conversacion(conversation_id):
     return "\n\n".join(bloques)
 
 
+def formatear_historial_conversacion_solo_preguntas(conversation_id):
+    """
+    Version del historial para el prompt documental (RESPUESTA), sin las
+    respuestas anteriores completas. El router (interpretar_consulta_ia)
+    sigue usando formatear_historial_conversacion completo -- esta version
+    reducida es solo para el prompt que redacta la respuesta final, para
+    que el modelo no tenga ahi mismo un texto ya armado de un tema anterior
+    para copiar cuando la pregunta nueva es sobre otro tema (confirmado en
+    produccion, ver confirmado_historial_domina_sobre_contexto_documental
+    en memoria). Mantiene el hilo de que se hablo, sin darle una respuesta
+    lista.
+    """
+    if not conversation_id:
+        return ""
+
+    estado = obtener_estado_conversacion(conversation_id)
+    historial_qa = estado.get("historial_qa")
+    if not isinstance(historial_qa, list) or not historial_qa:
+        return ""
+
+    preguntas = [
+        f"Usuario: {item.get('pregunta', '')}"
+        for item in historial_qa[-MAX_HISTORIAL_PROMPT:]
+        if item.get("pregunta")
+    ]
+
+    return "\n".join(preguntas)
+
+
 def es_pregunta_sobre_historial(pregunta):
     texto = normalizar_texto(limpiar_texto_contexto(pregunta, 300))
     patrones = [

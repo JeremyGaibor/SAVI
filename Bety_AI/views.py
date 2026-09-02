@@ -21,6 +21,7 @@ from .services.pdf_service import (
 )
 from .services.chroma_service import (
     actualizar_fragmento_chroma,
+    actualizar_metadata_version_chroma,
     crear_fragmento_chroma,
     eliminar_documento_chroma,
     eliminar_fragmento_chroma,
@@ -743,6 +744,89 @@ def api_quitar_vigencia_documento(request):
     )
 
 
+def _url_documento_segura(url):
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    if url.startswith(("https://", "http://", "/")):
+        return url
+    return ""
+
+
+@api_view(["POST", "PATCH"])
+@parser_classes([FormParser, JSONParser])
+def api_actualizar_link_documento(request):
+    metadata_recibida = obtener_metadata_request(request)
+    uuid_version = str(
+        obtener_valor_request(
+            request,
+            "uuid_version",
+            metadata_recibida.get("uuid_version", ""),
+        )
+    ).strip()
+    documento_url = _url_documento_segura(
+        obtener_valor_request(
+            request,
+            "documento_url",
+            metadata_recibida.get("documento_url")
+            or metadata_recibida.get("archivo_path")
+            or "",
+        )
+    )
+
+    if not uuid_version:
+        return Response(
+            {"error": "Debe enviar el campo 'uuid_version'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not documento_url:
+        return Response(
+            {"error": "Debe enviar 'documento_url' con una URL http(s) o ruta relativa valida."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        fragmentos_actualizados = actualizar_metadata_version_chroma(
+            uuid_version,
+            {"documento_url": documento_url},
+        )
+    except Exception as exc:
+        return Response(
+            {
+                "ok": False,
+                "estado_procesamiento": "ERROR",
+                "uuid_version": uuid_version,
+                "mensaje": f"No se pudo actualizar el link del documento en ChromaDB: {exc}",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    if fragmentos_actualizados == 0:
+        return Response(
+            {
+                "ok": False,
+                "estado_procesamiento": "NO_ENCONTRADO",
+                "uuid_version": uuid_version,
+                "fragmentos_actualizados": 0,
+                "mensaje": "No se encontraron fragmentos en ChromaDB para esa version.",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response(
+        {
+            "ok": True,
+            "estado_procesamiento": "LINK_ACTUALIZADO",
+            "uuid_version": uuid_version,
+            "documento_url": documento_url,
+            "fragmentos_actualizados": fragmentos_actualizados,
+            "mensaje": "Link del documento actualizado correctamente en ChromaDB.",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(["POST"])
 def api_buscar_fragmentos(request):
     pregunta = request.data.get("pregunta")
@@ -1170,12 +1254,17 @@ def _construir_fuentes_respuesta(fragmentos):
         nombre_archivo = metadata.get("nombre_archivo", "")
         pagina_inicio = metadata.get("pagina_inicio")
         pagina_fin = metadata.get("pagina_fin")
+        documento_url = _url_documento_segura(
+            metadata.get("documento_url") or metadata.get("archivo_path") or ""
+        )
 
         fuente = {}
         if titulo:
             fuente["titulo"] = titulo
         if nombre_archivo:
             fuente["nombre_archivo"] = nombre_archivo
+        if documento_url:
+            fuente["url"] = documento_url
         if pagina_inicio is not None:
             fuente["pagina"] = (
                 f"{pagina_inicio}-{pagina_fin}"

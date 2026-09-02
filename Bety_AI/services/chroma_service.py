@@ -239,6 +239,34 @@ def actualizar_fragmento_chroma(id_fragmento, contenido, metadata):
     )
 
 
+def actualizar_metadata_version_chroma(uuid_version, metadata_actualizada):
+    collection = obtener_coleccion()
+    resultados = collection.get(
+        where={"uuid_version": str(uuid_version)},
+        include=["metadatas"],
+    )
+
+    ids = resultados.get("ids", [])
+    metadatas = resultados.get("metadatas", [])
+    if not ids:
+        return 0
+
+    metadatas_actualizadas = []
+    for indice, _ in enumerate(ids):
+        metadata = {}
+        if indice < len(metadatas) and isinstance(metadatas[indice], dict):
+            metadata = metadatas[indice].copy()
+        metadata.update(metadata_actualizada)
+        metadatas_actualizadas.append(metadata)
+
+    collection.update(
+        ids=ids,
+        metadatas=metadatas_actualizadas,
+    )
+
+    return len(ids)
+
+
 def eliminar_fragmento_chroma(id_fragmento):
     collection = obtener_coleccion()
     collection.delete(ids=[id_fragmento])

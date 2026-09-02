@@ -77,6 +77,7 @@ METADATA_DOCUMENTAL_PERMITIDA = [
     "numero_version",
     "numero_version_anterior",
     "archivo_path",
+    "documento_url",
     "estado_vigencia",
     "anio_documento",
     "tipo_documento",

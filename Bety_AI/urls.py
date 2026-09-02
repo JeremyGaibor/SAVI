@@ -11,6 +11,7 @@ urlpatterns = [
     # APIs de integracion para el grupo externo de documentos.
     path("api/integracion/documentos/analizar/", views.api_analizar_documento, name="api_integracion_analizar_documento"),
     path("api/integracion/documentos/guardar-chroma/", views.api_procesar_documento, name="api_integracion_guardar_chroma"),
+    path("api/integracion/documentos/actualizar-link/", views.api_actualizar_link_documento, name="api_integracion_actualizar_link_documento"),
     path("api/integracion/documentos/quitar-vigencia/", views.api_quitar_vigencia_documento, name="api_integracion_quitar_vigencia_documento"),
 
     # Rutas historicas conservadas como alias.

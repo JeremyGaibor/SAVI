@@ -5,15 +5,17 @@ import requests
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from .views import (
     _obtener_usuario_sga_por_sessionid,
+    _construir_fuentes_respuesta,
     _construir_prompt_documental,
     _construir_pregunta_busqueda,
     _construir_respuesta_inventario_documentos,
     _describir_filtros_relajados,
     _debe_reformular,
+    api_actualizar_link_documento,
     api_consulta_ia,
     api_procesar_documento,
 )
@@ -1660,6 +1662,7 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
                 "ambito": "ACADEMICO",
                 "tipo_documento": "MANUAL",
                 "nombre_archivo": "manual.pdf",
+                "documento_url": "https://documentos.uteq.edu.ec/manual.pdf",
                 "texto_extraido": "Texto suficientemente largo para superar el minimo de caracteres. " * 3,
                 "metadata": {
                     "perfiles": ["Estudiante", "Docente"],
@@ -1698,6 +1701,7 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertEqual(metadata_base["anio_documento"], "2026")
         self.assertEqual(metadata_base["tipo_documento"], "MANUAL")
         self.assertEqual(metadata_base["nombre_archivo"], "manual.pdf")
+        self.assertEqual(metadata_base["documento_url"], "https://documentos.uteq.edu.ec/manual.pdf")
         self.assertEqual(metadata_base["perfiles"], '["Estudiante", "Docente"]')
         self.assertEqual(metadata_base["grupos"], '["Computacion"]')
         self.assertEqual(metadata_base["tipos_periodo"], '["Nivelacion", "Grado"]')
@@ -1787,6 +1791,151 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         eliminar_documento_mock.assert_called_once_with("DOC-123")
         eliminar_version_mock.assert_not_called()
         self.assertEqual(guardar_mock.call_args.kwargs["titulo"], "Documento DOC-123")
+
+
+class ActualizarLinkDocumentoTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+
+    @patch("Bety_AI.views.actualizar_metadata_version_chroma", return_value=3)
+    def test_actualiza_link_por_uuid_version(self, actualizar_mock):
+        request = self.factory.post(
+            "/api/integracion/documentos/actualizar-link/",
+            {
+                "uuid_version": "uuid-version-123",
+                "documento_url": "https://documentos.uteq.edu.ec/doc/123",
+            },
+            format="json",
+        )
+
+        response = api_actualizar_link_documento(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["estado_procesamiento"], "LINK_ACTUALIZADO")
+        self.assertEqual(response.data["fragmentos_actualizados"], 3)
+        actualizar_mock.assert_called_once_with(
+            "uuid-version-123",
+            {"documento_url": "https://documentos.uteq.edu.ec/doc/123"},
+        )
+
+    @patch("Bety_AI.views.actualizar_metadata_version_chroma")
+    def test_rechaza_link_inseguro(self, actualizar_mock):
+        request = self.factory.post(
+            "/api/integracion/documentos/actualizar-link/",
+            {
+                "uuid_version": "uuid-version-123",
+                "documento_url": "javascript:alert(1)",
+            },
+            format="json",
+        )
+
+        response = api_actualizar_link_documento(request)
+
+        self.assertEqual(response.status_code, 400)
+        actualizar_mock.assert_not_called()
+
+    @patch("Bety_AI.views.actualizar_metadata_version_chroma", return_value=0)
+    def test_devuelve_404_si_no_hay_fragmentos_para_la_version(self, actualizar_mock):
+        request = self.factory.post(
+            "/api/integracion/documentos/actualizar-link/",
+            {
+                "uuid_version": "uuid-version-ausente",
+                "documento_url": "https://documentos.uteq.edu.ec/doc/404",
+            },
+            format="json",
+        )
+
+        response = api_actualizar_link_documento(request)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data["estado_procesamiento"], "NO_ENCONTRADO")
+        actualizar_mock.assert_called_once()
+
+
+class FuentesRespuestaTests(SimpleTestCase):
+    def test_fuente_incluye_url_segura_sin_cambiar_titulo_visible(self):
+        fuentes = _construir_fuentes_respuesta([
+            _fragmento(
+                "DOC-1",
+                "Reglamento academico",
+                {
+                    "nombre_archivo": "reglamento.pdf",
+                    "pagina_inicio": 2,
+                    "pagina_fin": 2,
+                    "documento_url": "https://documentos.uteq.edu.ec/doc/1",
+                },
+            )
+        ])
+
+        self.assertEqual(fuentes[0]["titulo"], "Reglamento academico")
+        self.assertEqual(fuentes[0]["url"], "https://documentos.uteq.edu.ec/doc/1")
+        self.assertEqual(fuentes[0]["pagina"], "2")
+
+    def test_fuente_no_incluye_url_insegura(self):
+        fuentes = _construir_fuentes_respuesta([
+            _fragmento(
+                "DOC-1",
+                "Reglamento academico",
+                {"documento_url": "javascript:alert(1)"},
+            )
+        ])
+
+        self.assertNotIn("url", fuentes[0])
+
+
+class ActualizarMetadataVersionChromaServiceTests(SimpleTestCase):
+    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    def test_actualiza_metadata_de_todos_los_fragmentos_de_la_version(self, obtener_mock):
+        coleccion = Mock()
+        coleccion.get.return_value = {
+            "ids": ["frag-1", "frag-2"],
+            "metadatas": [
+                {"uuid_version": "uuid-version-123", "titulo": "Doc 1"},
+                {"uuid_version": "uuid-version-123", "titulo": "Doc 1", "pagina_inicio": 2},
+            ],
+        }
+        obtener_mock.return_value = coleccion
+
+        total = chroma_service.actualizar_metadata_version_chroma(
+            "uuid-version-123",
+            {"documento_url": "https://documentos.uteq.edu.ec/doc/123"},
+        )
+
+        self.assertEqual(total, 2)
+        coleccion.get.assert_called_once_with(
+            where={"uuid_version": "uuid-version-123"},
+            include=["metadatas"],
+        )
+        coleccion.update.assert_called_once_with(
+            ids=["frag-1", "frag-2"],
+            metadatas=[
+                {
+                    "uuid_version": "uuid-version-123",
+                    "titulo": "Doc 1",
+                    "documento_url": "https://documentos.uteq.edu.ec/doc/123",
+                },
+                {
+                    "uuid_version": "uuid-version-123",
+                    "titulo": "Doc 1",
+                    "pagina_inicio": 2,
+                    "documento_url": "https://documentos.uteq.edu.ec/doc/123",
+                },
+            ],
+        )
+
+    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    def test_devuelve_cero_si_no_encuentra_fragmentos(self, obtener_mock):
+        coleccion = Mock()
+        coleccion.get.return_value = {"ids": [], "metadatas": []}
+        obtener_mock.return_value = coleccion
+
+        total = chroma_service.actualizar_metadata_version_chroma(
+            "uuid-version-ausente",
+            {"documento_url": "https://documentos.uteq.edu.ec/doc/404"},
+        )
+
+        self.assertEqual(total, 0)
+        coleccion.update.assert_not_called()
 
 
 def _fragmento(doc_id, titulo, metadata_extra=None, contenido="contenido"):

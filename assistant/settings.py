@@ -159,6 +159,13 @@ CACHES = {
     }
 }
 
+# Sesiones en Redis (no SQLite): con varios workers de gunicorn escribiendo
+# sesion en cada turno de chat (guardar_interaccion_temporal marca
+# request.session.modified=True siempre), SQLite es un cuello de botella de
+# un solo escritor. Nada critico depende de que la sesion sobreviva un
+# reinicio de Redis -- ver confirmado_migracion_sesiones_a_redis en memoria.
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
 # Handler a consola (stdout) para que docker logs capture los mensajes.
 # El logger "Bety_AI" queda en INFO para ver las transiciones de los jobs
 # asincronos de documentos; el resto de la app se queda en WARNING.

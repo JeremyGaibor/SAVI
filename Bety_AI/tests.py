@@ -884,6 +884,7 @@ class HistorialConversacionTests(SimpleTestCase):
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 
@@ -1309,6 +1310,7 @@ class HistorialConversacionTests(SimpleTestCase):
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 
@@ -1352,6 +1354,7 @@ class HistorialConversacionTests(SimpleTestCase):
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 
@@ -1395,6 +1398,7 @@ class HistorialConversacionTests(SimpleTestCase):
             },
             format="json",
         )
+        request.session = type("SessionStub", (dict,), {})()
 
         response = api_consulta_ia(request)
 

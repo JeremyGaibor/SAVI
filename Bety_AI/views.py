@@ -753,6 +753,13 @@ def _url_documento_segura(url):
     return ""
 
 
+def _capitalizar_primera_letra(texto):
+    texto = str(texto or "").strip()
+    if not texto:
+        return ""
+    return texto[:1].upper() + texto[1:]
+
+
 @api_view(["POST", "PATCH"])
 @parser_classes([FormParser, JSONParser])
 def api_actualizar_link_documento(request):
@@ -1260,7 +1267,7 @@ def _construir_fuentes_respuesta(fragmentos):
 
         fuente = {}
         if titulo:
-            fuente["titulo"] = titulo
+            fuente["titulo"] = _capitalizar_primera_letra(titulo)
         if nombre_archivo:
             fuente["nombre_archivo"] = nombre_archivo
         if documento_url:

@@ -121,9 +121,9 @@ class FragmentacionDocumentoTests(SimpleTestCase):
 class ContextoUsuarioSgaTests(SimpleTestCase):
     @override_settings(
         SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
-        SGA_API_TOKEN_APPUTEQ="TU_TOKEN_DE_INGRESO",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
         SGA_API_USUARIO="nombre_usuario",
-        SGA_API_CONTRASENIA="tu_contrasenia",
+        SGA_API_PASSWORD="tu_contrasenia",
     )
     @patch("Bety_AI.views.cache")
     @patch("Bety_AI.views.requests.post")
@@ -152,9 +152,9 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     @override_settings(
         SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
         SGA_API_USUARIO_SESION_URL="http://127.0.0.1:8002/api/sga/usuario-sesion/",
-        SGA_API_TOKEN_APPUTEQ="TU_TOKEN_DE_INGRESO",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
         SGA_API_USUARIO="nombre_usuario",
-        SGA_API_CONTRASENIA="tu_contrasenia",
+        SGA_API_PASSWORD="tu_contrasenia",
     )
     @patch("Bety_AI.views.cache")
     @patch("Bety_AI.views.requests.post")
@@ -208,9 +208,9 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
     @override_settings(
         SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
         SGA_API_USUARIO_SESION_URL="http://127.0.0.1:8002/api/sga/usuario-sesion/",
-        SGA_API_TOKEN_APPUTEQ="TU_TOKEN_DE_INGRESO",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
         SGA_API_USUARIO="nombre_usuario",
-        SGA_API_CONTRASENIA="tu_contrasenia",
+        SGA_API_PASSWORD="tu_contrasenia",
     )
     @patch("Bety_AI.views.cache")
     @patch("Bety_AI.views.requests.post")

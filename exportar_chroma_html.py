@@ -96,7 +96,7 @@ def construir_reporte(ids, documentos, metadatas, error=None):
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Contenido de ChromaDB - BettIA</title>
+    <title>Contenido de ChromaDB - SAVI</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -156,7 +156,7 @@ def construir_reporte(ids, documentos, metadatas, error=None):
     </style>
 </head>
 <body>
-    <h1>Contenido de ChromaDB - BettIA</h1>
+    <h1>Contenido de ChromaDB - SAVI</h1>
 
     <section class="panel meta">
         <div class="dato"><strong>Estado</strong><br>{estado}</div>

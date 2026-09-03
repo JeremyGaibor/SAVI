@@ -36,7 +36,7 @@ Respuesta principal:
 
 ## 2. Guardar en ChromaDB
 
-Guarda el documento en la base vectorial de Bety-AI. No requiere que el documento exista en una base local nuestra; el `id_documento` puede ser el ID externo del sistema documental.
+Guarda el documento en la base vectorial de SAVI. No requiere que el documento exista en una base local nuestra; el `id_documento` puede ser el ID externo del sistema documental.
 
 ```http
 POST /api/integracion/documentos/guardar-chroma/
@@ -54,7 +54,7 @@ Campos requeridos:
 
 Campos opcionales:
 
-- `titulo`: titulo final del documento. Si no se envia, Bety-AI usa `metadata.titulo`, `metadata.nombre_archivo` o `Documento {id_documento}`.
+- `titulo`: titulo final del documento. Si no se envia, SAVI usa `metadata.titulo`, `metadata.nombre_archivo` o `Documento {id_documento}`.
 - `accion_chroma`: usar `reemplazar_version_vigente` cuando el sistema documental envia una version nueva que reemplaza otra vigente.
 - `id_version`
 - `uuid_documento`
@@ -82,7 +82,7 @@ Campos permitidos dentro de `metadata`:
 - `tipos_periodo`
 - `resumen_documento`
 
-Para filtrado documental, Bety-AI guarda los nombres en campos simples de lista:
+Para filtrado documental, SAVI guarda los nombres en campos simples de lista:
 
 - `perfiles`: uno o varios nombres de perfil.
 - `grupos`: uno o varios nombres de grupo/facultad.

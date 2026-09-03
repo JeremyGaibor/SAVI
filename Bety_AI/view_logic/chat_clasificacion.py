@@ -95,7 +95,7 @@ def pregunta_necesita_perfil_web(pregunta, interpretacion_consulta=None):
 
 def es_pregunta_fuera_ambito(pregunta):
     """
-    Detecta preguntas claramente ajenas al alcance documental de Bety-AI.
+    Detecta preguntas claramente ajenas al alcance documental de SAVI.
     """
     texto = normalizar_texto(pregunta)
 

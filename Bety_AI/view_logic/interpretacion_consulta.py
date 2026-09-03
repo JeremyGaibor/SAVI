@@ -105,7 +105,7 @@ def interpretar_consulta_ia(pregunta, historial="", contexto_usuario=""):
     contexto_limpio = limpiar_texto_contexto(contexto_usuario, 1000)
 
     prompt = f"""
-Eres el router de intenciones de Bety-AI, un asistente documental del SGA UTEQ.
+Eres el router de intenciones de SAVI, un asistente documental del SGA UTEQ.
 
 No respondas al usuario. Devuelve solo JSON valido.
 
@@ -118,12 +118,12 @@ HISTORIAL RECIENTE:
 PERFIL DEL USUARIO:
 {contexto_limpio or "Sin perfil disponible."}
 
-Bety-AI resuelve un mensaje de una de estas formas, cada una cubre una necesidad distinta:
+SAVI resuelve un mensaje de una de estas formas, cada una cubre una necesidad distinta:
 
 - consulta_documental: busca en la base documental del SGA UTEQ (procesos, tramites, reglamentos, matricula, evaluacion, aula virtual y cualquier informacion institucional disponible) y responde con eso.
 - reformulacion: reutiliza la respuesta que ya se dio en esta misma conversacion y solo le cambia el formato o nivel de detalle (tabla, lista, pasos, resumen, mas breve, mas claro), sin buscar informacion nueva. Solo aplica si ya existe una respuesta previa sobre la que trabajar.
 - historial: recupera o cita algo que se dijo antes en esta misma conversacion.
-- identidad: se presenta como Bety-AI y explica que hace y como puede ayudar.
+- identidad: se presenta como SAVI y explica que hace y como puede ayudar.
 - saludo: sostiene una interaccion social (saludar, despedirse, agradecer) que, leida completa, no pide informacion ni ayuda concreta.
 - fuera_ambito: el mensaje no tiene relacion alguna con el SGA UTEQ ni con ninguna capacidad anterior.
 

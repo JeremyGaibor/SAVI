@@ -1,4 +1,4 @@
-name: Build y despliegue Bety-AI
+name: Build y despliegue SAVI
 
 on:
   push:
@@ -24,6 +24,63 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Crear repositorio SAVI en Docker Hub si no existe
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_REPOSITORY: savi
+        run: |
+          set -e
+
+          repo_status="$(curl -sS -o /tmp/dockerhub_repo.json -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY}/")"
+
+          if [ "$repo_status" = "200" ]; then
+            echo "Repositorio Docker Hub ${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY} ya existe."
+            exit 0
+          fi
+
+          if [ "$repo_status" != "404" ]; then
+            cat /tmp/dockerhub_repo.json
+            exit 1
+          fi
+
+          login_status="$(curl -sS -o /tmp/dockerhub_login.json -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_TOKEN}\"}" \
+            "https://hub.docker.com/v2/users/login/")"
+
+          if [ "$login_status" != "200" ]; then
+            cat /tmp/dockerhub_login.json
+            exit 1
+          fi
+
+          dockerhub_jwt="$(python3 -c "import json; print(json.load(open('/tmp/dockerhub_login.json'))['token'])")"
+
+          create_status="$(curl -sS -o /tmp/dockerhub_create.json -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: JWT ${dockerhub_jwt}" \
+            -d "{\"namespace\":\"${DOCKERHUB_USERNAME}\",\"name\":\"${DOCKERHUB_REPOSITORY}\",\"description\":\"SAVI\",\"is_private\":true}" \
+            "https://hub.docker.com/v2/repositories/")"
+
+          if [ "$create_status" != "201" ] && [ "$create_status" != "200" ]; then
+            create_status="$(curl -sS -o /tmp/dockerhub_create.json -w "%{http_code}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${dockerhub_jwt}" \
+              -d "{\"namespace\":\"${DOCKERHUB_USERNAME}\",\"name\":\"${DOCKERHUB_REPOSITORY}\",\"description\":\"SAVI\",\"is_private\":true}" \
+              "https://hub.docker.com/v2/repositories/")"
+          fi
+
+          if [ "$create_status" != "201" ] && [ "$create_status" != "200" ]; then
+            cat /tmp/dockerhub_create.json
+            exit 1
+          fi
+
+          echo "Repositorio Docker Hub ${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY} creado."
+
       - name: Construir y publicar imagen
         uses: docker/build-push-action@v7
         with:
@@ -31,13 +88,14 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            jeremy28g/bety-ai:latest
-            jeremy28g/bety-ai:${{ github.sha }}
+            jeremy28g/savi:latest
+            jeremy28g/savi:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Desplegar en AWS
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
@@ -65,8 +123,20 @@ jobs:
         run: |
           set -e
 
-          cd /home/ubuntu/Bety-AI
+          APP_DIR="/home/ubuntu/SAVI"
+          OLD_APP_DIR="/home/ubuntu/Bety-AI"
 
+          if [ ! -d "$APP_DIR" ] && [ -d "$OLD_APP_DIR" ]; then
+            mv "$OLD_APP_DIR" "$APP_DIR"
+          fi
+
+          if [ ! -d "$APP_DIR" ]; then
+            git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$APP_DIR"
+          fi
+
+          cd "$APP_DIR"
+
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin
           git reset --hard origin/main
 
@@ -108,8 +178,9 @@ jobs:
             -u "${{ secrets.DOCKERHUB_USERNAME }}" \
             --password-stdin
 
+          docker rm -f bety_ai_app bety_ai_chroma bety_ai_redis 2>/dev/null || true
           docker compose pull
-          docker compose run --rm bety-ai python manage.py migrate
+          docker compose run --rm savi python manage.py migrate
           docker compose up -d --remove-orphans
           docker image prune -f
           docker compose ps

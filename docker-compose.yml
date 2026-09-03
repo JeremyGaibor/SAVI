@@ -47,6 +47,6 @@ services:
 
 volumes:
   chroma_data:
-    name: bety-ai_chroma_data
+    name: savi_chroma_data
   sqlite_data:
-    name: bety-ai_sqlite_data
+    name: savi_sqlite_data

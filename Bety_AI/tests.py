@@ -1947,7 +1947,7 @@ class FuentesRespuestaTests(SimpleTestCase):
 
     def test_fuente_capitaliza_primera_letra_del_titulo(self):
         fuentes = _construir_fuentes_respuesta([
-            _fragmento("DOC-1", "politica de proteccion de datos personales")
+            _fragmento("DOC-1", "POLITICA DE PROTECCION DE DATOS PERSONALES")
         ])
 
         self.assertEqual(

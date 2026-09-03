@@ -757,7 +757,7 @@ def _capitalizar_primera_letra(texto):
     texto = str(texto or "").strip()
     if not texto:
         return ""
-    return texto[:1].upper() + texto[1:]
+    return texto[:1].upper() + texto[1:].lower()
 
 
 @api_view(["POST", "PATCH"])

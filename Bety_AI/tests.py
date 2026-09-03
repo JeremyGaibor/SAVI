@@ -1945,6 +1945,16 @@ class FuentesRespuestaTests(SimpleTestCase):
         self.assertEqual(fuentes[0]["url"], "https://documentos.uteq.edu.ec/doc/1")
         self.assertEqual(fuentes[0]["pagina"], "2")
 
+    def test_fuente_capitaliza_primera_letra_del_titulo(self):
+        fuentes = _construir_fuentes_respuesta([
+            _fragmento("DOC-1", "politica de proteccion de datos personales")
+        ])
+
+        self.assertEqual(
+            fuentes[0]["titulo"],
+            "Politica de proteccion de datos personales",
+        )
+
     def test_fuente_no_incluye_url_insegura(self):
         fuentes = _construir_fuentes_respuesta([
             _fragmento(

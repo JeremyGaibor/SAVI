@@ -639,7 +639,7 @@ class RespuestasControladasTests(SimpleTestCase):
     @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
     def test_prompt_saludo_no_incluye_instrucciones_fuera_ambito(self, qwen_mock):
         qwen_mock.return_value = {
-            "respuesta": "Hola, soy BettIA. En que puedo ayudarte con el SGA UTEQ?",
+            "respuesta": "Hola, soy SAVI. En que puedo ayudarte con el SGA UTEQ?",
             "modelo": "qwen-test",
         }
 
@@ -803,7 +803,7 @@ class RespuestaInventarioDocumentosTests(SimpleTestCase):
 class HistorialConversacionTests(SimpleTestCase):
     def test_responde_primer_mensaje_desde_historial(self):
         conversation_id = "convtest01"
-        agregar_historial_conversacion(conversation_id, "Hola", "Hola, soy BettIA.")
+        agregar_historial_conversacion(conversation_id, "Hola", "Hola, soy SAVI.")
         agregar_historial_conversacion(
             conversation_id,
             "Ayudame con el proceso de matriculacion",
@@ -859,11 +859,11 @@ class HistorialConversacionTests(SimpleTestCase):
         historial_solo_preguntas = formatear_historial_conversacion_solo_preguntas(conversation_id)
 
         # El historial completo (para el router) sigue teniendo las respuestas.
-        self.assertIn("BettIA:", historial_completo)
+        self.assertIn("SAVI:", historial_completo)
         self.assertIn("Lista completa de requisitos de bajos recursos.", historial_completo)
 
         # El historial reducido (para el prompt documental) no las tiene.
-        self.assertNotIn("BettIA:", historial_solo_preguntas)
+        self.assertNotIn("SAVI:", historial_solo_preguntas)
         self.assertNotIn("Lista completa de requisitos de bajos recursos.", historial_solo_preguntas)
 
         # Pero conserva las preguntas, en orden.
@@ -1413,7 +1413,7 @@ class HistorialConversacionTests(SimpleTestCase):
             "modelo": "qwen-test",
         }
         respuesta_controlada_mock.return_value = {
-            "respuesta": "Hola, soy BettIA. En que puedo ayudarte con el SGA UTEQ?",
+            "respuesta": "Hola, soy SAVI. En que puedo ayudarte con el SGA UTEQ?",
             "modelo": "qwen-control",
         }
         request = APIRequestFactory().post(
@@ -1607,13 +1607,13 @@ class HistorialConversacionTests(SimpleTestCase):
 
         # El router sigue recibiendo el historial completo, con las respuestas.
         historial_recibido_por_router = interpretar_mock.call_args.args[1]
-        self.assertIn("BettIA:", historial_recibido_por_router)
+        self.assertIn("SAVI:", historial_recibido_por_router)
         self.assertIn("Lista completa de requisitos de bajos recursos.", historial_recibido_por_router)
 
         # El prompt documental (lo que arma la respuesta final) no lleva la
         # respuesta anterior completa -- solo el hilo de preguntas.
         prompt_documental = qwen_mock.call_args.args[0]
-        self.assertNotIn("BettIA:", prompt_documental)
+        self.assertNotIn("SAVI:", prompt_documental)
         self.assertNotIn("Lista completa de requisitos de bajos recursos.", prompt_documental)
         self.assertIn("documentos para ayuda economica por bajos recursos", prompt_documental)
 

@@ -1304,7 +1304,7 @@ def _construir_prompt_documental(
     incluye_saludo = "si" if interpretacion_consulta.get("incluye_saludo") else "no"
 
     return f"""
-Eres BettIA, un asistente virtual institucional.
+Eres SAVI, un asistente virtual institucional.
 
 Reglas obligatorias:
 1. Responde únicamente con base en el CONTEXTO proporcionado.

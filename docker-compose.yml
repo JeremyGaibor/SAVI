@@ -1,7 +1,9 @@
+name: savi
+
 services:
-  bety-ai:
-    image: jeremy28g/bety-ai:latest
-    container_name: bety_ai_app
+  savi:
+    image: jeremy28g/savi:latest
+    container_name: savi_app
     restart: unless-stopped
 
     ports:
@@ -26,7 +28,7 @@ services:
 
   chromadb:
     image: chromadb/chroma:latest
-    container_name: bety_ai_chroma
+    container_name: savi_chroma
     restart: unless-stopped
 
     expose:
@@ -37,7 +39,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: bety_ai_redis
+    container_name: savi_redis
     restart: unless-stopped
 
     expose:
@@ -45,4 +47,6 @@ services:
 
 volumes:
   chroma_data:
+    name: bety-ai_chroma_data
   sqlite_data:
+    name: bety-ai_sqlite_data

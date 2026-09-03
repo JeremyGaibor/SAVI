@@ -11,7 +11,7 @@ load_dotenv()
 
 logger = logging.getLogger("Bety_AI.chroma_service")
 
-# Estos valores salen de Bety-AI/.env. En desarrollo Chroma corre en Docker
+# Estos valores salen de SAVI/.env. En desarrollo Chroma corre en Docker
 # y se expone normalmente como localhost:8001.
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
@@ -371,7 +371,7 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
     where = construir_where_chroma(filtros_exactos)
 
     # Chroma devuelve documentos, metadatos y distancia de similitud.
-    # Bety-AI usa estos fragmentos como contexto para la respuesta de Qwen.
+    # SAVI usa estos fragmentos como contexto para la respuesta de Qwen.
     total_candidatos = max(total_resultados, 8)
     if filtros_flexibles:
         total_candidatos = max(total_resultados * 10, 30)

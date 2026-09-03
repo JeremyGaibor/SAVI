@@ -149,7 +149,7 @@ def generar_feedback_documento(resultado_texto):
     muestra_texto = texto_extraido[:6000]
 
     prompt = f"""
-Eres BettIA y analizas PDFs institucionales antes de que se guarden en una base documental.
+Eres SAVI y analizas PDFs institucionales antes de que se guarden en una base documental.
 
 Datos tecnicos del PDF:
 - Paginas: {resultado_texto.get("total_paginas", 0)}
@@ -207,7 +207,7 @@ No inventes informacion que no este en el texto o en los datos tecnicos. Copia e
             }
 
         # Blindamos los numeros tecnicos. Aunque Qwen devuelva otros valores,
-        # la respuesta final conserva los porcentajes calculados por Bety-AI.
+        # la respuesta final conserva los porcentajes calculados por SAVI.
         analisis["porcentaje_texto"] = resultado_texto.get("porcentaje_texto", 0)
         analisis["porcentaje_imagenes"] = resultado_texto.get("porcentaje_imagenes", 0)
         analisis["conteo_imagenes"] = resultado_texto.get("total_imagenes", 0)
@@ -290,7 +290,7 @@ def generar_interpretacion_documento(resultado_texto, nombre_archivo):
     muestra_texto = texto_extraido[:9000]
 
     prompt = f"""
-Eres BettIA y ayudas a clasificar documentos institucionales de la UTEQ antes de guardarlos.
+Eres SAVI y ayudas a clasificar documentos institucionales de la UTEQ antes de guardarlos.
 
 Analiza el texto extraido del PDF y devuelve solo JSON valido, sin markdown ni explicaciones.
 

@@ -146,20 +146,20 @@ def _obtener_token_api_sga(forzar_refresco=False):
             return token_cache, ""
 
     api_url = _config_sga("SGA_API_TOKEN_URL")
-    token_fijo = _config_sga("SGA_API_TOKEN_FIJO")
+    tokenapputeq = _config_sga("SGA_API_TOKEN_FIJO")
     usuario = _config_sga("SGA_API_USUARIO")
-    password = _config_sga("SGA_API_PASSWORD")
+    contrasenia = _config_sga("SGA_API_PASSWORD")
 
-    if not all([api_url, token_fijo, usuario, password]):
+    if not all([api_url, tokenapputeq, usuario, contrasenia]):
         return "", "No esta configurado el acceso al API de token del SGA."
 
     try:
         respuesta = requests.post(
             api_url,
             json={
-                "token": token_fijo,
+                "tokenapputeq": tokenapputeq,
                 "usuario": usuario,
-                "password": password,
+                "contrasenia": contrasenia,
             },
             timeout=6,
         )

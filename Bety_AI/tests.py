@@ -15,6 +15,7 @@ from .views import (
     _construir_respuesta_inventario_documentos,
     _describir_filtros_relajados,
     _debe_reformular,
+    _obtener_token_api_sga,
     api_actualizar_link_documento,
     api_consulta_ia,
     api_procesar_documento,
@@ -119,14 +120,54 @@ class FragmentacionDocumentoTests(SimpleTestCase):
 
 class ContextoUsuarioSgaTests(SimpleTestCase):
     @override_settings(
-        SGA_CHATBOT_API_URL="http://127.0.0.1:8002/api/chatbot/sesion/",
-        SGA_CHATBOT_TOKEN="BETY-SGA-CHATBOT-2026",
+        SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
+        SGA_API_USUARIO="nombre_usuario",
+        SGA_API_PASSWORD="tu_contrasenia",
     )
+    @patch("Bety_AI.views.cache")
     @patch("Bety_AI.views.requests.post")
-    def test_cliente_sga_consulta_con_sessionid_y_token_fijo(self, post_mock):
+    def test_obtener_token_api_sga_envia_campos_esperados(self, post_mock, cache_mock):
+        cache_mock.get.return_value = ""
         post_mock.return_value.json.return_value = {
             "result": "ok",
-            "token": "abc123",
+            "token": "token_sga",
+        }
+
+        token, error = _obtener_token_api_sga()
+
+        self.assertEqual(error, "")
+        self.assertEqual(token, "token_sga")
+        post_mock.assert_called_once_with(
+            "http://127.0.0.1:8002/api/sga/token/",
+            json={
+                "tokenapputeq": "TU_TOKEN_DE_INGRESO",
+                "usuario": "nombre_usuario",
+                "contrasenia": "tu_contrasenia",
+            },
+            timeout=6,
+        )
+        cache_mock.set.assert_called_once()
+
+    @override_settings(
+        SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
+        SGA_API_USUARIO_SESION_URL="http://127.0.0.1:8002/api/sga/usuario-sesion/",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
+        SGA_API_USUARIO="nombre_usuario",
+        SGA_API_PASSWORD="tu_contrasenia",
+    )
+    @patch("Bety_AI.views.cache")
+    @patch("Bety_AI.views.requests.post")
+    def test_cliente_sga_consulta_con_sessionid_y_token_api(self, post_mock, cache_mock):
+        cache_mock.get.return_value = ""
+        respuesta_token = Mock()
+        respuesta_token.json.return_value = {
+            "result": "ok",
+            "token": "token_sga",
+        }
+        respuesta_usuario = Mock()
+        respuesta_usuario.json.return_value = {
+            "result": "ok",
             "usuario": {
                 "usuario": "estudiante",
                 "perfil": "estudiante",
@@ -136,25 +177,54 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
                 "materias": ["Programacion"],
             },
         }
+        post_mock.side_effect = [respuesta_token, respuesta_usuario]
 
         perfil, error, token_sga = _obtener_usuario_sga_por_sessionid("abc123")
 
         self.assertEqual(error, "")
-        self.assertEqual(token_sga, "abc123")
+        self.assertEqual(token_sga, "")
         self.assertEqual(perfil["nombre"], "Maria")
         self.assertEqual(perfil["materias"], "Programacion")
-        post_mock.assert_called_once_with(
-            "http://127.0.0.1:8002/api/chatbot/sesion/",
+        self.assertEqual(post_mock.call_count, 2)
+        post_mock.assert_any_call(
+            "http://127.0.0.1:8002/api/sga/token/",
             json={
-                "sessionid": "abc123",
-                "token": "BETY-SGA-CHATBOT-2026",
+                "tokenapputeq": "TU_TOKEN_DE_INGRESO",
+                "usuario": "nombre_usuario",
+                "contrasenia": "tu_contrasenia",
             },
             timeout=6,
         )
+        post_mock.assert_any_call(
+            "http://127.0.0.1:8002/api/sga/usuario-sesion/",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer token_sga",
+            },
+            json={"sessionid": "abc123"},
+            timeout=6,
+        )
 
+    @override_settings(
+        SGA_API_TOKEN_URL="http://127.0.0.1:8002/api/sga/token/",
+        SGA_API_USUARIO_SESION_URL="http://127.0.0.1:8002/api/sga/usuario-sesion/",
+        SGA_API_TOKEN_FIJO="TU_TOKEN_DE_INGRESO",
+        SGA_API_USUARIO="nombre_usuario",
+        SGA_API_PASSWORD="tu_contrasenia",
+    )
+    @patch("Bety_AI.views.cache")
     @patch("Bety_AI.views.requests.post")
-    def test_cliente_sga_error_controlado_si_api_falla(self, post_mock):
-        post_mock.side_effect = requests.exceptions.ConnectionError("conexion fallida")
+    def test_cliente_sga_error_controlado_si_api_falla(self, post_mock, cache_mock):
+        cache_mock.get.return_value = ""
+        respuesta_token = Mock()
+        respuesta_token.json.return_value = {
+            "result": "ok",
+            "token": "token_sga",
+        }
+        post_mock.side_effect = [
+            respuesta_token,
+            requests.exceptions.ConnectionError("conexion fallida"),
+        ]
 
         perfil, error, token_sga = _obtener_usuario_sga_por_sessionid("abc123")
 

@@ -42,8 +42,8 @@ jobs:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
           DEBUG: "False"
-          ALLOWED_HOSTS: "16.58.71.138,bettyaiuteq.duckdns.org"
-          CSRF_TRUSTED_ORIGINS: "https://16.58.71.138,https://bettyaiuteq.duckdns.org"
+          ALLOWED_HOSTS: "16.58.71.138,saviuteq.duckdns.org,127.0.0.1,localhost"
+          CSRF_TRUSTED_ORIGINS: "https://16.58.71.138,https://saviuteq.duckdns.org"
           SESSION_COOKIE_SECURE: "True"
           CSRF_COOKIE_SECURE: "True"
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
@@ -66,11 +66,6 @@ jobs:
           set -e
 
           APP_DIR="/home/ubuntu/SAVI"
-          OLD_APP_DIR="/home/ubuntu/SAVI"
-
-          if [ ! -d "$APP_DIR" ] && [ -d "$OLD_APP_DIR" ]; then
-            mv "$OLD_APP_DIR" "$APP_DIR"
-          fi
 
           if [ ! -d "$APP_DIR" ]; then
             mkdir -p "$APP_DIR"

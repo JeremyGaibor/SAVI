@@ -4,8 +4,8 @@ from .contexto_usuario import (
     obtener_tipo_estudiante,
 )
 
-WEB_PERFIL_PREGUNTA_KEY = "bety_ai_pregunta_pendiente"
-WEB_PERFIL_CAMPO_KEY = "bety_ai_campo_pendiente"
+WEB_PERFIL_PREGUNTA_KEY = "app_pregunta_pendiente"
+WEB_PERFIL_CAMPO_KEY = "app_campo_pendiente"
 WEB_PERFIL_CAMPOS_REQUERIDOS = ["perfil", "facultad"]
 
 

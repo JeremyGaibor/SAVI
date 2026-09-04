@@ -114,7 +114,7 @@ class FragmentacionDocumentoTests(SimpleTestCase):
         self.assertEqual(fragmentos, [{"contenido": "uno\ndos"}])
 
     def test_modo_caracteres_lee_tamano_desde_env(self):
-        with patch("Bety_AI.services.pdf_service.FRAGMENTATION_MODE", "caracteres1200"):
+        with patch("app.services.pdf_service.FRAGMENTATION_MODE", "caracteres1200"):
             self.assertEqual(obtener_modo_fragmentacion(), ("characters", 1200))
 
 
@@ -125,8 +125,8 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         SGA_API_USUARIO="nombre_usuario",
         SGA_API_PASSWORD="tu_contrasenia",
     )
-    @patch("Bety_AI.views.cache")
-    @patch("Bety_AI.views.requests.post")
+    @patch("app.views.cache")
+    @patch("app.views.requests.post")
     def test_obtener_token_api_sga_envia_campos_esperados(self, post_mock, cache_mock):
         cache_mock.get.return_value = ""
         post_mock.return_value.json.return_value = {
@@ -156,8 +156,8 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         SGA_API_USUARIO="nombre_usuario",
         SGA_API_PASSWORD="tu_contrasenia",
     )
-    @patch("Bety_AI.views.cache")
-    @patch("Bety_AI.views.requests.post")
+    @patch("app.views.cache")
+    @patch("app.views.requests.post")
     def test_cliente_sga_consulta_con_sessionid_y_token_api(self, post_mock, cache_mock):
         cache_mock.get.return_value = ""
         respuesta_token = Mock()
@@ -212,8 +212,8 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         SGA_API_USUARIO="nombre_usuario",
         SGA_API_PASSWORD="tu_contrasenia",
     )
-    @patch("Bety_AI.views.cache")
-    @patch("Bety_AI.views.requests.post")
+    @patch("app.views.cache")
+    @patch("app.views.requests.post")
     def test_cliente_sga_error_controlado_si_api_falla(self, post_mock, cache_mock):
         cache_mock.get.return_value = ""
         respuesta_token = Mock()
@@ -549,7 +549,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertEqual(resultado[0]["metadata"]["id_documento"], "2")
         self.assertGreater(resultado[0]["score_ranking"], 0.9)
 
-    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    @patch("app.view_logic.busqueda_fragmentos.buscar_fragmentos")
     def test_fallback_no_devuelve_fragmentos_sin_pertinencia_lexica(self, buscar_mock):
         buscar_mock.side_effect = [
             [
@@ -584,7 +584,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
         self.assertIn("inasistencias", fragmentos[0]["contenido"])
         self.assertEqual(filtros_aplicados, {})
 
-    @patch("Bety_AI.view_logic.busqueda_fragmentos.buscar_fragmentos")
+    @patch("app.view_logic.busqueda_fragmentos.buscar_fragmentos")
     def test_fallback_no_devuelve_fragmentos_sin_coincidencia_con_consulta(self, buscar_mock):
         buscar_mock.return_value = [
             {
@@ -636,7 +636,7 @@ class ClasificacionConsultaTests(SimpleTestCase):
 
 
 class RespuestasControladasTests(SimpleTestCase):
-    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    @patch("app.view_logic.chat_respuestas_ia.consultar_qwen")
     def test_prompt_saludo_no_incluye_instrucciones_fuera_ambito(self, qwen_mock):
         qwen_mock.return_value = {
             "respuesta": "Hola, soy SAVI. En que puedo ayudarte con el SGA UTEQ?",
@@ -650,7 +650,7 @@ class RespuestasControladasTests(SimpleTestCase):
         self.assertIn("No digas que la consulta esta fuera de alcance.", prompt)
         self.assertNotIn("para que quieres saber eso", prompt.lower())
 
-    @patch("Bety_AI.view_logic.chat_respuestas_ia.consultar_qwen")
+    @patch("app.view_logic.chat_respuestas_ia.consultar_qwen")
     def test_prompt_fuera_ambito_tiene_instrucciones_propias(self, qwen_mock):
         qwen_mock.return_value = {
             "respuesta": "Eso no esta en mi base de informacion.",
@@ -744,7 +744,7 @@ class InventarioDocumentosClasificacionTests(SimpleTestCase):
 
 
 class RespuestaInventarioDocumentosTests(SimpleTestCase):
-    @patch("Bety_AI.views.listar_fragmentos_chroma")
+    @patch("app.views.listar_fragmentos_chroma")
     def test_lista_titulos_reales_deduplicados_y_ordenados(self, listar_mock):
         listar_mock.return_value = [
             {
@@ -782,14 +782,14 @@ class RespuestaInventarioDocumentosTests(SimpleTestCase):
             "- Solicitud de Carnet Estudiantil",
         )
 
-    @patch("Bety_AI.views.listar_fragmentos_chroma", return_value=[])
+    @patch("app.views.listar_fragmentos_chroma", return_value=[])
     def test_responde_sin_documentos_cargados(self, listar_mock):
         self.assertEqual(
             _construir_respuesta_inventario_documentos(),
             "Por ahora no tengo documentos cargados en el sistema.",
         )
 
-    @patch("Bety_AI.views.listar_fragmentos_chroma", side_effect=Exception("chroma caido"))
+    @patch("app.views.listar_fragmentos_chroma", side_effect=Exception("chroma caido"))
     def test_devuelve_none_si_chroma_falla(self, listar_mock):
         self.assertIsNone(_construir_respuesta_inventario_documentos())
 
@@ -914,10 +914,10 @@ class HistorialConversacionTests(SimpleTestCase):
             "Respuesta mas reciente",
         )
 
-    @patch("Bety_AI.views.interpretar_consulta_ia")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.generar_reformulacion_respuesta")
+    @patch("app.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.generar_reformulacion_respuesta")
     def test_api_reformula_ultima_respuesta_sin_consultar_chroma(
         self,
         reformular_mock,
@@ -972,11 +972,11 @@ class HistorialConversacionTests(SimpleTestCase):
             "REFORMULACION",
         )
 
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.generar_reformulacion_respuesta")
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.consultar_qwen")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.generar_reformulacion_respuesta")
+    @patch("app.views.interpretar_consulta_ia")
     def test_api_redispara_busqueda_si_reformulacion_sigue_a_fuera_ambito(
         self,
         interpretar_mock,
@@ -1042,10 +1042,10 @@ class HistorialConversacionTests(SimpleTestCase):
             "RESPUESTA",
         )
 
-    @patch("Bety_AI.views.interpretar_consulta_ia")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.listar_fragmentos_chroma")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.listar_fragmentos_chroma")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
     def test_api_responde_inventario_sin_pasar_por_el_router(
         self,
         guardar_temporal_mock,
@@ -1353,9 +1353,9 @@ class HistorialConversacionTests(SimpleTestCase):
             )
         )
 
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.consultar_qwen")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.interpretar_consulta_ia")
     def test_api_pide_perfil_web_para_ayudas_economicas_sin_contexto(
         self,
         interpretar_mock,
@@ -1391,10 +1391,10 @@ class HistorialConversacionTests(SimpleTestCase):
         qwen_mock.assert_not_called()
         guardar_temporal_mock.assert_called_once()
 
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.generar_respuesta_controlada")
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.generar_respuesta_controlada")
+    @patch("app.views.interpretar_consulta_ia")
     def test_api_saludo_lo_decide_interpretacion_ia(
         self,
         interpretar_mock,
@@ -1439,9 +1439,9 @@ class HistorialConversacionTests(SimpleTestCase):
             "SALUDO",
         )
 
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.interpretar_consulta_ia")
     def test_api_historial_lo_decide_interpretacion_ia(
         self,
         interpretar_mock,
@@ -1483,10 +1483,10 @@ class HistorialConversacionTests(SimpleTestCase):
             "HISTORIAL_CONVERSACION",
         )
 
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.consultar_qwen")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.interpretar_consulta_ia")
     def test_api_usa_consulta_interpretada_sin_fuera_ambito_manual(
         self,
         interpretar_mock,
@@ -1549,10 +1549,10 @@ class HistorialConversacionTests(SimpleTestCase):
             "RESPUESTA",
         )
 
-    @patch("Bety_AI.views.consultar_qwen")
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.consultar_qwen")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.interpretar_consulta_ia")
     def test_prompt_documental_no_lleva_respuestas_anteriores_pero_router_si(
         self,
         interpretar_mock,
@@ -1621,11 +1621,11 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
 
-    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
-    @patch("Bety_AI.views.eliminar_documento_chroma")
-    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch("app.views.guardar_fragmentos_documento", return_value=1)
+    @patch("app.views.eliminar_documento_chroma")
+    @patch("app.views.eliminar_version_chroma")
     @patch(
-        "Bety_AI.views.dividir_documento_en_fragmentos",
+        "app.views.dividir_documento_en_fragmentos",
         return_value=([{"contenido": "fragmento nuevo"}], "characters"),
     )
     def test_reemplaza_version_vigente_por_uuid_anterior(
@@ -1677,11 +1677,11 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertNotIn("rol", metadata_base)
         self.assertTrue(response.data["reemplazo_por_uuid_anterior"])
 
-    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
-    @patch("Bety_AI.views.eliminar_documento_chroma")
-    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch("app.views.guardar_fragmentos_documento", return_value=1)
+    @patch("app.views.eliminar_documento_chroma")
+    @patch("app.views.eliminar_version_chroma")
     @patch(
-        "Bety_AI.views.dividir_documento_en_fragmentos",
+        "app.views.dividir_documento_en_fragmentos",
         return_value=([{"contenido": "fragmento nuevo"}], "characters"),
     )
     def test_ignora_rol_en_metadata_documental(
@@ -1711,11 +1711,11 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertNotIn("perfil", metadata_base)
         self.assertNotIn("rol", metadata_base)
 
-    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
-    @patch("Bety_AI.views.eliminar_documento_chroma")
-    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch("app.views.guardar_fragmentos_documento", return_value=1)
+    @patch("app.views.eliminar_documento_chroma")
+    @patch("app.views.eliminar_version_chroma")
     @patch(
-        "Bety_AI.views.dividir_documento_en_fragmentos",
+        "app.views.dividir_documento_en_fragmentos",
         return_value=([{"contenido": "fragmento nuevo"}], "characters"),
     )
     def test_guarda_solo_metadata_documental_permitida(
@@ -1803,11 +1803,11 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         ]:
             self.assertNotIn(clave, metadata_base)
 
-    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
-    @patch("Bety_AI.views.eliminar_documento_chroma")
-    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch("app.views.guardar_fragmentos_documento", return_value=1)
+    @patch("app.views.eliminar_documento_chroma")
+    @patch("app.views.eliminar_version_chroma")
     @patch(
-        "Bety_AI.views.dividir_documento_en_fragmentos",
+        "app.views.dividir_documento_en_fragmentos",
         return_value=([{"contenido": "fragmento nuevo"}], "characters"),
     )
     def test_tipo_periodo_se_guarda_como_tipos_periodo(
@@ -1836,11 +1836,11 @@ class ProcesarDocumentoChromaTests(SimpleTestCase):
         self.assertEqual(metadata_base["tipos_periodo"], '["Nivelacion", "Grado"]')
         self.assertNotIn("tipo_periodo", metadata_base)
 
-    @patch("Bety_AI.views.guardar_fragmentos_documento", return_value=1)
-    @patch("Bety_AI.views.eliminar_documento_chroma")
-    @patch("Bety_AI.views.eliminar_version_chroma")
+    @patch("app.views.guardar_fragmentos_documento", return_value=1)
+    @patch("app.views.eliminar_documento_chroma")
+    @patch("app.views.eliminar_version_chroma")
     @patch(
-        "Bety_AI.views.dividir_documento_en_fragmentos",
+        "app.views.dividir_documento_en_fragmentos",
         return_value=([{"contenido": "fragmento nuevo"}], "characters"),
     )
     def test_mantiene_reemplazo_legacy_por_id_documento(
@@ -1871,7 +1871,7 @@ class ActualizarLinkDocumentoTests(SimpleTestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
 
-    @patch("Bety_AI.views.actualizar_metadata_version_chroma", return_value=3)
+    @patch("app.views.actualizar_metadata_version_chroma", return_value=3)
     def test_actualiza_link_por_uuid_version(self, actualizar_mock):
         request = self.factory.post(
             "/api/integracion/documentos/actualizar-link/",
@@ -1892,7 +1892,7 @@ class ActualizarLinkDocumentoTests(SimpleTestCase):
             {"documento_url": "https://documentos.uteq.edu.ec/doc/123"},
         )
 
-    @patch("Bety_AI.views.actualizar_metadata_version_chroma")
+    @patch("app.views.actualizar_metadata_version_chroma")
     def test_rechaza_link_inseguro(self, actualizar_mock):
         request = self.factory.post(
             "/api/integracion/documentos/actualizar-link/",
@@ -1908,7 +1908,7 @@ class ActualizarLinkDocumentoTests(SimpleTestCase):
         self.assertEqual(response.status_code, 400)
         actualizar_mock.assert_not_called()
 
-    @patch("Bety_AI.views.actualizar_metadata_version_chroma", return_value=0)
+    @patch("app.views.actualizar_metadata_version_chroma", return_value=0)
     def test_devuelve_404_si_no_hay_fragmentos_para_la_version(self, actualizar_mock):
         request = self.factory.post(
             "/api/integracion/documentos/actualizar-link/",
@@ -1968,7 +1968,7 @@ class FuentesRespuestaTests(SimpleTestCase):
 
 
 class ActualizarMetadataVersionChromaServiceTests(SimpleTestCase):
-    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    @patch("app.services.chroma_service.obtener_coleccion")
     def test_actualiza_metadata_de_todos_los_fragmentos_de_la_version(self, obtener_mock):
         coleccion = Mock()
         coleccion.get.return_value = {
@@ -2007,7 +2007,7 @@ class ActualizarMetadataVersionChromaServiceTests(SimpleTestCase):
             ],
         )
 
-    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    @patch("app.services.chroma_service.obtener_coleccion")
     def test_devuelve_cero_si_no_encuentra_fragmentos(self, obtener_mock):
         coleccion = Mock()
         coleccion.get.return_value = {"ids": [], "metadatas": []}
@@ -2127,10 +2127,10 @@ class FiltrarFragmentosConfiablesTests(SimpleTestCase):
     }
 })
 class ApiConsultaIaFiltroConfiabilidadTests(SimpleTestCase):
-    @patch("Bety_AI.views.buscar_fragmentos_con_fallback")
-    @patch("Bety_AI.views.guardar_interaccion_temporal", return_value=[])
-    @patch("Bety_AI.views.generar_respuesta_controlada")
-    @patch("Bety_AI.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    @patch("app.views.generar_respuesta_controlada")
+    @patch("app.views.interpretar_consulta_ia")
     def test_todos_los_fragmentos_no_confiables_responde_sin_informacion(
         self,
         interpretar_mock,
@@ -2254,7 +2254,7 @@ class RankingFragmentosChromaTests(SimpleTestCase):
         self.assertAlmostEqual(chroma_service.PESO_LEXICO, 0.1)
         self.assertAlmostEqual(chroma_service.LEXICA_MAXIMA_CONSIDERADA, 3.0)
 
-    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    @patch("app.services.chroma_service.obtener_coleccion")
     def test_colision_lexica_incidental_ya_no_gana_a_mejor_distancia_semantica(
         self, obtener_coleccion_mock
     ):
@@ -2316,7 +2316,7 @@ class RankingFragmentosChromaTests(SimpleTestCase):
 
         self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "17")
 
-    @patch("Bety_AI.services.chroma_service.obtener_coleccion")
+    @patch("app.services.chroma_service.obtener_coleccion")
     def test_empate_cerrado_de_distancia_lo_sigue_desempatando_lexica_fuerte(
         self, obtener_coleccion_mock
     ):

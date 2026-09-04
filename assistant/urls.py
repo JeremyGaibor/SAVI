@@ -21,5 +21,5 @@ from django.urls import path, include
 urlpatterns = [
     path("favicon.ico", lambda request: HttpResponse(status=204)),
     path("admin/", admin.site.urls),
-    path("", include("Bety_AI.urls")),
+    path("", include("app.urls")),
 ]

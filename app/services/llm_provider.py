@@ -12,7 +12,7 @@ from botocore.exceptions import (
     ReadTimeoutError,
 )
 
-logger = logging.getLogger("Bety_AI.llm_provider")
+logger = logging.getLogger("app.llm_provider")
 
 
 class LLMProviderError(Exception):

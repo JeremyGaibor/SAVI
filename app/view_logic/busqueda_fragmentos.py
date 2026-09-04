@@ -10,7 +10,7 @@ from ..services.chroma_service import (
 )
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
-logger = logging.getLogger("Bety_AI.busqueda_fragmentos")
+logger = logging.getLogger("app.busqueda_fragmentos")
 
 # El perfil (rol/nivel academico) no es un permiso de acceso -- es una senal
 # de relevancia. Un fragmento del nivel contrario al del perfil se penaliza

@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'Bety_AI',
+    'app.apps.MainAppConfig',
 ]
 
 MIDDLEWARE = [
@@ -167,7 +167,7 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 # Handler a consola (stdout) para que docker logs capture los mensajes.
-# El logger "Bety_AI" queda en INFO para ver las transiciones de los jobs
+# El logger "app" queda en INFO para ver las transiciones de los jobs
 # asincronos de documentos; el resto de la app se queda en WARNING.
 LOGGING = {
     "version": 1,
@@ -182,7 +182,7 @@ LOGGING = {
         "level": "WARNING",
     },
     "loggers": {
-        "Bety_AI": {
+        "app": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,

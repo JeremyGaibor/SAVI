@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from Bety_AI.services.llm_provider import BedrockProvider, LLMProviderError
+from app.services.llm_provider import BedrockProvider, LLMProviderError
 
 
 class Command(BaseCommand):

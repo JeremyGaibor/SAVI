@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from Bety_AI.services.chroma_service import (
+from app.services.chroma_service import (
     CHROMA_HOST,
     CHROMA_PORT,
     COLLECTION_NAME,

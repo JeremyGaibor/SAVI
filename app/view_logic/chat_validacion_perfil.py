@@ -1,6 +1,6 @@
 import re
 
-from Bety_AI.services.ollama_service import consultar_qwen
+from app.services.ollama_service import consultar_qwen
 
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 

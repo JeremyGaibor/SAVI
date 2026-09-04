@@ -32,7 +32,7 @@ from .services.chroma_service import (
 )
 from .services.historial_service import guardar_interaccion_temporal
 
-# Logica auxiliar de las vistas, organizada por tema en Bety_AI/view_logic/.
+# Logica auxiliar de las vistas, organizada por tema en savi/view_logic/.
 # Se mantiene aqui como imports directos (no import *) para que cada vista
 # siga siendo facil de rastrear hasta su implementacion real.
 from .view_logic.documentos import (
@@ -93,7 +93,7 @@ from .view_logic.interpretacion_consulta import (
     interpretacion_fallback,
 )
 
-logger = logging.getLogger("Bety_AI.views")
+logger = logging.getLogger("app.views")
 
 ERROR_ARCHIVO_PDF_REQUERIDO = "Debe enviar un archivo PDF en el campo 'archivo'."
 ERROR_SOLO_PDF = "Solo se permiten archivos PDF."
@@ -120,15 +120,15 @@ def chatbot(request, sessionid=None):
         contexto["error_contexto_sga"] = error_sga
 
         if perfil_sga:
-            request.session["bety_sga_sessionid"] = sessionid
-            request.session["bety_sga_usuario"] = perfil_sga
-            request.session.pop("bety_sga_token", None)
+            request.session["app_sga_sessionid"] = sessionid
+            request.session["app_sga_usuario"] = perfil_sga
+            request.session.pop("app_sga_token", None)
         else:
-            request.session.pop("bety_sga_sessionid", None)
-            request.session.pop("bety_sga_usuario", None)
-            request.session.pop("bety_sga_token", None)
+            request.session.pop("app_sga_sessionid", None)
+            request.session.pop("app_sga_usuario", None)
+            request.session.pop("app_sga_token", None)
 
-    return render(request, "Bety_AI/chatbot.html", contexto)
+    return render(request, "app/chatbot.html", contexto)
 
 
 def _config_sga(nombre):
@@ -453,7 +453,7 @@ def ver_chroma_dump(request):
 
     return render(
         request,
-        "Bety_AI/chroma_admin.html",
+        "app/chroma_admin.html",
         {
             "mensaje": mensaje,
             "error": error,
@@ -1402,7 +1402,7 @@ def api_consulta_ia(request):
         )
 
     conversation_id = normalizar_conversation_id(request.data.get("conversation_id"))
-    perfil_sga = request.session.get("bety_sga_usuario", {})
+    perfil_sga = request.session.get("app_sga_usuario", {})
     if not isinstance(perfil_sga, dict):
         perfil_sga = {}
     if not perfil_sga:

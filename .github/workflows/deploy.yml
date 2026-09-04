@@ -38,7 +38,6 @@ jobs:
 
       - name: Desplegar en AWS
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
@@ -67,23 +66,25 @@ jobs:
           set -e
 
           APP_DIR="/home/ubuntu/SAVI"
-          OLD_APP_DIR="/home/ubuntu/Bety-AI"
+          OLD_APP_DIR="/home/ubuntu/SAVI"
 
           if [ ! -d "$APP_DIR" ] && [ -d "$OLD_APP_DIR" ]; then
             mv "$OLD_APP_DIR" "$APP_DIR"
           fi
 
           if [ ! -d "$APP_DIR" ]; then
-            git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$APP_DIR"
+            mkdir -p "$APP_DIR"
           fi
 
-          cd "$APP_DIR"
-
-          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch origin
-          git reset --hard origin/main
+          rsync -a --delete \
+            --exclude ".env" \
+            --exclude ".git" \
+            --exclude ".venv" \
+            "$GITHUB_WORKSPACE/" "$APP_DIR/"
 
           umask 077
+
+          cd "$APP_DIR"
 
           {
             echo "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
@@ -121,7 +122,7 @@ jobs:
             -u "${{ secrets.DOCKERHUB_USERNAME }}" \
             --password-stdin
 
-          docker rm -f bety_ai_app bety_ai_chroma bety_ai_redis 2>/dev/null || true
+          docker rm -f savi_app savi_chroma savi_redis 2>/dev/null || true
           docker compose pull
           docker compose run --rm savi python manage.py migrate
           docker compose up -d --remove-orphans

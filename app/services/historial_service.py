@@ -1,7 +1,7 @@
 from django.utils import timezone
 
 
-HISTORIAL_SESION_KEY = "bety_ai_historial"
+HISTORIAL_SESION_KEY = "app_historial"
 MAX_INTERACCIONES_HISTORIAL = 20
 
 

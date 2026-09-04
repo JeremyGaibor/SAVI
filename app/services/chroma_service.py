@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logger = logging.getLogger("Bety_AI.chroma_service")
+logger = logging.getLogger("app.chroma_service")
 
 # Estos valores salen de SAVI/.env. En desarrollo Chroma corre en Docker
 # y se expone normalmente como localhost:8001.
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
-COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "bety_ai_documentos")
+COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "documentos_institucionales")
 FILTROS_LISTA_METADATA = {"perfiles", "grupos", "tipos_periodo"}
 
 # Controlan cuanto puede la coincidencia lexica (substring literal) corregir

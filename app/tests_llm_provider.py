@@ -18,7 +18,7 @@ def _client_error(codigo):
 
 
 class OllamaProviderTests(SimpleTestCase):
-    @patch("Bety_AI.services.llm_provider.requests.post")
+    @patch("app.services.llm_provider.requests.post")
     def test_generate_devuelve_texto_limpio(self, post_mock):
         post_mock.return_value = MagicMock(
             json=lambda: {"response": "  hola  ", "model": "qwen3:8b"},
@@ -31,7 +31,7 @@ class OllamaProviderTests(SimpleTestCase):
         self.assertEqual(texto, "hola")
         self.assertEqual(provider.model_name, "qwen3:8b")
 
-    @patch("Bety_AI.services.llm_provider.requests.post")
+    @patch("app.services.llm_provider.requests.post")
     def test_generate_error_de_red_levanta_llm_provider_error(self, post_mock):
         import requests
 
@@ -45,7 +45,7 @@ class OllamaProviderTests(SimpleTestCase):
 
 
 class BedrockProviderTests(SimpleTestCase):
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_generate_devuelve_texto_de_converse(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.return_value = {
@@ -61,7 +61,7 @@ class BedrockProviderTests(SimpleTestCase):
         _, kwargs = cliente_mock.converse.call_args
         self.assertEqual(kwargs["messages"], [{"role": "user", "content": [{"text": "hola"}]}])
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_no_credentials_error_da_motivo_accionable(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.side_effect = NoCredentialsError()
@@ -74,7 +74,7 @@ class BedrockProviderTests(SimpleTestCase):
         self.assertIn("IAM Role", ctx.exception.motivo)
         self.assertIn("hop limit", ctx.exception.motivo)
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_throttling_exception_da_motivo_accionable(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.side_effect = _client_error("ThrottlingException")
@@ -86,7 +86,7 @@ class BedrockProviderTests(SimpleTestCase):
 
         self.assertIn("limite de tasa", ctx.exception.motivo)
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_access_denied_exception_da_motivo_accionable(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.side_effect = _client_error("AccessDeniedException")
@@ -99,7 +99,7 @@ class BedrockProviderTests(SimpleTestCase):
         self.assertIn("IAM Role", ctx.exception.motivo)
         self.assertIn("bedrock:InvokeModel", ctx.exception.motivo)
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_validation_exception_da_motivo_accionable(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.side_effect = _client_error("ValidationException")
@@ -111,7 +111,7 @@ class BedrockProviderTests(SimpleTestCase):
 
         self.assertIn("BEDROCK_MODEL_ID", ctx.exception.motivo)
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_timeout_da_motivo_accionable(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.side_effect = ConnectTimeoutError(endpoint_url="https://bedrock")
@@ -123,7 +123,7 @@ class BedrockProviderTests(SimpleTestCase):
 
         self.assertIn("timeout", ctx.exception.motivo)
 
-    @patch("Bety_AI.services.llm_provider.boto3.client")
+    @patch("app.services.llm_provider.boto3.client")
     def test_respuesta_con_formato_inesperado_levanta_error(self, client_factory_mock):
         cliente_mock = MagicMock()
         cliente_mock.converse.return_value = {"output": {}}
@@ -142,7 +142,7 @@ class GetProviderTests(SimpleTestCase):
 
 class GenerarTextoFallbackTests(SimpleTestCase):
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": ""}, clear=False)
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_primario_exitoso_no_usa_fallback(self, ollama_cls_mock):
         instancia = MagicMock(model_name="qwen3:8b")
         instancia.generate.return_value = "respuesta"
@@ -154,8 +154,8 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         self.assertEqual(resultado["proveedor"], "ollama")
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": ""}, clear=False)
-    @patch("Bety_AI.services.llm_provider.BedrockProvider")
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.BedrockProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_primario_falla_sin_fallback_configurado_propaga_error(self, ollama_cls_mock, bedrock_cls_mock):
         instancia = MagicMock()
         instancia.generate.side_effect = LLMProviderError("ollama", "caido")
@@ -167,8 +167,8 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         bedrock_cls_mock.assert_not_called()
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama"}, clear=False)
-    @patch("Bety_AI.services.llm_provider.BedrockProvider")
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.BedrockProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_fallback_no_definida_en_entorno_se_trata_como_sin_fallback(self, ollama_cls_mock, bedrock_cls_mock):
         # Simula el caso real de GitHub Actions: el secret LLM_FALLBACK_PROVIDER
         # no existe en absoluto (no solo vacio), como cuando nunca se crea el
@@ -185,8 +185,8 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         bedrock_cls_mock.assert_not_called()
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": "   "}, clear=False)
-    @patch("Bety_AI.services.llm_provider.BedrockProvider")
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.BedrockProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_fallback_solo_espacios_se_trata_como_sin_fallback(self, ollama_cls_mock, bedrock_cls_mock):
         instancia = MagicMock()
         instancia.generate.side_effect = LLMProviderError("ollama", "caido")
@@ -198,8 +198,8 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         bedrock_cls_mock.assert_not_called()
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": "bedrock"}, clear=False)
-    @patch("Bety_AI.services.llm_provider.BedrockProvider")
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.BedrockProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_primario_falla_usa_fallback(self, ollama_cls_mock, bedrock_cls_mock):
         ollama_instancia = MagicMock()
         ollama_instancia.generate.side_effect = LLMProviderError("ollama", "caido")
@@ -215,7 +215,7 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         self.assertEqual(resultado["proveedor"], "bedrock")
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": "ollama"}, clear=False)
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_fallback_igual_al_primario_se_trata_como_sin_fallback(self, ollama_cls_mock):
         instancia = MagicMock()
         instancia.generate.side_effect = LLMProviderError("ollama", "caido")
@@ -229,8 +229,8 @@ class GenerarTextoFallbackTests(SimpleTestCase):
         self.assertEqual(ollama_cls_mock.call_count, 1)
 
     @patch.dict("os.environ", {"LLM_PROVIDER": "ollama", "LLM_FALLBACK_PROVIDER": "bedrock"}, clear=False)
-    @patch("Bety_AI.services.llm_provider.BedrockProvider")
-    @patch("Bety_AI.services.llm_provider.OllamaProvider")
+    @patch("app.services.llm_provider.BedrockProvider")
+    @patch("app.services.llm_provider.OllamaProvider")
     def test_ambos_proveedores_fallan_propaga_error_del_fallback(self, ollama_cls_mock, bedrock_cls_mock):
         ollama_instancia = MagicMock()
         ollama_instancia.generate.side_effect = LLMProviderError("ollama", "caido")

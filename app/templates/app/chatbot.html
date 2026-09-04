@@ -30,7 +30,7 @@
         }
 
         /* Burbuja para abrir el chatbot */
-        #bety-chat-button {
+        #app-chat-button {
             position: fixed;
             right: 10px;
             bottom: 10px;
@@ -69,12 +69,12 @@
                 visibility 0s linear 0s;
         }
 
-        #bety-chat-button:hover {
+        #app-chat-button:hover {
             filter: brightness(1.08);
             transform: scale(1.06);
         }
 
-        #bety-chat-button.oculto {
+        #app-chat-button.oculto {
             opacity: 0;
             visibility: hidden;
             transform: scale(0.5);
@@ -86,7 +86,7 @@
                 visibility 0s linear 0.18s;
         }
 
-        #bety-chat-button img {
+        #app-chat-button img {
             width: 100%;
             height: 100%;
             display: block;
@@ -94,7 +94,7 @@
         }
 
         /* Ventana principal del chatbot */
-        #bety-chat-window {
+        #app-chat-window {
             position: fixed;
             right: 10px;
             bottom: 10px;
@@ -131,7 +131,7 @@
                 visibility 0s linear 0.32s;
         }
 
-        #bety-chat-window.abierto {
+        #app-chat-window.abierto {
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
@@ -144,20 +144,20 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            #bety-chat-button,
-            #bety-chat-window,
-            #bety-chat-messages,
-            #bety-chat-greeting,
-            #bety-chat-input-area,
-            .bety-message,
-            .bety-sources {
+            #app-chat-button,
+            #app-chat-window,
+            #app-chat-messages,
+            #app-chat-greeting,
+            #app-chat-input-area,
+            .app-message,
+            .app-sources {
                 transition-duration: 0.01ms !important;
                 animation-duration: 0.01ms !important;
             }
         }
 
         /* Cuerpo: mensajes + saludo inicial + entrada de texto */
-        #bety-chat-body {
+        #app-chat-body {
             flex: 1;
             min-height: 0;
 
@@ -165,12 +165,12 @@
             flex-direction: column;
         }
 
-        #bety-chat-body.bety-vacio {
+        #app-chat-body.app-vacio {
             justify-content: center;
         }
 
         /* Encabezado */
-        #bety-chat-header {
+        #app-chat-header {
             min-height: 66px;
             padding: 11px 14px;
 
@@ -182,7 +182,7 @@
             color: white;
         }
 
-        #bety-chat-avatar {
+        #app-chat-avatar {
             position: relative;
 
             width: 43px;
@@ -203,14 +203,14 @@
             overflow: hidden;
         }
 
-        #bety-chat-avatar img {
+        #app-chat-avatar img {
             width: 100%;
             height: 100%;
             display: block;
             object-fit: cover;
         }
 
-        .bety-status-dot {
+        .app-status-dot {
             position: absolute;
             right: -1px;
             bottom: -1px;
@@ -240,24 +240,24 @@
             }
         }
 
-        #bety-chat-info {
+        #app-chat-info {
             display: flex;
             flex-direction: column;
             gap: 3px;
         }
 
-        #bety-chat-info strong {
+        #app-chat-info strong {
             font-size: 16px;
         }
 
-        #bety-chat-info small {
+        #app-chat-info small {
             font-size: 11px;
             font-weight: normal;
             opacity: 0.88;
         }
 
-        #bety-chat-voice,
-        #bety-chat-close {
+        #app-chat-voice,
+        #app-chat-close {
             margin-left: auto;
 
             width: 32px;
@@ -281,32 +281,32 @@
             transition: background 0.2s ease;
         }
 
-        #bety-chat-voice {
+        #app-chat-voice {
             margin-left: 0;
 
             font-size: 18px;
         }
 
-        #bety-chat-voice.activo {
+        #app-chat-voice.activo {
             background: rgba(255, 255, 255, 0.22);
         }
 
-        #bety-chat-voice:disabled {
+        #app-chat-voice:disabled {
             cursor: not-allowed;
             opacity: 0.55;
         }
 
-        #bety-chat-voice:disabled:hover {
+        #app-chat-voice:disabled:hover {
             background: transparent;
         }
 
-        #bety-chat-voice:hover,
-        #bety-chat-close:hover {
+        #app-chat-voice:hover,
+        #app-chat-close:hover {
             background: rgba(255, 255, 255, 0.18);
         }
 
         /* Área de mensajes */
-        #bety-chat-messages {
+        #app-chat-messages {
             flex: 1;
             min-height: 0;
 
@@ -325,7 +325,7 @@
             transition: opacity 0.2s ease, visibility 0s linear 0s;
         }
 
-        #bety-chat-body.bety-vacio #bety-chat-messages {
+        #app-chat-body.app-vacio #app-chat-messages {
             flex: 0 0 0;
             min-height: 0;
             padding: 0;
@@ -338,7 +338,7 @@
         }
 
         /* Saludo centrado, visible solo cuando el chat aún no tiene mensajes */
-        #bety-chat-greeting {
+        #app-chat-greeting {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -363,7 +363,7 @@
                 visibility 0s linear 0.3s;
         }
 
-        #bety-chat-body.bety-vacio #bety-chat-greeting {
+        #app-chat-body.app-vacio #app-chat-greeting {
             max-height: 60px;
             opacity: 1;
             visibility: visible;
@@ -376,16 +376,16 @@
                 visibility 0s linear 0s;
         }
 
-        #bety-chat-messages::-webkit-scrollbar {
+        #app-chat-messages::-webkit-scrollbar {
             width: 6px;
         }
 
-        #bety-chat-messages::-webkit-scrollbar-thumb {
+        #app-chat-messages::-webkit-scrollbar-thumb {
             background: #b9d9c6;
             border-radius: 10px;
         }
 
-        #bety-chat-messages::-webkit-scrollbar-track {
+        #app-chat-messages::-webkit-scrollbar-track {
             background: transparent;
         }
 
@@ -401,7 +401,7 @@
             }
         }
 
-        .bety-message {
+        .app-message {
             width: fit-content;
             max-width: 86%;
 
@@ -419,7 +419,7 @@
             animation: betyMessageIn 0.25s ease;
         }
 
-        .bety-message.bot {
+        .app-message.bot {
             margin-right: auto;
 
             border: 1px solid #dddddd;
@@ -429,7 +429,7 @@
             color: #242424;
         }
 
-        .bety-message.user {
+        .app-message.user {
             margin-left: auto;
 
             border-bottom-right-radius: 4px;
@@ -438,12 +438,12 @@
             color: white;
         }
 
-        .bety-message.loading {
+        .app-message.loading {
             font-style: italic;
             opacity: 0.72;
         }
 
-        .bety-message.typing::after {
+        .app-message.typing::after {
             content: '|';
             display: inline-block;
             margin-left: 2px;
@@ -462,33 +462,33 @@
             }
         }
 
-        .bety-message.error {
+        .app-message.error {
             border-color: #d85d5d;
             background: #fff1f1;
             color: #9f2929;
         }
 
-        .bety-message.bot strong {
+        .app-message.bot strong {
             font-weight: 700;
         }
 
-        .bety-message.bot a {
+        .app-message.bot a {
             color: #1f8f4d;
             font-weight: 700;
             text-decoration: none;
         }
 
-        .bety-message.bot a:hover {
+        .app-message.bot a:hover {
             text-decoration: underline;
         }
 
-        .bety-table-wrap {
+        .app-table-wrap {
             width: 100%;
             margin: 4px 0;
             overflow-x: auto;
         }
 
-        .bety-table {
+        .app-table {
             width: 100%;
             min-width: 280px;
             border-collapse: collapse;
@@ -496,26 +496,26 @@
             white-space: normal;
         }
 
-        .bety-table th,
-        .bety-table td {
+        .app-table th,
+        .app-table td {
             padding: 7px 8px;
             border: 1px solid #d7d7d7;
             text-align: left;
             vertical-align: top;
         }
 
-        .bety-table th {
+        .app-table th {
             background: #eef7f2;
             color: #184f31;
             font-weight: 700;
         }
 
-        .bety-table tr:nth-child(even) td {
+        .app-table tr:nth-child(even) td {
             background: #fafafa;
         }
 
         /* Fuentes */
-        .bety-sources {
+        .app-sources {
             width: fit-content;
             max-width: 86%;
 
@@ -532,35 +532,35 @@
             animation: betyMessageIn 0.25s ease;
         }
 
-        .bety-sources-title {
+        .app-sources-title {
             margin-bottom: 7px;
 
             color: #1f8f4d;
             font-weight: bold;
         }
 
-        .bety-source {
+        .app-source {
             padding: 6px 0;
 
             border-top: 1px solid #e4e4e4;
         }
 
-        .bety-source:first-of-type {
+        .app-source:first-of-type {
             border-top: none;
         }
 
-        .bety-source a {
+        .app-source a {
             color: #1f8f4d;
             font-weight: bold;
             text-decoration: none;
         }
 
-        .bety-source a:hover {
+        .app-source a:hover {
             text-decoration: underline;
         }
 
         /* Área inferior */
-        #bety-chat-input-area {
+        #app-chat-input-area {
             display: flex;
             align-items: flex-end;
             gap: 8px;
@@ -583,7 +583,7 @@
                 background 0.3s ease;
         }
 
-        #bety-chat-body.bety-vacio #bety-chat-input-area {
+        #app-chat-body.app-vacio #app-chat-input-area {
             margin: 0 18px;
             padding: 10px;
 
@@ -594,7 +594,7 @@
             box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
         }
 
-        #bety-chat-input {
+        #app-chat-input {
             flex: 1;
             min-width: 0;
             height: 44px;
@@ -621,18 +621,18 @@
                 box-shadow 0.2s ease;
         }
 
-        #bety-chat-input:focus {
+        #app-chat-input:focus {
             border-color: #1f8f4d;
 
             box-shadow: 0 0 0 2px rgba(31, 143, 77, 0.12);
         }
 
-        #bety-chat-input::placeholder {
+        #app-chat-input::placeholder {
             color: #6c7370;
             opacity: 1;
         }
 
-        #bety-chat-send {
+        #app-chat-send {
             flex-shrink: 0;
 
             padding: 10px 16px;
@@ -649,24 +649,24 @@
             transition: filter 0.2s ease;
         }
 
-        #bety-chat-send:hover {
+        #app-chat-send:hover {
             filter: brightness(1.08);
         }
 
-        #bety-chat-input:disabled,
-        #bety-chat-send:disabled {
+        #app-chat-input:disabled,
+        #app-chat-send:disabled {
             cursor: not-allowed;
             opacity: 0.65;
         }
 
         /* Adaptación para teléfonos */
         @media (max-width: 430px) {
-            #bety-chat-button {
+            #app-chat-button {
                 right: 10px;
                 bottom: 10px;
             }
 
-            #bety-chat-window {
+            #app-chat-window {
                 right: 5px;
                 bottom: 5px;
 
@@ -679,12 +679,12 @@
                 border-radius: 12px;
             }
 
-            #bety-chat-body.bety-vacio #bety-chat-input-area {
+            #app-chat-body.app-vacio #app-chat-input-area {
                 margin: 0 14px;
                 padding: 8px;
             }
 
-            #bety-chat-input {
+            #app-chat-input {
                 height: 42px;
                 min-height: 42px;
                 max-height: 84px;
@@ -703,34 +703,34 @@
 <!-- Burbuja flotante -->
 <button
     type="button"
-    id="bety-chat-button"
+    id="app-chat-button"
     title="Abrir chat con SAVI"
     aria-label="Abrir chat con SAVI"
 >
-    <img src="{% static 'Bety_AI/img/bety.png' %}" alt="SAVI">
+    <img src="{% static 'app/img/app.png' %}" alt="SAVI">
 </button>
 
 <!-- Ventana del chatbot -->
 <section
-    id="bety-chat-window"
+    id="app-chat-window"
     aria-label="Chat de SAVI"
     aria-hidden="true"
 >
-    <header id="bety-chat-header">
+    <header id="app-chat-header">
 
-        <div id="bety-chat-avatar">
-            <img src="{% static 'Bety_AI/img/bety.png' %}" alt="">
-            <span class="bety-status-dot" aria-hidden="true"></span>
+        <div id="app-chat-avatar">
+            <img src="{% static 'app/img/app.png' %}" alt="">
+            <span class="app-status-dot" aria-hidden="true"></span>
         </div>
 
-        <div id="bety-chat-info">
+        <div id="app-chat-info">
             <strong>SAVI</strong>
             <small>Asistente documental</small>
         </div>
 
         <button
             type="button"
-            id="bety-chat-voice"
+            id="app-chat-voice"
             aria-label="Activar lectura de respuestas"
             title="Activar lectura de respuestas"
         >
@@ -739,7 +739,7 @@
 
         <button
             type="button"
-            id="bety-chat-close"
+            id="app-chat-close"
             aria-label="Cerrar chat"
             title="Cerrar chat"
         >
@@ -748,16 +748,16 @@
 
     </header>
 
-    <div id="bety-chat-body" class="bety-vacio">
+    <div id="app-chat-body" class="app-vacio">
 
-        <main id="bety-chat-messages"></main>
+        <main id="app-chat-messages"></main>
 
-        <div id="bety-chat-greeting"></div>
+        <div id="app-chat-greeting"></div>
 
-        <footer id="bety-chat-input-area">
+        <footer id="app-chat-input-area">
 
             <textarea
-                id="bety-chat-input"
+                id="app-chat-input"
                 placeholder="Escribe tu consulta"
                 autocomplete="off"
                 maxlength="1500"
@@ -766,7 +766,7 @@
 
             <button
                 type="button"
-                id="bety-chat-send"
+                id="app-chat-send"
             >
                 Enviar
             </button>
@@ -776,51 +776,51 @@
     </div>
 </section>
 
-{{ contexto_sga|json_script:"bety-sga-context" }}
-{{ error_contexto_sga|json_script:"bety-sga-error" }}
+{{ contexto_sga|json_script:"app-sga-context" }}
+{{ error_contexto_sga|json_script:"app-sga-error" }}
 
 <script>
     document.addEventListener(
         'DOMContentLoaded',
         function () {
             const chatButton = document.getElementById(
-                'bety-chat-button'
+                'app-chat-button'
             );
 
             const chatWindow = document.getElementById(
-                'bety-chat-window'
+                'app-chat-window'
             );
 
             const closeButton = document.getElementById(
-                'bety-chat-close'
+                'app-chat-close'
             );
 
             const voiceButton = document.getElementById(
-                'bety-chat-voice'
+                'app-chat-voice'
             );
 
             const input = document.getElementById(
-                'bety-chat-input'
+                'app-chat-input'
             );
 
             const sendButton = document.getElementById(
-                'bety-chat-send'
+                'app-chat-send'
             );
 
             const chatBody = document.getElementById(
-                'bety-chat-body'
+                'app-chat-body'
             );
 
             const messages = document.getElementById(
-                'bety-chat-messages'
+                'app-chat-messages'
             );
 
             const greeting = document.getElementById(
-                'bety-chat-greeting'
+                'app-chat-greeting'
             );
 
             const inputArea = document.getElementById(
-                'bety-chat-input-area'
+                'app-chat-input-area'
             );
 
             const csrfInput = document.querySelector(
@@ -832,12 +832,12 @@
                 : '';
 
             const contextoSgaInicial = leerJsonScript(
-                'bety-sga-context',
+                'app-sga-context',
                 null
             );
 
             const errorContextoSga = leerJsonScript(
-                'bety-sga-error',
+                'app-sga-error',
                 ''
             );
 
@@ -850,11 +850,11 @@
                 ? contextoSgaInicial
                 : null;
             let vozActiva = localStorage.getItem(
-                'bety_voice_enabled'
+                'app_voice_enabled'
             ) === 'true';
 
             let conversationId = sessionStorage.getItem(
-                'bety_conversation_id'
+                'app_conversation_id'
             );
 
             if (!conversationId) {
@@ -863,7 +863,7 @@
                     : String(Date.now()) + String(Math.random()).slice(2);
 
                 sessionStorage.setItem(
-                    'bety_conversation_id',
+                    'app_conversation_id',
                     conversationId
                 );
             }
@@ -1017,7 +1017,7 @@
                 vozActiva = !vozActiva;
 
                 localStorage.setItem(
-                    'bety_voice_enabled',
+                    'app_voice_enabled',
                     String(vozActiva)
                 );
 
@@ -1078,13 +1078,13 @@
             }
 
             function pasarAModoChat() {
-                if (!chatBody.classList.contains('bety-vacio')) {
+                if (!chatBody.classList.contains('app-vacio')) {
                     return;
                 }
 
                 const posicionAntes = inputArea.getBoundingClientRect();
 
-                chatBody.classList.remove('bety-vacio');
+                chatBody.classList.remove('app-vacio');
                 input.placeholder = 'Escribe tu pregunta...';
 
                 const posicionDespues = inputArea.getBoundingClientRect();
@@ -1202,7 +1202,7 @@
                 const encabezados = dividirFilaTablaMarkdown(lineas[0]);
                 const filas = lineas.slice(2).map(dividirFilaTablaMarkdown);
 
-                let html = '<div class="bety-table-wrap"><table class="bety-table"><thead><tr>';
+                let html = '<div class="app-table-wrap"><table class="app-table"><thead><tr>';
 
                 encabezados.forEach(
                     function (encabezado) {
@@ -1291,7 +1291,7 @@
                 );
 
                 mensaje.classList.add(
-                    'bety-message',
+                    'app-message',
                     remitente
                 );
 
@@ -1400,7 +1400,7 @@
                 );
 
                 mensaje.classList.add(
-                    'bety-message',
+                    'app-message',
                     'bot',
                     'typing'
                 );
@@ -1469,7 +1469,7 @@
                 );
 
                 contenedor.classList.add(
-                    'bety-sources'
+                    'app-sources'
                 );
 
                 const titulo = document.createElement(
@@ -1477,7 +1477,7 @@
                 );
 
                 titulo.classList.add(
-                    'bety-sources-title'
+                    'app-sources-title'
                 );
 
                 titulo.textContent = 'Fuentes consultadas';
@@ -1504,7 +1504,7 @@
                         );
 
                         elemento.classList.add(
-                            'bety-source'
+                            'app-source'
                         );
 
                         if (fuente.url) {

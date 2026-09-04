@@ -6,7 +6,7 @@ from .chat_perfil_web import obtener_siguiente_campo_perfil_web, pregunta_campo_
 from .chat_validacion_perfil import validar_respuesta_campo
 from .contexto_usuario import limpiar_texto_contexto, normalizar_texto
 
-CONVERSACION_CACHE_PREFIX = "bety_ai_conversacion:"
+CONVERSACION_CACHE_PREFIX = "app_conversacion:"
 # TTL de inactividad: cada guardado (guardar_estado_conversacion) reinicia el
 # contador, asi que la sesion expira solo si pasan 30 min sin nuevos turnos.
 CONVERSACION_TTL_SEGUNDOS = 60 * 30

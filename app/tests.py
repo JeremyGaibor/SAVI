@@ -15,6 +15,7 @@ from .views import (
     _construir_respuesta_inventario_documentos,
     _describir_filtros_relajados,
     _debe_reformular,
+    _generar_respuesta_documental,
     _obtener_token_api_sga,
     api_actualizar_link_documento,
     api_consulta_ia,
@@ -65,6 +66,7 @@ from .view_logic.chat_conversacion import (
     responder_pregunta_sobre_historial,
 )
 from .view_logic.chat_respuestas_ia import (
+    extraer_contexto_suficiente,
     generar_respuesta_controlada,
     limpiar_respuesta_ia,
 )
@@ -725,6 +727,165 @@ class LimpiarRespuestaIaMetadataInternaTests(SimpleTestCase):
         )
 
         self.assertEqual(limpiar_respuesta_ia(respuesta), respuesta)
+
+    def test_limpia_marcador_contexto_suficiente_si(self):
+        respuesta = "El tramite se hace en el SGA.\n\nCONTEXTO_SUFICIENTE: si"
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("CONTEXTO_SUFICIENTE", limpia)
+        self.assertEqual(limpia, "El tramite se hace en el SGA.")
+
+    def test_limpia_marcador_contexto_suficiente_no(self):
+        respuesta = "No hay información suficiente sobre eso.\n\nCONTEXTO_SUFICIENTE: no"
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("CONTEXTO_SUFICIENTE", limpia)
+        self.assertEqual(limpia, "No hay información suficiente sobre eso.")
+
+    def test_limpia_marcador_contexto_suficiente_mal_formado_como_backstop(self):
+        # Backstop del requisito 4: aunque el formato no sea el que
+        # extraer_contexto_suficiente reconoce (fail-open, ver
+        # ContextoSuficienteMarcadorTests), el texto "CONTEXTO_SUFICIENTE"
+        # jamas debe llegar al usuario.
+        respuesta = "Contenido real.\nCONTEXTO_SUFICIENTE: tal vez, no estoy seguro"
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("CONTEXTO_SUFICIENTE", limpia)
+        self.assertEqual(limpia, "Contenido real.")
+
+    def test_limpia_marcador_contexto_suficiente_pegado_a_otro_texto(self):
+        # Backstop residual: si el modelo no lo deja solo en su propia
+        # linea (caso esperado por el prompt), igual debe desaparecer.
+        respuesta = "Contenido real. CONTEXTO_SUFICIENTE: no mas texto despues."
+
+        limpia = limpiar_respuesta_ia(respuesta)
+
+        self.assertNotIn("CONTEXTO_SUFICIENTE", limpia)
+
+
+class ContextoSuficienteMarcadorTests(SimpleTestCase):
+    """
+    Fix del 2026-09-10: el bloque "Fuentes consultadas" aparecia incluso
+    cuando la respuesta decia "no hay informacion suficiente" -- el
+    retrieval si trajo fragmentos, pero el LLM determino a nivel semantico
+    que no servian para responder (ver GenerarRespuestaDocumentalFuentesTests
+    para el efecto de punta a punta sobre "fuentes"). CONTEXTO_SUFICIENTE es
+    el marcador que el prompt documental (_construir_prompt_documental,
+    regla 21) le pide al modelo para exponer esa decision de forma
+    parseable, sin matchear el texto libre de la respuesta.
+    """
+
+    def test_reconoce_si(self):
+        respuesta = "El tramite se hace en el SGA.\n\nCONTEXTO_SUFICIENTE: si"
+
+        self.assertTrue(extraer_contexto_suficiente(respuesta))
+
+    def test_reconoce_no(self):
+        respuesta = (
+            "No hay información suficiente sobre reglamentos de la higiene "
+            "institucional en el contexto proporcionado.\n\nCONTEXTO_SUFICIENTE: no"
+        )
+
+        self.assertFalse(extraer_contexto_suficiente(respuesta))
+
+    def test_reconoce_si_con_acento_mayusculas_y_punto_final(self):
+        respuesta = "Contenido.\n**CONTEXTO_SUFICIENTE:** Sí."
+
+        self.assertTrue(extraer_contexto_suficiente(respuesta))
+
+    def test_sin_marcador_devuelve_none_fail_open(self):
+        respuesta = "El tramite se hace en el SGA."
+
+        self.assertIsNone(extraer_contexto_suficiente(respuesta))
+
+    def test_marcador_mal_formado_devuelve_none_fail_open(self):
+        variantes = [
+            "CONTEXTO_SUFICIENTE: tal vez",
+            "CONTEXTO_SUFICIENTE mas o menos si",
+            "El CONTEXTO_SUFICIENTE fue evaluado: si",
+        ]
+        for variante in variantes:
+            respuesta = f"Contenido de la respuesta.\n{variante}"
+            self.assertIsNone(
+                extraer_contexto_suficiente(respuesta),
+                f"deberia ser None para: {variante!r}",
+            )
+
+    def test_marcador_duplicado_y_contradictorio_devuelve_none_fail_open(self):
+        respuesta = "Contenido.\nCONTEXTO_SUFICIENTE: si\nCONTEXTO_SUFICIENTE: no"
+
+        self.assertIsNone(extraer_contexto_suficiente(respuesta))
+
+    def test_entrada_no_string_devuelve_none(self):
+        self.assertIsNone(extraer_contexto_suficiente(None))
+
+
+@override_settings(CACHES={
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-contexto-suficiente-fuentes",
+    }
+})
+class GenerarRespuestaDocumentalFuentesTests(SimpleTestCase):
+    """
+    Fix del 2026-09-10: las fuentes solo se ocultan cuando el modelo declara
+    explicitamente CONTEXTO_SUFICIENTE: no. En cualquier otro caso (si,
+    ausente o mal formado) se comportan como siempre -- fail-open (requisito
+    2 del fix), para no perder fuentes legitimas por un marcador que no se
+    pudo leer.
+    """
+
+    FRAGMENTOS = [
+        {
+            "contenido": "...",
+            "metadata": {"titulo": "Lineamientos de correo electronico", "pagina_inicio": 6},
+        },
+    ]
+
+    def _generar(self, respuesta_qwen):
+        request = type("RequestStub", (), {})()
+        with patch(
+            "app.views.consultar_qwen",
+            return_value={"respuesta": respuesta_qwen, "modelo": "qwen-test"},
+        ), patch("app.views.guardar_interaccion_temporal", return_value=[]):
+            return _generar_respuesta_documental(
+                request,
+                "convtest-contexto-suficiente-fuentes",
+                "hablame de los reglamentos de la higiene",
+                "prompt-cualquiera",
+                self.FRAGMENTOS,
+            )
+
+    def test_marcador_no_oculta_fuentes_y_se_recorta_de_la_respuesta(self):
+        response = self._generar(
+            "No hay información suficiente sobre reglamentos de la higiene "
+            "institucional en el contexto proporcionado.\n\nCONTEXTO_SUFICIENTE: no"
+        )
+
+        self.assertEqual(response.data["fuentes"], [])
+        self.assertNotIn("CONTEXTO_SUFICIENTE", response.data["respuesta"])
+        self.assertIn("No hay información suficiente", response.data["respuesta"])
+
+    def test_marcador_si_muestra_fuentes_y_se_recorta_de_la_respuesta(self):
+        response = self._generar("El tramite se hace en el SGA.\n\nCONTEXTO_SUFICIENTE: si")
+
+        self.assertEqual(len(response.data["fuentes"]), 1)
+        self.assertNotIn("CONTEXTO_SUFICIENTE", response.data["respuesta"])
+
+    def test_sin_marcador_muestra_fuentes_fail_open(self):
+        response = self._generar("El tramite se hace en el SGA.")
+
+        self.assertEqual(len(response.data["fuentes"]), 1)
+        self.assertNotIn("CONTEXTO_SUFICIENTE", response.data["respuesta"])
+
+    def test_marcador_mal_formado_muestra_fuentes_fail_open(self):
+        response = self._generar("El tramite se hace en el SGA.\nCONTEXTO_SUFICIENTE: tal vez")
+
+        self.assertEqual(len(response.data["fuentes"]), 1)
+        self.assertNotIn("CONTEXTO_SUFICIENTE", response.data["respuesta"])
 
 
 class InventarioDocumentosClasificacionTests(SimpleTestCase):

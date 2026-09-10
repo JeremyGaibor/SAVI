@@ -520,44 +520,54 @@ def combinar_filtros_consulta_y_perfil(filtros_consulta, perfil):
     return filtros
 
 
+CAMPOS_FILTRO_PERMISO = {"perfil", "perfiles"}
+
+
 def relajar_filtros_busqueda(filtros):
+    """
+    Genera variantes progresivamente mas laxas de `filtros` para el fallback
+    de busqueda. perfil/perfiles son un permiso de acceso (ver comentario al
+    inicio de este archivo), no una senal de relevancia: nunca se sueltan
+    aca, ni siquiera en la variante final "sin filtros" -- si estan
+    presentes en `filtros`, viajan intactos en todas las variantes.
+    """
     if not filtros:
         return [{}]
 
     filtros_base = dict(filtros)
+    filtros_permiso = {
+        clave: valor for clave, valor in filtros_base.items() if clave in CAMPOS_FILTRO_PERMISO
+    }
+
     variantes = [filtros_base]
     campos_relajables = [
         "tipo_estudio",
         "facultad",
         "carrera",
-        "perfil",
         "grupos",
         "tipos_periodo",
-        "perfiles",
     ]
 
     for campo in campos_relajables:
         if campo in filtros_base:
             relajado = dict(filtros_base)
             relajado.pop(campo, None)
-            if relajado and relajado not in variantes:
+            if relajado not in variantes:
                 variantes.append(relajado)
 
     for campos_a_quitar in [
         ["facultad", "carrera"],
         ["tipo_estudio", "facultad", "carrera"],
-        ["facultad", "carrera", "perfil"],
         ["grupos", "tipos_periodo"],
-        ["grupos", "tipos_periodo", "perfiles"],
     ]:
         relajado = dict(filtros_base)
         for campo in campos_a_quitar:
             relajado.pop(campo, None)
-        if relajado and relajado not in variantes:
+        if relajado not in variantes:
             variantes.append(relajado)
 
-    if {} not in variantes:
-        variantes.append({})
+    if filtros_permiso not in variantes:
+        variantes.append(filtros_permiso)
 
     return variantes
 

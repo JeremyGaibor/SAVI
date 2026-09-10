@@ -18,6 +18,11 @@ CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "documentos_institucionales")
 FILTROS_LISTA_METADATA = {"perfiles", "grupos", "tipos_periodo"}
 
+# perfiles es un permiso de acceso, no una senal de relevancia (ver
+# busqueda_fragmentos.py). Estos valores marcan un documento como visible
+# para cualquier perfil, incluido "sin perfil declarado".
+PERFILES_ACCESO_PUBLICO = {"todos", "general", "publico", "publica"}
+
 # Controlan cuanto puede la coincidencia lexica (substring literal) corregir
 # el ranking por distancia semantica al combinarse en un score final. Ver
 # buscar_fragmentos(). Calibrados el 2026-08-07 con un corpus real de solo
@@ -328,10 +333,39 @@ def metadata_coincide_filtro_lista(metadata, clave, valor_filtro):
     return any(normalizar_texto(valor) == valor_normalizado for valor in valores)
 
 
+def metadata_permite_perfil(metadata, valor_filtro_perfil):
+    """
+    Control de acceso duro por perfil (estudiante/docente/aspirante/externo).
+    A diferencia de grupos/tipos_periodo, la ausencia de un perfil declarado
+    NO abre un documento restringido: solo son visibles los documentos sin
+    metadata de perfiles o marcados explicitamente como publicos. Por eso
+    esta funcion se evalua siempre, no solo cuando hay un filtro activo.
+    """
+    valores_documento = [
+        normalizar_texto(valor)
+        for valor in valores_metadata_lista((metadata or {}).get("perfiles"))
+    ]
+
+    if not valores_documento or any(valor in PERFILES_ACCESO_PUBLICO for valor in valores_documento):
+        return True
+
+    valor_normalizado = normalizar_texto(valor_filtro_perfil)
+    if not valor_normalizado:
+        return False
+
+    return valor_normalizado in valores_documento
+
+
 def metadata_cumple_filtros_flexibles(metadata, filtros):
+    filtros = filtros or {}
+
+    if not metadata_permite_perfil(metadata, filtros.get("perfiles", "")):
+        return False
+
     return all(
         metadata_coincide_filtro_lista(metadata, clave, valor)
-        for clave, valor in (filtros or {}).items()
+        for clave, valor in filtros.items()
+        if clave != "perfiles"
     )
 
 
@@ -392,7 +426,7 @@ def buscar_fragmentos(pregunta, filtros=None, total_resultados=3):
     fragmentos = []
 
     for texto, metadata, distancia in zip(documentos, metadatas, distancias):
-        if filtros_flexibles and not metadata_cumple_filtros_flexibles(metadata, filtros_flexibles):
+        if not metadata_cumple_filtros_flexibles(metadata, filtros_flexibles):
             continue
         fragmentos.append({
             "contenido": texto,

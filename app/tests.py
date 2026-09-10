@@ -41,6 +41,7 @@ from .services import chroma_service
 from .services.chroma_service import (
     calcular_score_ranking,
     metadata_cumple_filtros_flexibles,
+    metadata_permite_perfil,
 )
 from .view_logic.interpretacion_consulta import (
     extraer_json_interpretacion,
@@ -576,7 +577,7 @@ class ContextoUsuarioSgaTests(SimpleTestCase):
 
         fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
             "como puedo justificar mi inasistencia",
-            {"perfiles": "Estudiante"},
+            {"facultad": "Ciencias Informaticas"},
             total_resultados=3,
         )
 
@@ -2353,6 +2354,182 @@ class RankingFragmentosChromaTests(SimpleTestCase):
         self.assertGreater(lexica_por_id["1"], lexica_por_id["9"])
 
         self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "1")
+
+
+class ControlAccesoPerfilTests(SimpleTestCase):
+    """
+    Fix del 2026-09-10: perfil/perfiles es un permiso de acceso duro, no una
+    senal de relevancia relajable. Antes de este fix, buscar_fragmentos_con_
+    fallback terminaba probando una variante sin ningun filtro cuando la
+    busqueda estricta por perfil no encontraba nada, devolviendo documentos
+    restringidos a un perfil distinto del usuario (caso real reportado:
+    documento id 3, "Politica de proteccion de datos personales",
+    perfiles=["Estudiante"], visible para un usuario identificado como
+    Docente). El fix tiene dos capas independientes:
+    1. relajar_filtros_busqueda ya no incluye perfil/perfiles entre los
+       campos relajables, y la variante final siempre conserva el filtro
+       de perfil si estaba presente.
+    2. metadata_permite_perfil (chroma_service) se evalua siempre, no solo
+       cuando hay un filtro de perfil activo: si el usuario no declaro
+       perfil, solo se ven documentos sin restriccion de perfil o marcados
+       como publicos ("Todos"/"General") -- un filtro vacio no abre todo.
+    """
+
+    TITULO_ESTUDIANTES = "Politica de proteccion de datos personales"
+    CONTENIDO_ESTUDIANTES = (
+        "Esta politica regula el tratamiento de datos personales de los "
+        "estudiantes matriculados en la institucion."
+    )
+    PREGUNTA = "que dice la politica de proteccion de datos personales"
+
+    def _coleccion_con_documento(self, perfiles=None):
+        metadata = {"id_documento": "3", "titulo": self.TITULO_ESTUDIANTES}
+        if perfiles is not None:
+            metadata["perfiles"] = perfiles
+        return _ColeccionChromaFalsa(
+            documentos=[self.CONTENIDO_ESTUDIANTES],
+            metadatas=[metadata],
+            distancias=[0.1],
+        )
+
+    @patch("app.services.chroma_service.obtener_coleccion")
+    def test_docente_no_recibe_documento_restringido_a_estudiantes(self, coleccion_mock):
+        coleccion_mock.return_value = self._coleccion_con_documento(["Estudiante"])
+        filtros = combinar_filtros_consulta_y_perfil({}, {"perfil": "Docente"})
+
+        fragmentos, _ = buscar_fragmentos_con_fallback(self.PREGUNTA, filtros, total_resultados=3)
+
+        self.assertEqual(fragmentos, [])
+
+    @patch("app.services.chroma_service.obtener_coleccion")
+    def test_estudiante_si_recibe_documento_de_estudiantes(self, coleccion_mock):
+        coleccion_mock.return_value = self._coleccion_con_documento(["Estudiante"])
+        filtros = combinar_filtros_consulta_y_perfil({}, {"perfil": "Estudiante"})
+
+        fragmentos, filtros_aplicados = buscar_fragmentos_con_fallback(
+            self.PREGUNTA, filtros, total_resultados=3
+        )
+
+        self.assertEqual(len(fragmentos), 1)
+        self.assertEqual(fragmentos[0]["metadata"]["id_documento"], "3")
+        self.assertEqual(filtros_aplicados, {"perfiles": "Estudiante"})
+
+    @patch("app.services.chroma_service.obtener_coleccion")
+    def test_documento_marcado_todos_es_visible_para_cualquier_perfil(self, coleccion_mock):
+        coleccion_mock.return_value = self._coleccion_con_documento(["Todos"])
+
+        for perfil in ("Docente", "Estudiante"):
+            filtros = combinar_filtros_consulta_y_perfil({}, {"perfil": perfil})
+            fragmentos, _ = buscar_fragmentos_con_fallback(self.PREGUNTA, filtros, total_resultados=3)
+            self.assertEqual(len(fragmentos), 1, f"fallo para perfil={perfil}")
+
+    @patch("app.services.chroma_service.obtener_coleccion")
+    def test_perfil_no_declarado_no_ve_documento_restringido(self, coleccion_mock):
+        # Sin perfil declarado no se envia ningun filtro de perfiles -- el
+        # filtro vacio NO debe equivaler a "sin restriccion".
+        coleccion_mock.return_value = self._coleccion_con_documento(["Estudiante"])
+
+        fragmentos, _ = buscar_fragmentos_con_fallback(self.PREGUNTA, {}, total_resultados=3)
+
+        self.assertEqual(fragmentos, [])
+
+    @patch("app.services.chroma_service.obtener_coleccion")
+    def test_perfil_no_declarado_si_ve_documento_sin_metadata_de_perfiles(self, coleccion_mock):
+        # Un documento que nunca declaro perfiles (corpus historico sin ese
+        # campo) sigue siendo publico por defecto -- no se retroactiva una
+        # restriccion que el documento nunca tuvo.
+        coleccion_mock.return_value = self._coleccion_con_documento(perfiles=None)
+
+        fragmentos, _ = buscar_fragmentos_con_fallback(self.PREGUNTA, {}, total_resultados=3)
+
+        self.assertEqual(len(fragmentos), 1)
+
+    def test_metadata_permite_perfil_es_cerrado_por_defecto(self):
+        restringido = {"perfiles": ["Estudiante"]}
+        publico = {"perfiles": ["Todos"]}
+        sin_metadata = {}
+
+        self.assertFalse(metadata_permite_perfil(restringido, ""))
+        self.assertFalse(metadata_permite_perfil(restringido, "Docente"))
+        self.assertTrue(metadata_permite_perfil(restringido, "Estudiante"))
+        self.assertTrue(metadata_permite_perfil(publico, ""))
+        self.assertTrue(metadata_permite_perfil(publico, "Docente"))
+        self.assertTrue(metadata_permite_perfil(sin_metadata, ""))
+        self.assertTrue(metadata_permite_perfil(sin_metadata, "Docente"))
+
+    @patch("app.views.listar_fragmentos_chroma")
+    def test_inventario_docente_no_lista_documento_solo_estudiante(self, listar_mock):
+        listar_mock.return_value = [
+            {
+                "id": "doc_3_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "3",
+                    "titulo": self.TITULO_ESTUDIANTES,
+                    "perfiles": ["Estudiante"],
+                },
+            },
+            {
+                "id": "doc_9_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "9",
+                    "titulo": "Reglamento general (todos)",
+                    "perfiles": ["Todos"],
+                },
+            },
+        ]
+
+        respuesta = _construir_respuesta_inventario_documentos({"perfil": "Docente"})
+
+        self.assertNotIn(self.TITULO_ESTUDIANTES, respuesta)
+        self.assertIn("Reglamento general (todos)", respuesta)
+
+    @patch("app.views.listar_fragmentos_chroma")
+    def test_inventario_estudiante_si_lista_documento_de_estudiantes(self, listar_mock):
+        listar_mock.return_value = [
+            {
+                "id": "doc_3_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "3",
+                    "titulo": self.TITULO_ESTUDIANTES,
+                    "perfiles": ["Estudiante"],
+                },
+            },
+        ]
+
+        respuesta = _construir_respuesta_inventario_documentos({"perfil": "Estudiante"})
+
+        self.assertIn(self.TITULO_ESTUDIANTES, respuesta)
+
+    @patch("app.views.listar_fragmentos_chroma")
+    def test_inventario_sin_perfil_declarado_no_lista_restringidos(self, listar_mock):
+        listar_mock.return_value = [
+            {
+                "id": "doc_3_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "3",
+                    "titulo": self.TITULO_ESTUDIANTES,
+                    "perfiles": ["Estudiante"],
+                },
+            },
+            {
+                "id": "doc_9_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "9",
+                    "titulo": "Reglamento general (todos)",
+                    "perfiles": ["Todos"],
+                },
+            },
+        ]
+
+        respuesta = _construir_respuesta_inventario_documentos(None)
+
+        self.assertNotIn(self.TITULO_ESTUDIANTES, respuesta)
+        self.assertIn("Reglamento general (todos)", respuesta)
 
 
 class PuntuarCoincidenciaLexicaCamposMuertosTests(SimpleTestCase):

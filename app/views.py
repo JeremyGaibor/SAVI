@@ -28,6 +28,7 @@ from .services.chroma_service import (
     eliminar_version_chroma,
     guardar_fragmentos_documento,
     listar_fragmentos_chroma,
+    metadata_permite_perfil,
     obtener_fragmento_chroma,
 )
 from .services.historial_service import guardar_interaccion_temporal
@@ -80,6 +81,7 @@ from .view_logic.chat_respuestas_ia import (
 from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
     combinar_filtros_consulta_y_perfil,
+    construir_filtros_desde_perfil,
     construir_pregunta_busqueda_contextual,
     construir_pregunta_busqueda_con_perfil,
     buscar_fragmentos_con_fallback,
@@ -402,12 +404,16 @@ def _agrupar_fragmentos_por_documento(fragmentos):
     return documentos
 
 
-def _construir_respuesta_inventario_documentos():
+def _construir_respuesta_inventario_documentos(perfil_usuario=None):
     """
     Responde "que documentos tienes" con el inventario real de Chroma
     (metadata via collection.get(), no similarity search), en vez de dejar
     que el LLM complete una lista a partir de 2-3 fragmentos sueltos. El
     texto se arma aca mismo, no lo genera el modelo.
+
+    Aplica el mismo control de acceso duro por perfil que la busqueda
+    normal (metadata_permite_perfil): un documento restringido a un perfil
+    distinto del usuario no debe listarse, aunque exista en Chroma.
 
     Devuelve None si no se pudo leer Chroma, para que el llamador deje caer
     la pregunta al flujo normal en vez de mostrar un error.
@@ -417,7 +423,14 @@ def _construir_respuesta_inventario_documentos():
     except Exception:
         return None
 
-    documentos = _agrupar_fragmentos_por_documento(fragmentos)
+    valor_perfil = construir_filtros_desde_perfil(perfil_usuario).get("perfiles", "")
+    fragmentos_permitidos = [
+        fragmento
+        for fragmento in fragmentos
+        if metadata_permite_perfil(fragmento.get("metadata") or {}, valor_perfil)
+    ]
+
+    documentos = _agrupar_fragmentos_por_documento(fragmentos_permitidos)
     titulos = sorted(
         {
             doc["titulo"]
@@ -1418,7 +1431,7 @@ def api_consulta_ia(request):
     perfil_usuario, pregunta, pregunta_original_web, perfil_en_recoleccion = resultado_perfil
 
     if es_pregunta_inventario_documentos(pregunta):
-        respuesta_inventario = _construir_respuesta_inventario_documentos()
+        respuesta_inventario = _construir_respuesta_inventario_documentos(perfil_usuario)
         if respuesta_inventario is not None:
             return _responder_directo(
                 request, conversation_id, pregunta, "INVENTARIO_DOCUMENTOS", respuesta_inventario

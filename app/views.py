@@ -413,7 +413,9 @@ def _construir_respuesta_inventario_documentos(perfil_usuario=None):
 
     Aplica el mismo control de acceso duro por perfil que la busqueda
     normal (metadata_permite_perfil): un documento restringido a un perfil
-    distinto del usuario no debe listarse, aunque exista en Chroma.
+    distinto del usuario no debe listarse, aunque exista en Chroma. Si el
+    filtro deja la lista vacia pero Chroma si tenia documentos, el mensaje
+    aclara que el problema es el perfil, no que no haya nada cargado.
 
     Devuelve None si no se pudo leer Chroma, para que el llamador deje caer
     la pregunta al flujo normal en vez de mostrar un error.
@@ -440,6 +442,8 @@ def _construir_respuesta_inventario_documentos(perfil_usuario=None):
     )
 
     if not titulos:
+        if fragmentos and len(fragmentos_permitidos) < len(fragmentos):
+            return "Por ahora no tengo documentos disponibles para tu perfil."
         return "Por ahora no tengo documentos cargados en el sistema."
 
     lineas = "\n".join(f"- {titulo}" for titulo in titulos)
@@ -1035,6 +1039,33 @@ def _iniciar_perfil_web_si_hace_falta(
     return _responder_directo(request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_WEB", respuesta)
 
 
+def _iniciar_perfil_web_si_inventario_lo_requiere(
+    request, conversation_id, pregunta, perfil_usuario, perfil_en_recoleccion
+):
+    """
+    El inventario ("que documentos tienes") filtra por perfil igual que
+    cualquier consulta documental (ver metadata_permite_perfil), asi que
+    tambien necesita saberlo. A diferencia de _iniciar_perfil_web_si_hace_falta,
+    no depende de pregunta_necesita_perfil_web/interpretacion_consulta (el
+    router LLM ni se llama para inventario, ver es_pregunta_inventario_documentos
+    en api_consulta_ia): la deteccion de la pregunta ya es suficiente para
+    saber que hace falta el perfil.
+
+    Sin esto, "que documentos tienes" antes de declarar perfil devolvia el
+    inventario completo sin filtrar (fuga de informacion) o, tras el fix de
+    control de acceso, un enganoso "no tengo documentos cargados" (el
+    problema no es que no haya documentos, es que no se sabe quien pregunta).
+    """
+    if perfil_usuario:
+        return None
+
+    respuesta = iniciar_recoleccion_perfil_conversacion(conversation_id, pregunta, perfil_en_recoleccion or {})
+    if not respuesta:
+        return None
+
+    return _responder_directo(request, conversation_id, pregunta, "SOLICITUD_CONTEXTO_WEB", respuesta)
+
+
 def _interpretar_consulta_con_fallback(pregunta, historial_conversacion, contexto_usuario):
     try:
         return interpretar_consulta_ia(pregunta, historial_conversacion, contexto_usuario)
@@ -1431,6 +1462,12 @@ def api_consulta_ia(request):
     perfil_usuario, pregunta, pregunta_original_web, perfil_en_recoleccion = resultado_perfil
 
     if es_pregunta_inventario_documentos(pregunta):
+        respuesta_pendiente_inventario = _iniciar_perfil_web_si_inventario_lo_requiere(
+            request, conversation_id, pregunta, perfil_usuario, perfil_en_recoleccion
+        )
+        if respuesta_pendiente_inventario:
+            return respuesta_pendiente_inventario
+
         respuesta_inventario = _construir_respuesta_inventario_documentos(perfil_usuario)
         if respuesta_inventario is not None:
             return _responder_directo(

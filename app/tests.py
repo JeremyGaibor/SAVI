@@ -59,6 +59,7 @@ from .view_logic.chat_conversacion import (
     es_solicitud_reformulacion,
     formatear_historial_conversacion,
     formatear_historial_conversacion_solo_preguntas,
+    guardar_perfil_sga_conversacion,
     obtener_ultima_respuesta_conversacion,
     obtener_ultimo_tipo_respuesta_conversacion,
     responder_pregunta_sobre_historial,
@@ -1054,6 +1055,12 @@ class HistorialConversacionTests(SimpleTestCase):
         buscar_mock,
         interpretar_mock,
     ):
+        # Perfil ya conocido de antes en la conversacion (ver
+        # InventarioDocumentosPerfilTests para el caso sin perfil declarado,
+        # que dispara recoleccion en vez de responder el inventario directo).
+        conversation_id = "convtest-inventario"
+        guardar_perfil_sga_conversacion(conversation_id, {"perfil": "Docente"})
+
         listar_mock.return_value = [
             {
                 "id": "doc_5_frag_1",
@@ -1079,7 +1086,7 @@ class HistorialConversacionTests(SimpleTestCase):
             "/api/chat/",
             {
                 "pregunta": "Holaa, que documentos tienes?",
-                "conversation_id": "convtest-inventario",
+                "conversation_id": conversation_id,
             },
             format="json",
         )
@@ -2530,6 +2537,148 @@ class ControlAccesoPerfilTests(SimpleTestCase):
 
         self.assertNotIn(self.TITULO_ESTUDIANTES, respuesta)
         self.assertIn("Reglamento general (todos)", respuesta)
+
+    @patch("app.views.listar_fragmentos_chroma")
+    def test_inventario_documentos_existen_pero_ninguno_para_el_perfil(self, listar_mock):
+        # Fix del 2026-09-10: distinguir "Chroma esta vacio" de "hay
+        # documentos pero ninguno visible para este perfil" -- el mensaje
+        # generico era enganoso (sugiere que no hay nada cargado cuando en
+        # realidad el problema es el perfil del usuario).
+        listar_mock.return_value = [
+            {
+                "id": "doc_3_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "3",
+                    "titulo": self.TITULO_ESTUDIANTES,
+                    "perfiles": ["Estudiante"],
+                },
+            },
+        ]
+
+        respuesta = _construir_respuesta_inventario_documentos({"perfil": "Docente"})
+
+        self.assertEqual(respuesta, "Por ahora no tengo documentos disponibles para tu perfil.")
+
+    @patch("app.views.listar_fragmentos_chroma", return_value=[])
+    def test_inventario_sin_documentos_en_chroma_mantiene_mensaje_generico(self, listar_mock):
+        # Contraparte del test anterior: si Chroma esta genuinamente vacio,
+        # el mensaje generico sigue siendo el correcto (no hay nada que
+        # atribuirle al perfil).
+        respuesta = _construir_respuesta_inventario_documentos({"perfil": "Docente"})
+
+        self.assertEqual(respuesta, "Por ahora no tengo documentos cargados en el sistema.")
+
+
+@override_settings(CACHES={
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-inventario-perfil",
+    }
+})
+class InventarioDocumentosPerfilFlowTests(SimpleTestCase):
+    """
+    Fix del 2026-09-10: "que documentos tienes" antes de declarar perfil
+    disparaba _construir_respuesta_inventario_documentos con perfil vacio,
+    que (tras el fix de control de acceso) respondia "Por ahora no tengo
+    documentos cargados en el sistema" -- enganoso, porque si hay
+    documentos, lo que falta es saber quien pregunta. Ahora dispara la
+    misma recoleccion de perfil que usan las consultas documentales
+    (iniciar_recoleccion_perfil_conversacion via
+    _iniciar_perfil_web_si_inventario_lo_requiere) y, una vez declarado el
+    perfil, responde el inventario ya filtrado.
+    """
+
+    @patch("app.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.listar_fragmentos_chroma")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    def test_inventario_sin_perfil_pide_perfil_en_vez_de_responder(
+        self, guardar_temporal_mock, listar_mock, buscar_mock, interpretar_mock,
+    ):
+        listar_mock.return_value = [
+            {
+                "id": "doc_5_frag_1",
+                "contenido": "...",
+                "metadata": {"id_documento": "5", "titulo": "Modelo Evaluativo SGA"},
+            },
+        ]
+
+        request = APIRequestFactory().post(
+            "/api/chat/",
+            {
+                "pregunta": "que documentos tienes",
+                "conversation_id": "convtest-inventario-sin-perfil",
+            },
+            format="json",
+        )
+        request.session = type("SessionStub", (dict,), {})()
+
+        response = api_consulta_ia(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tipo_respuesta"], "SOLICITUD_CONTEXTO_WEB")
+        self.assertIn("eres estudiante", response.data["respuesta"])
+        interpretar_mock.assert_not_called()
+        buscar_mock.assert_not_called()
+        listar_mock.assert_not_called()
+
+    @patch("app.view_logic.chat_validacion_perfil.consultar_qwen")
+    @patch("app.views.interpretar_consulta_ia")
+    @patch("app.views.buscar_fragmentos_con_fallback")
+    @patch("app.views.listar_fragmentos_chroma")
+    @patch("app.views.guardar_interaccion_temporal", return_value=[])
+    def test_inventario_tras_declarar_perfil_responde_filtrado(
+        self, guardar_temporal_mock, listar_mock, buscar_mock, interpretar_mock, qwen_mock,
+    ):
+        conversation_id = "convtest-inventario-con-perfil"
+        listar_mock.return_value = [
+            {
+                "id": "doc_3_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "3",
+                    "titulo": "Politica de proteccion de datos personales",
+                    "perfiles": ["Estudiante"],
+                },
+            },
+            {
+                "id": "doc_9_frag_1",
+                "contenido": "...",
+                "metadata": {
+                    "id_documento": "9",
+                    "titulo": "Reglamento general",
+                    "perfiles": ["Todos"],
+                },
+            },
+        ]
+        qwen_mock.return_value = {"respuesta": "docente"}
+        session = type("SessionStub", (dict,), {})()
+
+        def _post(pregunta):
+            request = APIRequestFactory().post(
+                "/api/chat/",
+                {"pregunta": pregunta, "conversation_id": conversation_id},
+                format="json",
+            )
+            request.session = session
+            return api_consulta_ia(request)
+
+        respuesta_1 = _post("que documentos tienes")
+        self.assertEqual(respuesta_1.data["tipo_respuesta"], "SOLICITUD_CONTEXTO_WEB")
+        self.assertIn("eres estudiante", respuesta_1.data["respuesta"])
+
+        respuesta_2 = _post("Docente")
+        self.assertEqual(respuesta_2.data["tipo_respuesta"], "SOLICITUD_CONTEXTO_WEB")
+        self.assertIn("facultad", respuesta_2.data["respuesta"].lower())
+
+        respuesta_3 = _post("general")
+        self.assertEqual(respuesta_3.data["tipo_respuesta"], "INVENTARIO_DOCUMENTOS")
+        self.assertNotIn("Politica de proteccion de datos personales", respuesta_3.data["respuesta"])
+        self.assertIn("Reglamento general", respuesta_3.data["respuesta"])
+
+        interpretar_mock.assert_not_called()
+        buscar_mock.assert_not_called()
 
 
 class PuntuarCoincidenciaLexicaCamposMuertosTests(SimpleTestCase):

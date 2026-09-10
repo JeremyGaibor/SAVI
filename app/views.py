@@ -77,6 +77,7 @@ from .view_logic.chat_respuestas_ia import (
     generar_reformulacion_respuesta,
     respuesta_servidor_ia_no_disponible,
     limpiar_respuesta_ia,
+    extraer_contexto_suficiente,
 )
 from .view_logic.busqueda_fragmentos import (
     extraer_filtros_consulta,
@@ -1373,6 +1374,7 @@ Reglas de perfil:
 16. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "si", el CONTEXTO fue filtrado con datos del usuario como perfil, grupo/facultad o periodo. En ese caso, menciona brevemente (una frase) que la respuesta corresponde a ese contexto y que puede pedir otra version si la necesita.
 17. Si SE_USO_PERFIL_PARA_ELEGIR_DOCUMENTO es "no", NO menciones el perfil, facultad, carrera, nivel ni periodo del usuario en la respuesta; ve directo al contenido, sin preambulos sobre el perfil.
 18. Si AVISO_FILTROS_RELAJADOS no esta vacio, empieza indicando que no se encontro informacion especifica para esos filtros y que la respuesta usa informacion relacionada o general. No digas que pertenece exactamente a ese perfil, grupo o periodo.
+21. Al final de tu respuesta, en una linea nueva y aparte, agrega exactamente "CONTEXTO_SUFICIENTE: si" o "CONTEXTO_SUFICIENTE: no" (sin comillas), segun si el CONTEXTO alcanzo para responder la PREGUNTA ORIGINAL. Usa "no" cuando aplicaste la regla 3. Esa linea es solo para el sistema: no la expliques, no la menciones en el resto de la respuesta, y no agregues nada mas despues de ella.
 
 PERFIL DEL USUARIO:
 {contexto_usuario}
@@ -1408,7 +1410,12 @@ RESPUESTA:
 def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fragmentos):
     try:
         resultado_qwen = consultar_qwen(prompt)
-        respuesta = limpiar_respuesta_ia(resultado_qwen["respuesta"])
+        respuesta_cruda = resultado_qwen["respuesta"]
+        # Se lee ANTES de limpiar_respuesta_ia porque esa limpieza borra el
+        # marcador (ver _PATRON_MARCADOR_CONTEXTO_SUFICIENTE_LINEA en
+        # chat_respuestas_ia.py) -- si se leyera despues, siempre daria None.
+        contexto_suficiente = extraer_contexto_suficiente(respuesta_cruda)
+        respuesta = limpiar_respuesta_ia(respuesta_cruda)
         agregar_historial_conversacion(conversation_id, pregunta, respuesta, "RESPUESTA")
         historial = guardar_interaccion_temporal(
             request=request,
@@ -1420,6 +1427,11 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
     except Exception as exc:
         return _responder_ia_no_disponible(request, pregunta, exc)
 
+    # Fail-open: si el marcador no aparecio o vino mal formado
+    # (contexto_suficiente is None), se muestran las fuentes igual que
+    # siempre. Solo se ocultan cuando el modelo dijo explicitamente "no".
+    fuentes = [] if contexto_suficiente is False else _construir_fuentes_respuesta(fragmentos)
+
     return Response(
         {
             "ok": True,
@@ -1428,7 +1440,7 @@ def _generar_respuesta_documental(request, conversation_id, pregunta, prompt, fr
             "respuesta": respuesta,
             "modelo": resultado_qwen["modelo"],
             "fragmentos_usados": len(fragmentos),
-            "fuentes": _construir_fuentes_respuesta(fragmentos),
+            "fuentes": fuentes,
             "mensajes_historial_temporal": len(historial),
         },
         status=status.HTTP_200_OK,

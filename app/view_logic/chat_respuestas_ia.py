@@ -46,13 +46,62 @@ _PATRON_VINETA_HUERFANA = re.compile(
     r"(?m)^[ \t]*" + _MARCADOR_LISTA + r"[ \t]*$\n?"
 )
 
+# CONTEXTO_SUFICIENTE: marcador que el prompt documental (_construir_prompt_
+# documental en views.py) le pide al modelo para senalar si el CONTEXTO
+# alcanzo para responder (ver extraer_contexto_suficiente mas abajo, que lo
+# lee ANTES de esta limpieza para decidir si se muestran fuentes). Nunca
+# debe llegar a la respuesta visible, ni siquiera si el modelo lo escribe
+# mal formado -- por eso hay dos patrones: uno anclado a su propia linea
+# (caso esperado) y un residual mas laxo como backstop si el modelo lo deja
+# pegado a otro texto.
+_PATRON_MARCADOR_CONTEXTO_SUFICIENTE_LINEA = re.compile(
+    r"(?im)^[ \t]*\**[ \t]*CONTEXTO_SUFICIENTE\b.*$\n?"
+)
+_PATRON_CONTEXTO_SUFICIENTE_RESIDUAL = re.compile(
+    r"(?i)\**[ \t]*CONTEXTO_SUFICIENTE\**[ \t]*:?[ \t]*\**(?:si|sí|no)?\**\.?"
+)
+
 
 def _limpiar_metadata_interna_filtrada(respuesta):
     respuesta = _PATRON_MARCADOR_FUENTE_INTERNO.sub("", respuesta)
     respuesta = _PATRON_FRAGMENTO_VACIO.sub("", respuesta)
     respuesta = _PATRON_LINEA_METADATA_INTERNA.sub("", respuesta)
+    respuesta = _PATRON_MARCADOR_CONTEXTO_SUFICIENTE_LINEA.sub("", respuesta)
+    respuesta = _PATRON_CONTEXTO_SUFICIENTE_RESIDUAL.sub("", respuesta)
     respuesta = _PATRON_VINETA_HUERFANA.sub("", respuesta)
     return re.sub(r"\n{3,}", "\n\n", respuesta)
+
+
+# Parser estricto: solo reconoce el formato exacto que el prompt pide, en su
+# propia linea. Si no aparece, aparece mas de una vez (senal contradictoria)
+# o no dice "si"/"no" limpio, se trata como "no se pudo parsear" -- el
+# llamador (_generar_respuesta_documental en views.py) hace fail-open ahi:
+# muestra las fuentes igual que si el contexto hubiera alcanzado.
+_PATRON_MARCADOR_CONTEXTO_SUFICIENTE_VALOR = re.compile(
+    r"(?im)^[ \t]*\**[ \t]*CONTEXTO_SUFICIENTE[ \t]*\**[ \t]*:[ \t]*\**[ \t]*(si|sí|no)[ \t]*\**[ \t]*\.?[ \t]*$"
+)
+
+
+def extraer_contexto_suficiente(respuesta_cruda):
+    """
+    Lee el marcador CONTEXTO_SUFICIENTE de la respuesta CRUDA del modelo
+    (antes de limpiar_respuesta_ia). Devuelve True/False si lo reconoce sin
+    ambiguedad, o None si no aparece o vino mal formado -- None es la senal
+    de fail-open para el llamador.
+    """
+    if not isinstance(respuesta_cruda, str):
+        return None
+
+    coincidencias = _PATRON_MARCADOR_CONTEXTO_SUFICIENTE_VALOR.findall(respuesta_cruda)
+    if len(coincidencias) != 1:
+        return None
+
+    valor = coincidencias[0].strip().lower()
+    if valor in ("si", "sí"):
+        return True
+    if valor == "no":
+        return False
+    return None
 
 
 def limpiar_respuesta_ia(respuesta):

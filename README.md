@@ -1,63 +1,97 @@
 # SAVI – Sistema de Asistencia Virtual Inteligente
 
-SAVI es un asistente documental desarrollado para facilitar la consulta de información institucional mediante una interfaz conversacional. El sistema recupera contexto relevante desde documentos indexados antes de generar una respuesta, utilizando un flujo RAG (Retrieval-Augmented Generation).
+SAVI es un asistente documental desarrollado para facilitar la consulta de información institucional mediante una interfaz conversacional. El sistema recupera información relevante desde documentos indexados y la utiliza como contexto antes de generar una respuesta mediante un flujo RAG (*Retrieval-Augmented Generation*).
+
+## Estado actual
+
+El proyecto dispone de un entorno piloto de validación desplegado en AWS. Este entorno no se considera una integración institucional en producción con el Sistema de Gestión Académica (SGA).
+
+El repositorio incluye un cliente y un flujo por `sessionid` para solicitar contexto del usuario a servicios del SGA. Esta funcionalidad se ha comprobado mediante pruebas controladas; la conexión, validación y aceptación institucional definitivas con el SGA permanecen pendientes.
+
+El flujo de despliegue vigente configura el dominio:
+
+```text
+https://saviuteq.duckdns.org/chatbot/
+```
 
 ## Funcionalidades principales
 
-- Chatbot web utilizable directamente o mediante `iframe`.
+- Chatbot web accesible directamente o mediante `iframe`.
 - Procesamiento y análisis de documentos PDF.
-- Extracción de texto y métricas de legibilidad.
+- Extracción de texto y cálculo de métricas de legibilidad.
 - Fragmentación e indexación de documentos en ChromaDB.
 - Recuperación semántica y ranking de fragmentos para RAG.
-- Manejo de sesiones y contexto mediante Redis.
-- Integración con servicios del SGA mediante `sessionid`.
+- Separación de conversaciones por sesión.
+- Uso de Redis para caché y sesiones.
+- Cliente de contexto por `sessionid` para la futura integración institucional con el SGA.
 - Actualización de enlaces asociados a versiones documentales.
-- Retiro de versiones documentales que ya no se encuentran vigentes.
-- Soporte para modelos locales mediante Ollama y modelos en AWS Bedrock.
-- Despliegue mediante Docker, Gunicorn y Nginx.
+- Retiro de versiones documentales que dejan de estar vigentes.
+- Proveedores de inteligencia artificial configurables: Ollama y AWS Bedrock.
+- Ejecución mediante Docker, Gunicorn y Nginx.
+- Construcción y despliegue automatizados mediante GitHub Actions.
 
-## Tecnologías
+## Tecnologías principales
 
-- Python 3.11
-- Django 5
-- Django REST Framework
-- ChromaDB
-- Redis
-- SQLite
-- Ollama
-- AWS Bedrock
-- Docker / Docker Compose
-- Gunicorn
-- Nginx
-- GitHub Actions
+- Python 3.11.
+- Django 5.0.
+- Django REST Framework 3.17.1.
+- Cliente Python ChromaDB 1.5.9.
+- Servidor ChromaDB mediante la imagen `chromadb/chroma:latest`.
+- Redis 7 Alpine y cliente Python Redis 5.0.1.
+- SQLite.
+- Ollama.
+- AWS Bedrock mediante Boto3 1.43.64.
+- Docker y Docker Compose.
+- Gunicorn 23.0.0.
+- Nginx.
+- GitHub Actions.
 
-## Estructura principal
+Las versiones completas de las dependencias de Python se encuentran en `requirements.txt`.
+
+## Estructura del repositorio
 
 ```text
 SAVI/
 ├── .github/
-│   └── workflows/          # Automatización de despliegue
-├── app/                    # Configuración principal del proyecto
-├── assistant/              # Chatbot, RAG, procesamiento e integraciones
-├── docs/                   # Documentación del proyecto
-├── .env.example            # Plantilla de variables de entorno
-├── API_INTEGRACION_DOCUMENTOS.md
-├── Dockerfile
-├── docker-compose.yml
-├── manage.py
-└── requirements.txt
+│   └── workflows/
+│       └── deploy.yml                # Construcción y despliegue automatizados
+├── app/                              # Aplicación funcional de SAVI
+│   ├── management/                   # Comandos de administración
+│   ├── migrations/                   # Migraciones de la aplicación
+│   ├── services/                     # Servicios de PDF y ChromaDB
+│   ├── static/                       # Recursos estáticos
+│   ├── templates/                    # Interfaz web del chatbot
+│   ├── view_logic/                   # RAG, documentos, contexto y respuestas
+│   ├── tests.py                      # Pruebas de la aplicación
+│   ├── tests_llm_provider.py         # Pruebas de proveedores de IA
+│   ├── urls.py                       # Rutas de SAVI
+│   └── views.py                      # Vistas y endpoints
+├── assistant/                        # Configuración del proyecto Django
+│   ├── settings.py                   # Configuración general
+│   ├── urls.py                       # Enrutamiento principal
+│   ├── asgi.py                       # Entrada ASGI
+│   └── wsgi.py                       # Entrada WSGI para Gunicorn
+├── docs/
+│   └── pruebas_estres_ia.md          # Evidencia y notas de pruebas de estrés
+├── .env.example                      # Plantilla de variables de entorno
+├── API_INTEGRACION_DOCUMENTOS.md     # Especificación de la API documental
+├── MANUAL DE USUARIO.pdf             # Manual de uso de SAVI
+├── Dockerfile                        # Imagen de la aplicación
+├── docker-compose.yml                # Servicios SAVI, ChromaDB y Redis
+├── manage.py                         # Utilidad de administración de Django
+└── requirements.txt                  # Dependencias de Python
 ```
 
 ## Requisitos
 
-Para ejecutar el proyecto mediante Docker se requiere:
+Para ejecutar SAVI con Docker se requiere:
 
-- Docker Engine
-- Docker Compose v2
-- Acceso al proveedor de IA seleccionado
-- Variables de entorno configuradas
+- Docker Engine.
+- Docker Compose v2.
+- Acceso al proveedor de inteligencia artificial seleccionado.
+- Variables de entorno configuradas.
 
-Para ejecución local sin Docker se requiere Python 3.11 y las dependencias definidas en `requirements.txt`.
+Para ejecutarlo sin Docker se requiere Python 3.11 y las dependencias definidas en `requirements.txt`.
 
 ## Configuración
 
@@ -67,11 +101,17 @@ Crear el archivo `.env` a partir de la plantilla:
 cp .env.example .env
 ```
 
-Completar únicamente con valores válidos para el entorno correspondiente.
+Completar los valores correspondientes al entorno. El archivo `.env` no debe añadirse al repositorio.
 
-Las principales variables de configuración incluyen:
+Las principales variables son:
 
 ```env
+DEBUG=
+ALLOWED_HOSTS=
+CSRF_TRUSTED_ORIGINS=
+SESSION_COOKIE_SECURE=
+CSRF_COOKIE_SECURE=
+
 OLLAMA_BASE_URL=
 OLLAMA_MODEL=
 OLLAMA_TIMEOUT_SECONDS=
@@ -99,7 +139,7 @@ SGA_API_PASSWORD=
 DOCUMENT_FRAGMENTATION_MODE=
 ```
 
-> No deben almacenarse credenciales, contraseñas, tokens ni secretos reales en el repositorio.
+No deben almacenarse contraseñas, tokens, credenciales ni secretos reales en el repositorio.
 
 ## Ejecución con Docker
 
@@ -109,62 +149,62 @@ Construir y levantar los servicios:
 docker compose up -d --build
 ```
 
-Verificar el estado:
+Verificar su estado:
 
 ```bash
 docker compose ps
 ```
 
-Consultar los logs de la aplicación:
+Consultar los logs:
 
 ```bash
 docker compose logs -f savi
+docker compose logs -f chromadb
+docker compose logs -f redis
 ```
 
-La configuración actual de Docker Compose utiliza los servicios:
+Los servicios definidos en `docker-compose.yml` son:
 
-- `savi_app`: aplicación Django ejecutada con Gunicorn.
-- `savi_chroma`: almacenamiento vectorial ChromaDB.
-- `savi_redis`: sesiones y caché.
+- `savi`: aplicación Django ejecutada en el contenedor `savi_app`.
+- `chromadb`: servidor vectorial ejecutado en `savi_chroma`.
+- `redis`: caché y sesiones ejecutadas en `savi_redis`.
 
-La aplicación se publica localmente en:
+La aplicación se enlaza localmente a:
 
 ```text
 127.0.0.1:8000
 ```
 
-En producción, Nginx actúa como proxy inverso y gestiona el acceso HTTPS.
+ChromaDB y Redis solo se exponen dentro de la red de contenedores.
 
 ## Ejecución local
 
-Crear un entorno virtual:
+Crear y activar un entorno virtual:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Instalar dependencias:
+Instalar dependencias y aplicar migraciones:
 
 ```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-Aplicar migraciones:
-
-```bash
 python manage.py migrate
 ```
 
-Ejecutar el servidor de desarrollo:
+Iniciar el servidor de desarrollo:
 
 ```bash
 python manage.py runserver
 ```
 
+El servidor estará disponible en `http://127.0.0.1:8000/`.
+
 ## Proveedores de inteligencia artificial
 
-SAVI permite seleccionar el proveedor mediante:
+Seleccionar el proveedor principal mediante `LLM_PROVIDER`:
 
 ```env
 LLM_PROVIDER=ollama
@@ -175,6 +215,8 @@ o:
 ```env
 LLM_PROVIDER=bedrock
 ```
+
+El proveedor alternativo se configura con `LLM_FALLBACK_PROVIDER`. Puede dejarse vacío si no se necesita conmutación.
 
 ### Ollama
 
@@ -193,61 +235,75 @@ Requiere configurar:
 ```env
 BEDROCK_MODEL_ID=
 AWS_REGION=
+BEDROCK_CONNECT_TIMEOUT_SECONDS=
+BEDROCK_READ_TIMEOUT_SECONDS=
 ```
 
-La autenticación de AWS debe gestionarse mediante mecanismos seguros del entorno de ejecución, evitando almacenar credenciales dentro del repositorio.
+La autenticación de AWS debe gestionarse mediante un rol IAM u otro mecanismo seguro del entorno. Las credenciales no deben almacenarse en el repositorio.
 
 ## Persistencia
 
-SAVI utiliza tres mecanismos principales:
+SAVI utiliza:
 
-- **SQLite:** datos propios de Django.
-- **ChromaDB:** fragmentos, embeddings y metadatos documentales.
-- **Redis:** sesiones, caché y datos temporales.
+- **SQLite:** datos propios de Django, persistidos en el volumen `sqlite_data`.
+- **ChromaDB:** fragmentos, embeddings y metadatos documentales, persistidos en `chroma_data`.
+- **Redis:** sesiones, caché y datos temporales. El servicio actual no define un volumen persistente.
 
-Docker Compose utiliza volúmenes persistentes para SQLite y ChromaDB.
+## Rutas y endpoints
 
-## Integración documental
+### Interfaz
 
-La integración de documentos incluye operaciones para:
+- `GET /chatbot/`: abre el chatbot web.
+- `GET /chatbot/<sessionid>/`: abre el chatbot con un identificador de sesión para el flujo de contexto.
+- `GET /chroma_dump.html`: muestra la interfaz de consulta y administración de ChromaDB.
 
-- analizar documentos;
-- guardar contenido procesado en ChromaDB;
-- actualizar el enlace de una versión documental;
-- retirar una versión documental de la búsqueda.
+### API documental principal
 
-La especificación técnica de estos servicios se encuentra en:
+- `POST /api/integracion/documentos/analizar/`: analiza un documento.
+- `POST /api/integracion/documentos/guardar-chroma/`: procesa e indexa contenido en ChromaDB.
+- `POST` o `PATCH /api/integracion/documentos/actualizar-link/`: actualiza el enlace de una versión documental.
+- `POST` o `DELETE /api/integracion/documentos/quitar-vigencia/`: retira una versión documental de la búsqueda.
 
-```text
-API_INTEGRACION_DOCUMENTOS.md
-```
+La especificación de campos, respuestas y modos de fragmentación se encuentra en `API_INTEGRACION_DOCUMENTOS.md`.
+
+### Otras rutas disponibles
+
+- `/api/legibilidad/`
+- `/api/documentos/procesar/`
+- `/api/ia/buscar/`
+- `/chat/buscar/`
+- `/api/ia/consulta/`
+- `/api/documentos/analizar/`
+- `/api/documentos/extraer-texto/`
+
+Algunas de estas rutas se conservan como alias de compatibilidad.
 
 ## Flujo general
 
 ```text
 Usuario
   ↓
-Chatbot web / iframe
+Chatbot web o iframe
   ↓
 Nginx
   ↓
 Aplicación Django
   ↓
-Sesión y contexto
+Sesión y recuperación de contexto
   ↓
 Búsqueda RAG en ChromaDB
   ↓
-Proveedor IA (Ollama / AWS Bedrock)
+Proveedor de IA: Ollama o AWS Bedrock
   ↓
 Respuesta al usuario
 ```
 
-Para documentos:
+Flujo documental:
 
 ```text
-Sistema documental
+Sistema consumidor
   ↓
-API de integración
+API de integración documental
   ↓
 Extracción y análisis
   ↓
@@ -256,88 +312,86 @@ Fragmentación
 ChromaDB
 ```
 
+El cliente del SGA puede solicitar token y contexto por `sessionid` cuando se configuran las variables correspondientes. Esto no implica que la integración institucional definitiva ya haya sido completada.
+
 ## Pruebas
 
-El proyecto contempla pruebas funcionales y de integración sobre:
+Ejecutar las pruebas disponibles con:
+
+```bash
+python manage.py test app
+```
+
+El repositorio contiene pruebas y evidencias relacionadas con:
 
 - consultas del chatbot;
 - análisis de PDF;
-- almacenamiento documental;
 - recuperación mediante RAG;
-- separación de sesiones;
-- integración con el SGA;
-- actualización y retiro de documentos;
+- proveedores de IA;
+- sesiones y flujo por `sessionid` en condiciones controladas;
+- actualización y retiro de versiones documentales;
 - acceso mediante `iframe`;
-- rendimiento y estabilidad.
+- estabilidad y latencia.
 
-Después de una modificación importante se recomienda volver a ejecutar los casos críticos y comprobar los logs de la aplicación.
+Las pruebas controladas del cliente por `sessionid` no sustituyen la validación con los servicios institucionales reales del SGA.
 
-## Despliegue
+## Despliegue piloto
 
-El despliegue se realiza con Docker y Gunicorn. La imagen de la aplicación expone el puerto `8000` internamente y Docker Compose lo enlaza a `127.0.0.1:8000`.
+El workflow `.github/workflows/deploy.yml` se ejecuta al actualizar la rama `main` o mediante activación manual. El proceso:
 
-En producción:
+1. Descarga el código.
+2. Construye la imagen de SAVI.
+3. Publica las etiquetas `latest` y `${{ github.sha }}` en Docker Hub.
+4. Sincroniza los archivos con `/home/ubuntu/SAVI` en el runner autorizado.
+5. Genera el `.env` del servidor desde secretos de GitHub Actions.
+6. Descarga las imágenes definidas en Docker Compose.
+7. Ejecuta las migraciones.
+8. Inicia los servicios y muestra su estado.
 
-1. Clonar la rama `main`.
-2. Crear `.env` desde `.env.example`.
-3. Configurar las variables requeridas.
-4. Ejecutar:
+Para una instalación manual:
 
 ```bash
+git clone https://github.com/JeremyGaibor/SAVI.git
+cd SAVI
+cp .env.example .env
+# Completar .env por un canal seguro.
 docker compose pull
-docker compose up -d
-```
-
-5. Verificar:
-
-```bash
+docker compose run --rm savi python manage.py migrate
+docker compose up -d --remove-orphans
 docker compose ps
 ```
 
-6. Configurar Nginx como proxy inverso hacia `127.0.0.1:8000`.
-7. Habilitar HTTPS.
-8. Probar el chatbot y sus integraciones.
+Nginx debe actuar como proxy inverso hacia `127.0.0.1:8000` y gestionar HTTPS. El entorno actualmente documentado es de piloto/validación, no de producción institucional.
 
-## Respaldo
+## Respaldo y restauración
 
-Los elementos principales que deben respaldarse son:
+Se deben respaldar:
 
-- volumen de ChromaDB;
-- volumen de SQLite;
-- configuración de Nginx;
-- archivo `.env`, únicamente mediante un canal seguro.
+- el volumen `chroma_data`;
+- el volumen `sqlite_data`;
+- el archivo `.env` mediante un canal seguro;
+- la configuración de Nginx y los certificados, según la política institucional.
 
-Los secretos no deben almacenarse dentro de copias públicas del repositorio.
+La restauración debe probarse y documentarse antes de considerar cerrado el procedimiento de recuperación.
 
-## Seguridad
+## Seguridad y pendientes conocidos
 
-- El acceso de producción debe realizarse mediante HTTPS.
-- ChromaDB y Redis no deben exponerse directamente a Internet.
-- Las credenciales deben configurarse mediante variables de entorno.
-- `.env` no debe versionarse.
-- `.env.example` debe contener únicamente placeholders.
-- Cualquier credencial que haya sido publicada previamente debe ser rotada.
+- Mantener `.env` fuera del control de versiones.
+- Conservar únicamente valores de ejemplo en `.env.example`.
+- No publicar tokens, contraseñas, claves ni credenciales.
+- Mantener ChromaDB y Redis sin exposición directa a Internet.
+- Utilizar HTTPS y cookies seguras en el entorno desplegado.
+- Migrar `SECRET_KEY` de Django desde `assistant/settings.py` a una variable de entorno y utilizar una clave diferente en el servidor.
+- Unificar el dominio configurado en el código y el workflow mediante variables de entorno; el workflow vigente utiliza `saviuteq.duckdns.org`.
+- Rotar inmediatamente cualquier credencial que haya sido expuesta.
 
-## Documentación adicional
+## Documentación relacionada
 
-- `API_INTEGRACION_DOCUMENTOS.md`: contrato de integración documental.
-- `docs/`: documentación complementaria del proyecto.
-- Documento Técnico de Ingeniería de Software y Continuidad del Producto: arquitectura, requisitos, pruebas, despliegue, mantenimiento y continuidad.
-
-## Continuidad del proyecto
-
-Antes de realizar nuevos cambios se recomienda:
-
-1. Verificar que la rama `main` esté actualizada.
-2. Configurar el entorno a partir de `.env.example`.
-3. Levantar los servicios con Docker Compose.
-4. Confirmar conectividad con Redis, ChromaDB, proveedor IA y servicios del SGA.
-5. Ejecutar las pruebas funcionales críticas.
-6. Revisar la deuda técnica y los pendientes documentados.
+- `API_INTEGRACION_DOCUMENTOS.md`: contrato de la API documental.
+- `MANUAL DE USUARIO.pdf`: instrucciones de uso.
+- `docs/pruebas_estres_ia.md`: información de las pruebas de estrés con proveedores de IA.
 
 ## Autores
 
-- Jeremy Ruperto Gaibor Rodríguez
-- Andy Paul Sánchez Pilaloa
-
-Proyecto desarrollado durante prácticas preprofesionales de la Carrera de Ingeniería de Software de la Universidad Técnica Estatal de Quevedo.
+- Jeremy Ruperto Gaibor Rodríguez.
+- Andy Paul Sánchez Pilaloa.

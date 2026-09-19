@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+# collectstatic requiere inicializar Django, pero no utiliza la clave de firma.
+# El valor temporal solo existe durante esta instrucción de construcción.
+RUN DJANGO_SECRET_KEY=build-only-not-for-runtime python manage.py collectstatic --noinput
 
 EXPOSE 8000
 

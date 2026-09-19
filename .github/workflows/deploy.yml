@@ -38,6 +38,7 @@ jobs:
 
       - name: Desplegar en AWS
         env:
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
           OLLAMA_TIMEOUT_SECONDS: ${{ secrets.OLLAMA_TIMEOUT_SECONDS }}
@@ -65,6 +66,8 @@ jobs:
         run: |
           set -e
 
+          : "${DJANGO_SECRET_KEY:?Falta configurar el secreto DJANGO_SECRET_KEY en GitHub Actions}"
+
           APP_DIR="/home/ubuntu/SAVI"
 
           if [ ! -d "$APP_DIR" ]; then
@@ -82,6 +85,7 @@ jobs:
           cd "$APP_DIR"
 
           {
+            echo "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
             echo "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
             echo "OLLAMA_MODEL=${OLLAMA_MODEL}"
             echo "OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS}"

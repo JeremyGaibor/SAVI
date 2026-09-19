@@ -20,9 +20,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ev3^o*m=0*pa2x+1n^q^e!o7+k$!p)j(r=8ju=!2f7@or#jf1@'
-
 def env_bool(nombre, defecto=False):
     valor = os.getenv(nombre)
     if valor is None:
@@ -35,6 +32,14 @@ def env_list(nombre, defecto=None):
     if not valor.strip():
         return defecto or []
     return [item.strip() for item in valor.split(",") if item.strip()]
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY debe estar definida en las variables de entorno."
+    )
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

@@ -106,6 +106,7 @@ Completar los valores correspondientes al entorno. El archivo `.env` no debe añ
 Las principales variables son:
 
 ```env
+DJANGO_SECRET_KEY=
 DEBUG=
 ALLOWED_HOSTS=
 CSRF_TRUSTED_ORIGINS=
@@ -381,7 +382,7 @@ La restauración debe probarse y documentarse antes de considerar cerrado el pro
 - No publicar tokens, contraseñas, claves ni credenciales.
 - Mantener ChromaDB y Redis sin exposición directa a Internet.
 - Utilizar HTTPS y cookies seguras en el entorno desplegado.
-- Migrar `SECRET_KEY` de Django desde `assistant/settings.py` a una variable de entorno y utilizar una clave diferente en el servidor.
+- Configurar `DJANGO_SECRET_KEY` mediante una variable de entorno, con una clave distinta por entorno y almacenada como secreto de GitHub Actions en el despliegue.
 - Unificar el dominio configurado en el código y el workflow mediante variables de entorno; el workflow vigente utiliza `saviuteq.duckdns.org`.
 - Rotar inmediatamente cualquier credencial que haya sido expuesta.
 
